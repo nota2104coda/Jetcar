@@ -1,0 +1,49 @@
+# Arduino IDE compilation environment
+FROM ubuntu:22.04
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    unzip \
+    python3 \
+    python3-pip \
+    git \
+    make \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Arduino CLI
+RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+RUN mv bin/arduino-cli /usr/local/bin/
+
+# Create arduino user
+RUN useradd -m -u 1000 arduino && mkdir -p /home/arduino/Arduino
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy Arduino CLI configuration
+COPY docker/arduino-cli.yaml /home/arduino/.arduino15/arduino-cli.yaml
+
+# Install Arduino cores and libraries
+RUN arduino-cli core update-index
+RUN arduino-cli core install arduino:avr          # For Arduino Mega
+RUN arduino-cli core install rp2040:rp2040        # For Pi Pico W
+
+# Common Arduino libraries
+RUN arduino-cli lib install "WiFi" \
+    && arduino-cli lib install "ArduinoJson" \
+    && arduino-cli lib install "PubSubClient" \
+    && arduino-cli lib install "Servo" \
+    && arduino-cli lib install "NewPing"
+
+# Copy custom libraries from include-arduino
+COPY include-arduino/ /home/arduino/Arduino/libraries/
+
+# Set permissions
+RUN chown -R arduino:arduino /home/arduino
+USER arduino
+
+# Default command
+CMD ["arduino-cli", "version"]
