@@ -31,7 +31,6 @@ bool requestSonarIRData(uint8_t slaveAddr, SonarIRData &data) {
         Serial.println("Not enough bytes available from slave");
         return false;
     }
-
     // Read full struct including CRC
     Wire.readBytes((uint8_t*)&data, sizeof(SonarIRData));
 
@@ -42,8 +41,8 @@ bool requestSonarIRData(uint8_t slaveAddr, SonarIRData &data) {
 
     // Verify CRC
     if (crc != data.crc) {
-        Serial.println("CRC mismatch!");
-        return false;
+      Serial.println("CRC mismatch!");
+      return false;
     }
 
     // Data valid
@@ -58,7 +57,6 @@ bool requestSonarIRData(uint8_t slaveAddr, SonarIRData &data) {
 //VehicleMotionRequester; //function to decide which way to move.
 //VehicleMotionExec;//function/class to execute the motion. 
 // PWMDcMotor motorFR, motorFL, motorRR, motorRL;
-// UltrasonicSensors sensors;
 // UARTCommunicator comms;
 
 // // A structure to hold all the data we want to send over UART.
@@ -104,7 +102,13 @@ void loop() {
   else {
         Serial.println("Failed to read valid data from slave");
   }
+  //ReadIMU;  //all of these comms need to be non-blocking
+  //ReadLidar;
+  //ReadRadar;
   // ReadVehSpd;
+  //SendDataOverUSBSerial;
+  //ReceiveDataOverUSBSerial;
+  //and now comes the real processing
   // VehMotionReq;
   // VehMotionExec;
   // ScreenDisp;

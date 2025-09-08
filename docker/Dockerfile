@@ -26,8 +26,11 @@ COPY docker/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY src/ ./src/
+COPY pc-src/ ./pc-src/
 COPY config/ ./config/
+COPY include-arduino/ ./include-arduino/
+COPY scripts/ ./scripts/
+COPY tests/ ./tests/
 
 # Set Python path
 ENV PYTHONPATH=/app
