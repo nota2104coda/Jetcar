@@ -10,12 +10,11 @@ services:
     # Need privileged access for hardware
     privileged: true
     devices:
-      # I2C bus for VL53L5X lidar
-      - "/dev/i2c-1:/dev/i2c-1"
-      # GPIO access
-      - "/dev/gpiomem:/dev/gpiomem"
+      # USB Serial device
+      - "/dev/ttyACM0:/dev/ttyACM0"
       # Camera device (if using USB camera)
       - "/dev/video0:/dev/video0"
+      - "/dev/vchiq:/dev/vchiq"
     volumes:
       # Mount config and source
       - ../config:/app/config

@@ -3,13 +3,9 @@ FROM python:3.11-slim
 
 # Install system packages needed for Pi 5 hardware and sensors
 RUN apt-get update && apt-get install -y \
-    # I2C tools for VL53L5X lidar
-    i2c-tools \
     # Camera support libraries
     libcamera-dev \
     python3-libcamera \
-    # GPIO access
-    libgpiod2 \
     # Network tools for Pi Pico W communication
     curl \
     wget \
