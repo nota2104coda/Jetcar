@@ -1,5 +1,5 @@
 # Arduino IDE compilation environment
-FROM ubuntu:22.04
+FROM debian:bookworm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -23,20 +23,26 @@ RUN useradd -m -u 1000 arduino && mkdir -p /home/arduino/Arduino
 # Set working directory
 WORKDIR /workspace
 
-# Copy Arduino CLI configuration
-COPY docker/arduino-cli.yaml /home/arduino/.arduino15/arduino-cli.yaml
+# Copy Arduino CLI configuration (move this up!)
+COPY docker/arduino-cli.yaml /home/arduino/.arduino15/arduino-cli.yaml 
 
 # Install Arduino cores and libraries
 RUN arduino-cli core update-index
 RUN arduino-cli core install arduino:avr          # For Arduino Mega
+RUN arduino-cli config add board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+RUN arduino-cli core update-index
 RUN arduino-cli core install rp2040:rp2040        # For Pi Pico W
 
 # Common Arduino libraries
-RUN arduino-cli lib install "WiFi" \
-    && arduino-cli lib install "ArduinoJson" \
-    && arduino-cli lib install "PubSubClient" \
-    && arduino-cli lib install "Servo" \
-    && arduino-cli lib install "NewPing"
+RUN arduino-cli lib install "WiFi" 
+RUN arduino-cli lib install "ArduinoJson"
+RUN arduino-cli lib install "PubSubClient"
+RUN arduino-cli lib install "Servo"
+RUN arduino-cli lib install "NewPing"
+RUN arduino-cli lib install "MPU6050"
+RUN arduino-cli lib install "STM32duino VL53L5CX"
+RUN arduino-cli lib install "InterpolationLib"
+RUN arduino-cli lib install "HLK-LD2450" 
 
 # Copy custom libraries from include-arduino
 COPY include-arduino/ /home/arduino/Arduino/libraries/

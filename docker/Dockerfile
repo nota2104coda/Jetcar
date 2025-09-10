@@ -18,8 +18,17 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy Python requirements and install packages
-COPY docker/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY docker/requirements.dev.txt .
+COPY docker/requirements.pi5.txt .
+ARG ENV=dev
+RUN if [ "$ENV" = "pi5" ]; then \
+    echo "Installing Pi5 dependencies..."; \
+    pip install -r requirements.pi5.txt; \
+  else \
+    echo "Installing Dell dependencies..."; \
+    pip install -r requirements.dev.txt; \
+  fi
+#RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY pc-src/ ./pc-src/

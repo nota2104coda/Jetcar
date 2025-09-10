@@ -1,0 +1,19 @@
+board_manager:
+  additional_urls:
+    - https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+
+directories:
+  data: /home/arduino/.arduino15
+  downloads: /home/arduino/.arduino15/staging
+  user: /home/arduino/Arduino
+
+library:
+  enable_unsafe_install: true
+
+logging:
+  file: ""
+  format: text
+  level: info
+
+daemon:
+  port: "50051"
