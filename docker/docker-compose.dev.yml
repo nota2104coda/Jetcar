@@ -17,6 +17,9 @@ services:
       # Mount source code for live editing
       - ../pc-src:/app/pc-src
       - ../config:/app/config
+      - ../include-arduino:/app/include-arduino
+      - ../scripts:/app/scripts
+      - ../tests:/app/tests
       # Mount a logs directory
       - ../logs:/app/logs
     environment:
