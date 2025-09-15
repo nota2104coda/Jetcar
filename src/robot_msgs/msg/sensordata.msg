@@ -1,0 +1,10 @@
+float32 front_ultrasonic
+float32 rear_ultrasonic
+float32 imu_ax
+float32 imu_ay
+float32 imu_az
+float32 lidar_distance
+uint8 cliff_sensor_front_left
+uint8 cliff_sensor_front_right
+uint8 cliff_sensor_rear_left
+uint8 cliff_sensor_rear_right

@@ -1,0 +1,56 @@
+# Core robot dependencies
+numpy==1.24.3
+pyyaml==6.0.1
+python-dotenv==1.0.0
+
+# Computer vision and VLM
+opencv-python==4.8.1.78
+opencv-python-headless
+pillow==10.0.1
+transformers==4.35.2
+torchvision>=0.16.0
+
+# Camera support (Pi Camera)
+picamera2==0.3.17
+
+# Communication with Pi Pico W
+requests==2.31.0
+websockets==11.0.3
+flask==3.0.0
+rclpy
+pyserial==3.5  # USB serial communication with Pi Pico
+pyserial-asyncio==0.6  # Async serial support
+smbus2==0.4.3  # I2C communication for sensors
+
+# Logging and monitoring
+loguru==0.7.2
+
+# Development and debugging tools
+pytest==7.4.3
+black==23.11.0
+debugpy==1.8.0
+
+# OPENVLA
+timm==0.9.10
+tokenizers==0.19.1
+torch>=2.2.0
+
+# Data handling and validation
+pydantic==2.5.0  # Data validation and serialization
+msgpack==1.0.7   # Efficient binary serialization
+python-dotenv==1.0.0  # Environment configuration
+
+# Natural language processing for command parsing
+spacy==3.7.2  # For command parsing
+# Note: Run after install: python -m spacy download en_core_web_sm
+
+# Math and navigation
+scipy==1.11.4  # For advanced math operations  
+networkx==3.2  # For graph-based path planning
+
+# Performance monitoring
+psutil==5.9.6  # System monitoring
+memory-profiler==0.61.0  # Memory usage tracking
+
+# Optional: Communication protocols
+asyncio-mqtt==0.16.1  # MQTT for communication (optional)

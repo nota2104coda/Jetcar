@@ -1,0 +1,25 @@
+# Use the official Kilted Kaiju base image
+FROM ros:kilted-ros-base-noble
+
+# Update package lists and install necessary dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-colcon-common-extensions \
+    python3-pip \
+    ros-kilted-rosidl-default-generators \
+    ros-kilted-teleop-twist-keyboard \
+    libv4l-dev \
+    # Clean up the apt cache to reduce image size
+    && rm -rf /var/lib/apt/lists/*
+
+# Install your custom Python libraries
+RUN pip install --upgrade pip
+# Ensure your model and other dependencies are installed
+RUN pip install numpy opencv-python_headless rclpy smol_vla_model 
+
+# Set up ROS2 workspace
+COPY . /picowcar/src/pi_5_nodes
+WORKDIR /picowcar
+
+# Build the ROS2 package
+RUN . /opt/ros/kilted/setup.bash && \
+    colcon build --packages-select pi_5_nodes

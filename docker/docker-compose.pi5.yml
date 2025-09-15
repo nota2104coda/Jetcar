@@ -1,46 +1,25 @@
 # Production environment for Raspberry Pi 5
-version: '3.8'
-
 services:
-  robot-controller:
+  ros_master:
+    # The multi-stage Dockerfile handles the base layer automatically.
+    # Docker will cache the base layers, so subsequent builds are fast.
     build:
       context: ..  # Build from parent directory
-      dockerfile: docker/Dockerfile
-    container_name: robot-controller
-    # Need privileged access for hardware
+      dockerfile: docker/Dockerfile.pi5
     privileged: true
-    devices:
-      # USB Serial device
-      - "/dev/ttyACM0:/dev/ttyACM0"
-      # Camera device (if using USB camera)
-      - "/dev/video0:/dev/video0"
-      - "/dev/vchiq:/dev/vchiq"
-    volumes:
-      # Mount config and source
-      - ../config:/app/config
-      - ../pc-src:/app/pc-src
-      - ../logs:/app/logs
-      # Camera libraries for Pi Camera
-      - /opt/vc:/opt/vc:ro
-      # Device tree for hardware access
-      - /sys:/sys:ro
-    environment:
-      - ENVIRONMENT=production
-      - DEBUG=false
-      - LOG_LEVEL=INFO
-      - MOCK_HARDWARE=false
-      - PICO_W_IP=192.168.1.100
-    # Always restart if container stops
+    image: picowcar-pi5-dev:latest # Use a tag for the final image
+    container_name: ros_master
     restart: unless-stopped
-    # Health check to monitor robot status
-    healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    # Logging configuration
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    devices:
+      - /dev/video0:/dev/video0 # Map camera device
+      - /dev/ttyACM0:/dev/ttyACM0 # Map Pico W USB serial device
+    volumes:
+      # Mount the entire project directory for live code changes
+      - ..:/workspace 
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    network_mode: host
+
+    # This command sources ROS and your workspace, then launches your robot.
+    # It keeps the container running.
+    command: /bin/bash -c "source /opt/ros/kilted/setup.bash && source /workspace/install/setup.bash && ros2 launch pi_5_nodes robot_launch.py"
