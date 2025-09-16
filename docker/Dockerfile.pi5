@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-kilted-demo-nodes-cpp \
     ros-kilted-teleop-twist-keyboard \
     libv4l-dev \
+    libcap-dev \ #reqd for picamera2
     # Clean up the apt cache to reduce image size
     && rm -rf /var/lib/apt/lists/*
 

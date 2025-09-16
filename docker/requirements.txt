@@ -1,25 +1,26 @@
 # Core robot dependencies
-numpy==1.24.3
-pyyaml==6.0.1
-python-dotenv==1.0.0
+numpy
+pyyaml
 
 # Computer vision and VLM
 opencv-python==4.8.1.78
 opencv-python-headless
 pillow==10.0.1
-transformers==4.35.2
+transformers
 torchvision>=0.16.0
 
 # Camera support (Pi Camera)
-picamera2==0.3.17
+picamera2
 
 # Communication with Pi Pico W
 requests==2.31.0
 websockets==11.0.3
-flask==3.0.0
+pywebio
+
+
 rclpy
-pyserial==3.5  # USB serial communication with Pi Pico
-pyserial-asyncio==0.6  # Async serial support
+pyserial  # USB serial communication with Pi Pico
+pyserial-asyncio  # Async serial support
 smbus2==0.4.3  # I2C communication for sensors
 
 # Logging and monitoring
