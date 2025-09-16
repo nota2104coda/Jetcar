@@ -1,0 +1,18 @@
+For the cliff sensor, we need proper debouncing and a quality factor.
+
+counter_true
+counter_false
+last read timing = millis()
+
+previous read times = array of delta millis times, can be short int (2 bytes) x 5 array for less memory.
+debounce duration in ms
+every time reading taken, 
+new_millis
+renew counter values
+if one of the counters is 5
+then set state = that counter's state
+if last read timing to new_millis is > debounce, then too use newest reading. 
+
+
+quality factor - if 5x samples are not received within debounce time, then QF = 0
+else QF = 1;
