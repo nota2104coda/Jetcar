@@ -1,0 +1,17 @@
+running develop
+running egg_info
+writing pi5_pkg.egg-info/PKG-INFO
+writing dependency_links to pi5_pkg.egg-info/dependency_links.txt
+writing entry points to pi5_pkg.egg-info/entry_points.txt
+writing requirements to pi5_pkg.egg-info/requires.txt
+writing top-level names to pi5_pkg.egg-info/top_level.txt
+reading manifest file 'pi5_pkg.egg-info/SOURCES.txt'
+writing manifest file 'pi5_pkg.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5-pkg.egg-link (link to .)
+Installing camera_node script to /home/jaygee/PicoWCar/install/pi5_pkg/lib/pi5_pkg
+
+Installed /home/jaygee/PicoWCar/build/pi5_pkg
+running symlink_data
+symbolically linking /home/jaygee/PicoWCar/build/pi5_pkg/resource/pi5_pkg -> /home/jaygee/PicoWCar/install/pi5_pkg/share/ament_index/resource_index/packages
+symbolically linking /home/jaygee/PicoWCar/build/pi5_pkg/package.xml -> /home/jaygee/PicoWCar/install/pi5_pkg/share/pi5_pkg

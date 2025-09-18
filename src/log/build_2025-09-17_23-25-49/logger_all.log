@@ -1,0 +1,393 @@
+[0.146s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build']
+[0.146s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=False, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=4, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, mixin_files=None, mixin=None, verb_parser=<colcon_mixin.mixin.mixin_argument.MixinArgumentDecorator object at 0xffffa1a9c620>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0xffffa1c58da0>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0xffffa1c58da0>>, mixin_verb=('build',))
+[0.202s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.202s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.203s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.203s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.203s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.203s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.203s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/jaygee/PicoWCar/src'
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.203s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.240s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extensions ['ignore', 'ignore_ament_install']
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'ignore'
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'ignore_ament_install'
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extensions ['colcon_pkg']
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'colcon_pkg'
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extensions ['colcon_meta']
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'colcon_meta'
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extensions ['ros']
+[0.241s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'ros'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extensions ['cmake', 'python']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'cmake'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'python'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extensions ['python_setup_py']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing) by extension 'python_setup_py'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extensions ['ignore', 'ignore_ament_install']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'ignore'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'ignore_ament_install'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extensions ['colcon_pkg']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'colcon_pkg'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extensions ['colcon_meta']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'colcon_meta'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extensions ['ros']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'ros'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extensions ['cmake', 'python']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'cmake'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'python'
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extensions ['python_setup_py']
+[0.242s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes) by extension 'python_setup_py'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extensions ['ignore', 'ignore_ament_install']
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'ignore'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'ignore_ament_install'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extensions ['colcon_pkg']
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'colcon_pkg'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extensions ['colcon_meta']
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'colcon_meta'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extensions ['ros']
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'ros'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extensions ['cmake', 'python']
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'cmake'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'python'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extensions ['python_setup_py']
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode) by extension 'python_setup_py'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extensions ['ignore', 'ignore_ament_install']
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'ignore'
+[0.243s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'ignore_ament_install'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extensions ['colcon_pkg']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'colcon_pkg'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extensions ['colcon_meta']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'colcon_meta'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extensions ['ros']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'ros'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extensions ['cmake', 'python']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'cmake'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'python'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extensions ['python_setup_py']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/modes/PythonMode/mode) by extension 'python_setup_py'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extensions ['ignore', 'ignore_ament_install']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'ignore'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'ignore_ament_install'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extensions ['colcon_pkg']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'colcon_pkg'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extensions ['colcon_meta']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'colcon_meta'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extensions ['ros']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'ros'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extensions ['cmake', 'python']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'cmake'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'python'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extensions ['python_setup_py']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250705b) by extension 'python_setup_py'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extensions ['ignore', 'ignore_ament_install']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'ignore'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'ignore_ament_install'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extensions ['colcon_pkg']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'colcon_pkg'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extensions ['colcon_meta']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'colcon_meta'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extensions ['ros']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'ros'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extensions ['cmake', 'python']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'cmake'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'python'
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extensions ['python_setup_py']
+[0.245s] Level 1:colcon.colcon_core.package_identification:_identify(Processing/sketch_250709a) by extension 'python_setup_py'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extensions ['ignore', 'ignore_ament_install']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'ignore'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'ignore_ament_install'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extensions ['colcon_pkg']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'colcon_pkg'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extensions ['colcon_meta']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'colcon_meta'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extensions ['ros']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'ros'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extensions ['cmake', 'python']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'cmake'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'python'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extensions ['python_setup_py']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano) by extension 'python_setup_py'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extensions ['ignore', 'ignore_ament_install']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'ignore'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'ignore_ament_install'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extensions ['colcon_pkg']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'colcon_pkg'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extensions ['colcon_meta']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'colcon_meta'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extensions ['ros']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'ros'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extensions ['cmake', 'python']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'cmake'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'python'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extensions ['python_setup_py']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(arduino-nano/ardnano-robot-slave) by extension 'python_setup_py'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extensions ['ignore', 'ignore_ament_install']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'ignore'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'ignore_ament_install'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extensions ['colcon_pkg']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'colcon_pkg'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extensions ['colcon_meta']
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'colcon_meta'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extensions ['ros']
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'ros'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extensions ['cmake', 'python']
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'cmake'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'python'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extensions ['python_setup_py']
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(include-arduino) by extension 'python_setup_py'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extensions ['ignore', 'ignore_ament_install']
+[0.248s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extension 'ignore'
+[0.249s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extension 'ignore_ament_install'
+[0.249s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extensions ['colcon_pkg']
+[0.249s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extension 'colcon_pkg'
+[0.249s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extensions ['colcon_meta']
+[0.249s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extension 'colcon_meta'
+[0.249s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extensions ['ros']
+[0.249s] Level 1:colcon.colcon_core.package_identification:_identify(pi5_pkg) by extension 'ros'
+[0.252s] DEBUG:colcon.colcon_core.package_identification:Package 'pi5_pkg' with type 'ros.ament_python' and name 'pi5_pkg'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extensions ['ignore', 'ignore_ament_install']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'ignore'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'ignore_ament_install'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extensions ['colcon_pkg']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'colcon_pkg'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extensions ['colcon_meta']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'colcon_meta'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extensions ['ros']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'ros'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extensions ['cmake', 'python']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'cmake'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'python'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extensions ['python_setup_py']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW) by extension 'python_setup_py'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extensions ['ignore', 'ignore_ament_install']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'ignore'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'ignore_ament_install'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extensions ['colcon_pkg']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'colcon_pkg'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extensions ['colcon_meta']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'colcon_meta'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extensions ['ros']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'ros'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extensions ['cmake', 'python']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'cmake'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'python'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extensions ['python_setup_py']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO) by extension 'python_setup_py'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extensions ['ignore', 'ignore_ament_install']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'ignore'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'ignore_ament_install'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extensions ['colcon_pkg']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'colcon_pkg'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extensions ['colcon_meta']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'colcon_meta'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extensions ['ros']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'ros'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extensions ['cmake', 'python']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'cmake'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'python'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extensions ['python_setup_py']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/include) by extension 'python_setup_py'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extensions ['ignore', 'ignore_ament_install']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'ignore'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'ignore_ament_install'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extensions ['colcon_pkg']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'colcon_pkg'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extensions ['colcon_meta']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'colcon_meta'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extensions ['ros']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'ros'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extensions ['cmake', 'python']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'cmake'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'python'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extensions ['python_setup_py']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/lib) by extension 'python_setup_py'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extensions ['ignore', 'ignore_ament_install']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'ignore'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'ignore_ament_install'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extensions ['colcon_pkg']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'colcon_pkg'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extensions ['colcon_meta']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'colcon_meta'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extensions ['ros']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'ros'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extensions ['cmake', 'python']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'cmake'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'python'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extensions ['python_setup_py']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/src) by extension 'python_setup_py'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extensions ['ignore', 'ignore_ament_install']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'ignore'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'ignore_ament_install'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extensions ['colcon_pkg']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'colcon_pkg'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extensions ['colcon_meta']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'colcon_meta'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extensions ['ros']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'ros'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extensions ['cmake', 'python']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'cmake'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'python'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extensions ['python_setup_py']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-PlatformIO/test) by extension 'python_setup_py'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extensions ['ignore', 'ignore_ament_install']
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'ignore'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'ignore_ament_install'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extensions ['colcon_pkg']
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'colcon_pkg'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extensions ['colcon_meta']
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'colcon_meta'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extensions ['ros']
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'ros'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extensions ['cmake', 'python']
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'cmake'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'python'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extensions ['python_setup_py']
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE) by extension 'python_setup_py'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extensions ['ignore', 'ignore_ament_install']
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'ignore'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'ignore_ament_install'
+[0.257s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extensions ['colcon_pkg']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'colcon_pkg'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extensions ['colcon_meta']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'colcon_meta'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extensions ['ros']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'ros'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extensions ['cmake', 'python']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'cmake'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'python'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extensions ['python_setup_py']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-arduinoIDE/picoW-robot-master) by extension 'python_setup_py'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extensions ['ignore', 'ignore_ament_install']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'ignore'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'ignore_ament_install'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extensions ['colcon_pkg']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'colcon_pkg'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extensions ['colcon_meta']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'colcon_meta'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extensions ['ros']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'ros'
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extensions ['cmake', 'python']
+[0.258s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'cmake'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'python'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extensions ['python_setup_py']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(picoW/pico-mupython) by extension 'python_setup_py'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extensions ['ignore', 'ignore_ament_install']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'ignore'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'ignore_ament_install'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extensions ['colcon_pkg']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'colcon_pkg'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extensions ['colcon_meta']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'colcon_meta'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extensions ['ros']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'ros'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extensions ['cmake', 'python']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'cmake'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'python'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extensions ['python_setup_py']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs) by extension 'python_setup_py'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extensions ['ignore', 'ignore_ament_install']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'ignore'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'ignore_ament_install'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extensions ['colcon_pkg']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'colcon_pkg'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extensions ['colcon_meta']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'colcon_meta'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extensions ['ros']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'ros'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extensions ['cmake', 'python']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'cmake'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'python'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extensions ['python_setup_py']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(robot_msgs/msg) by extension 'python_setup_py'
+[0.260s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.260s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.260s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.260s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.260s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.284s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.284s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.286s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 5 installed packages in /home/jaygee/PicoWCar/src/install
+[0.288s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 289 installed packages in /opt/ros/kilted
+[0.290s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'cmake_args' from command line to 'None'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'cmake_target' from command line to 'None'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'cmake_clean_cache' from command line to 'False'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'cmake_clean_first' from command line to 'False'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'cmake_force_configure' from command line to 'False'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'ament_cmake_args' from command line to 'None'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'catkin_cmake_args' from command line to 'None'
+[0.349s] Level 5:colcon.colcon_core.verb:set package 'pi5_pkg' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.349s] DEBUG:colcon.colcon_core.verb:Building package 'pi5_pkg' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/jaygee/PicoWCar/src/build/pi5_pkg', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/jaygee/PicoWCar/src/install/pi5_pkg', 'merge_install': False, 'path': '/home/jaygee/PicoWCar/src/pi5_pkg', 'symlink_install': False, 'test_result_base': None}
+[0.349s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.351s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.351s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/home/jaygee/PicoWCar/src/pi5_pkg' with build type 'ament_python'
+[0.351s] Level 1:colcon.colcon_core.shell:create_environment_hook('pi5_pkg', 'ament_prefix_path')
+[0.354s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.354s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/hook/ament_prefix_path.ps1'
+[0.355s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/hook/ament_prefix_path.dsv'
+[0.355s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/hook/ament_prefix_path.sh'
+[0.356s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.356s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.673s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/home/jaygee/PicoWCar/src/pi5_pkg'
+[0.674s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.674s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.527s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/jaygee/PicoWCar/src/pi5_pkg': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/src/build/pi5_pkg/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/src/install/pi5_pkg/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/pi5_pkg build --build-base /home/jaygee/PicoWCar/src/build/pi5_pkg/build install --record /home/jaygee/PicoWCar/src/build/pi5_pkg/install.log --single-version-externally-managed install_data
+[2.283s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/jaygee/PicoWCar/src/pi5_pkg' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/src/build/pi5_pkg/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/src/install/pi5_pkg/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/pi5_pkg build --build-base /home/jaygee/PicoWCar/src/build/pi5_pkg/build install --record /home/jaygee/PicoWCar/src/build/pi5_pkg/install.log --single-version-externally-managed install_data
+[2.286s] Level 1:colcon.colcon_core.environment:checking '/home/jaygee/PicoWCar/src/install/pi5_pkg' for CMake module files
+[2.287s] Level 1:colcon.colcon_core.environment:checking '/home/jaygee/PicoWCar/src/install/pi5_pkg' for CMake config files
+[2.287s] Level 1:colcon.colcon_core.environment:checking '/home/jaygee/PicoWCar/src/install/pi5_pkg/lib'
+[2.288s] Level 1:colcon.colcon_core.environment:checking '/home/jaygee/PicoWCar/src/install/pi5_pkg/bin'
+[2.288s] Level 1:colcon.colcon_core.environment:checking '/home/jaygee/PicoWCar/src/install/pi5_pkg/lib/pkgconfig/pi5_pkg.pc'
+[2.288s] Level 1:colcon.colcon_core.environment:checking '/home/jaygee/PicoWCar/src/install/pi5_pkg/lib/python3.12/site-packages'
+[2.288s] Level 1:colcon.colcon_core.shell:create_environment_hook('pi5_pkg', 'pythonpath')
+[2.288s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/hook/pythonpath.ps1'
+[2.289s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/hook/pythonpath.dsv'
+[2.289s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/hook/pythonpath.sh'
+[2.290s] Level 1:colcon.colcon_core.environment:checking '/home/jaygee/PicoWCar/src/install/pi5_pkg/bin'
+[2.290s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(pi5_pkg)
+[2.291s] INFO:colcon.colcon_core.shell:Creating package script '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/package.ps1'
+[2.292s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/package.dsv'
+[2.292s] INFO:colcon.colcon_core.shell:Creating package script '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/package.sh'
+[2.293s] INFO:colcon.colcon_core.shell:Creating package script '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/package.bash'
+[2.295s] INFO:colcon.colcon_core.shell:Creating package script '/home/jaygee/PicoWCar/src/install/pi5_pkg/share/pi5_pkg/package.zsh'
+[2.295s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/jaygee/PicoWCar/src/install/pi5_pkg/share/colcon-core/packages/pi5_pkg)
+[2.296s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[2.296s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[2.297s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[2.297s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[2.304s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[2.304s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[2.304s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[2.311s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[2.312s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/jaygee/PicoWCar/src/install/local_setup.ps1'
+[2.313s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/jaygee/PicoWCar/src/install/_local_setup_util_ps1.py'
+[2.315s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/jaygee/PicoWCar/src/install/setup.ps1'
+[2.316s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/jaygee/PicoWCar/src/install/local_setup.sh'
+[2.317s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/jaygee/PicoWCar/src/install/_local_setup_util_sh.py'
+[2.319s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/jaygee/PicoWCar/src/install/setup.sh'
+[2.321s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/jaygee/PicoWCar/src/install/local_setup.bash'
+[2.322s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/jaygee/PicoWCar/src/install/setup.bash'
+[2.324s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/jaygee/PicoWCar/src/install/local_setup.zsh'
+[2.326s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/jaygee/PicoWCar/src/install/setup.zsh'
