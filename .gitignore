@@ -1,2 +1,18 @@
-.venv/*
+/.venv/*
+/build
+/install
+/log
+/src/build/
+/src/install/
+/src/log/
+
+.ros/
+.vscode/
+
+pycache/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
 

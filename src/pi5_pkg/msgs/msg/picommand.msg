@@ -1,2 +1,0 @@
-# picommand.msg
-string command
