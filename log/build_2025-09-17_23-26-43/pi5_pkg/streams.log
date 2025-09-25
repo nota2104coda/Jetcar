@@ -1,0 +1,26 @@
+[2.449s] Invoking command in '/home/jaygee/PicoWCar/src/pi5_pkg': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pi5_pkg/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/pi5_pkg build --build-base /home/jaygee/PicoWCar/build/pi5_pkg/build install --record /home/jaygee/PicoWCar/build/pi5_pkg/install.log --single-version-externally-managed install_data
+[2.905s] running egg_info
+[2.935s] writing ../../build/pi5_pkg/pi5_pkg.egg-info/PKG-INFO
+[2.936s] writing dependency_links to ../../build/pi5_pkg/pi5_pkg.egg-info/dependency_links.txt
+[2.938s] writing requirements to ../../build/pi5_pkg/pi5_pkg.egg-info/requires.txt
+[2.938s] writing top-level names to ../../build/pi5_pkg/pi5_pkg.egg-info/top_level.txt
+[2.995s] reading manifest file '../../build/pi5_pkg/pi5_pkg.egg-info/SOURCES.txt'
+[2.996s] writing manifest file '../../build/pi5_pkg/pi5_pkg.egg-info/SOURCES.txt'
+[2.996s] running build
+[2.996s] running build_py
+[2.997s] running install
+[3.007s] running install_lib
+[3.038s] creating /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg
+[3.038s] copying /home/jaygee/PicoWCar/build/pi5_pkg/build/lib/pi5_pkg/__init__.py -> /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg
+[3.039s] byte-compiling /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg/__init__.py to __init__.cpython-312.pyc
+[3.039s] running install_data
+[3.039s] creating /home/jaygee/PicoWCar/install/pi5_pkg/share/ament_index
+[3.039s] creating /home/jaygee/PicoWCar/install/pi5_pkg/share/ament_index/resource_index
+[3.039s] creating /home/jaygee/PicoWCar/install/pi5_pkg/share/ament_index/resource_index/packages
+[3.039s] copying resource/pi5_pkg -> /home/jaygee/PicoWCar/install/pi5_pkg/share/ament_index/resource_index/packages
+[3.039s] copying package.xml -> /home/jaygee/PicoWCar/install/pi5_pkg/share/pi5_pkg
+[3.039s] running install_egg_info
+[3.071s] Copying ../../build/pi5_pkg/pi5_pkg.egg-info to /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg-0.0.0-py3.12.egg-info
+[3.071s] running install_scripts
+[3.286s] writing list of installed files to '/home/jaygee/PicoWCar/build/pi5_pkg/install.log'
+[3.456s] Invoked command in '/home/jaygee/PicoWCar/src/pi5_pkg' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pi5_pkg/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/pi5_pkg build --build-base /home/jaygee/PicoWCar/build/pi5_pkg/build install --record /home/jaygee/PicoWCar/build/pi5_pkg/install.log --single-version-externally-managed install_data

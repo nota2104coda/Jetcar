@@ -1,0 +1,19 @@
+[2.488s] Invoking command in '/home/jaygee/PicoWCar/docs/pi5_nodes/pi_camera_node': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pi_camera_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pi_camera_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/pi_camera_node build --build-base /home/jaygee/PicoWCar/build/pi_camera_node/build install --record /home/jaygee/PicoWCar/build/pi_camera_node/install.log --single-version-externally-managed install_data
+[2.948s] running egg_info
+[2.979s] writing ../../../build/pi_camera_node/pi_camera_node.egg-info/PKG-INFO
+[2.980s] writing dependency_links to ../../../build/pi_camera_node/pi_camera_node.egg-info/dependency_links.txt
+[2.981s] writing requirements to ../../../build/pi_camera_node/pi_camera_node.egg-info/requires.txt
+[2.982s] writing top-level names to ../../../build/pi_camera_node/pi_camera_node.egg-info/top_level.txt
+[3.048s] reading manifest file '../../../build/pi_camera_node/pi_camera_node.egg-info/SOURCES.txt'
+[3.049s] writing manifest file '../../../build/pi_camera_node/pi_camera_node.egg-info/SOURCES.txt'
+[3.053s] running build
+[3.053s] running build_py
+[3.053s] running install
+[3.062s] running install_lib
+[3.092s] running install_data
+[3.093s] running install_egg_info
+[3.128s] removing '/home/jaygee/PicoWCar/install/pi_camera_node/lib/python3.12/site-packages/pi_camera_node-0.0.0-py3.12.egg-info' (and everything under it)
+[3.128s] Copying ../../../build/pi_camera_node/pi_camera_node.egg-info to /home/jaygee/PicoWCar/install/pi_camera_node/lib/python3.12/site-packages/pi_camera_node-0.0.0-py3.12.egg-info
+[3.131s] running install_scripts
+[3.374s] writing list of installed files to '/home/jaygee/PicoWCar/build/pi_camera_node/install.log'
+[3.841s] Invoked command in '/home/jaygee/PicoWCar/docs/pi5_nodes/pi_camera_node' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pi_camera_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pi_camera_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/pi_camera_node build --build-base /home/jaygee/PicoWCar/build/pi_camera_node/build install --record /home/jaygee/PicoWCar/build/pi_camera_node/install.log --single-version-externally-managed install_data

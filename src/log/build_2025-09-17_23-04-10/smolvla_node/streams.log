@@ -1,0 +1,32 @@
+[2.642s] Invoking command in '/home/jaygee/PicoWCar/src/pi5_pkg/smolvla_node': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/src/build/smolvla_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/src/install/smolvla_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/smolvla_node build --build-base /home/jaygee/PicoWCar/src/build/smolvla_node/build install --record /home/jaygee/PicoWCar/src/build/smolvla_node/install.log --single-version-externally-managed install_data
+[3.214s] running egg_info
+[3.217s] creating ../../build/smolvla_node/smolvla_node.egg-info
+[3.252s] writing ../../build/smolvla_node/smolvla_node.egg-info/PKG-INFO
+[3.253s] writing dependency_links to ../../build/smolvla_node/smolvla_node.egg-info/dependency_links.txt
+[3.253s] writing requirements to ../../build/smolvla_node/smolvla_node.egg-info/requires.txt
+[3.254s] writing top-level names to ../../build/smolvla_node/smolvla_node.egg-info/top_level.txt
+[3.254s] writing manifest file '../../build/smolvla_node/smolvla_node.egg-info/SOURCES.txt'
+[3.335s] reading manifest file '../../build/smolvla_node/smolvla_node.egg-info/SOURCES.txt'
+[3.336s] writing manifest file '../../build/smolvla_node/smolvla_node.egg-info/SOURCES.txt'
+[3.336s] running build
+[3.336s] running build_py
+[3.337s] creating /home/jaygee/PicoWCar/src/build/smolvla_node/build
+[3.337s] creating /home/jaygee/PicoWCar/src/build/smolvla_node/build/lib
+[3.337s] creating /home/jaygee/PicoWCar/src/build/smolvla_node/build/lib/smolvla_node
+[3.337s] copying smolvla_node/__init__.py -> /home/jaygee/PicoWCar/src/build/smolvla_node/build/lib/smolvla_node
+[3.337s] running install
+[3.351s] running install_lib
+[3.385s] creating /home/jaygee/PicoWCar/src/install/smolvla_node/lib/python3.12/site-packages/smolvla_node
+[3.385s] copying /home/jaygee/PicoWCar/src/build/smolvla_node/build/lib/smolvla_node/__init__.py -> /home/jaygee/PicoWCar/src/install/smolvla_node/lib/python3.12/site-packages/smolvla_node
+[3.386s] byte-compiling /home/jaygee/PicoWCar/src/install/smolvla_node/lib/python3.12/site-packages/smolvla_node/__init__.py to __init__.cpython-312.pyc
+[3.389s] running install_data
+[3.391s] creating /home/jaygee/PicoWCar/src/install/smolvla_node/share/ament_index
+[3.391s] creating /home/jaygee/PicoWCar/src/install/smolvla_node/share/ament_index/resource_index
+[3.391s] creating /home/jaygee/PicoWCar/src/install/smolvla_node/share/ament_index/resource_index/packages
+[3.392s] copying resource/smolvla_node -> /home/jaygee/PicoWCar/src/install/smolvla_node/share/ament_index/resource_index/packages
+[3.392s] copying package.xml -> /home/jaygee/PicoWCar/src/install/smolvla_node/share/smolvla_node
+[3.392s] running install_egg_info
+[3.432s] Copying ../../build/smolvla_node/smolvla_node.egg-info to /home/jaygee/PicoWCar/src/install/smolvla_node/lib/python3.12/site-packages/smolvla_node-0.0.0-py3.12.egg-info
+[3.434s] running install_scripts
+[3.783s] writing list of installed files to '/home/jaygee/PicoWCar/src/build/smolvla_node/install.log'
+[4.191s] Invoked command in '/home/jaygee/PicoWCar/src/pi5_pkg/smolvla_node' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/src/build/smolvla_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/src/install/smolvla_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/smolvla_node build --build-base /home/jaygee/PicoWCar/src/build/smolvla_node/build install --record /home/jaygee/PicoWCar/src/build/smolvla_node/install.log --single-version-externally-managed install_data

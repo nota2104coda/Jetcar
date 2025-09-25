@@ -1,0 +1,22 @@
+running egg_info
+writing ../../build/pi5_pkg/pi5_pkg.egg-info/PKG-INFO
+writing dependency_links to ../../build/pi5_pkg/pi5_pkg.egg-info/dependency_links.txt
+writing entry points to ../../build/pi5_pkg/pi5_pkg.egg-info/entry_points.txt
+writing requirements to ../../build/pi5_pkg/pi5_pkg.egg-info/requires.txt
+writing top-level names to ../../build/pi5_pkg/pi5_pkg.egg-info/top_level.txt
+reading manifest file '../../build/pi5_pkg/pi5_pkg.egg-info/SOURCES.txt'
+writing manifest file '../../build/pi5_pkg/pi5_pkg.egg-info/SOURCES.txt'
+running build
+running build_py
+copying pi5_pkg/camera_node.py -> /home/jaygee/PicoWCar/build/pi5_pkg/build/lib/pi5_pkg
+running install
+running install_lib
+copying /home/jaygee/PicoWCar/build/pi5_pkg/build/lib/pi5_pkg/camera_node.py -> /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg
+byte-compiling /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg/camera_node.py to camera_node.cpython-312.pyc
+running install_data
+running install_egg_info
+removing '/home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg-0.0.0-py3.12.egg-info' (and everything under it)
+Copying ../../build/pi5_pkg/pi5_pkg.egg-info to /home/jaygee/PicoWCar/install/pi5_pkg/lib/python3.12/site-packages/pi5_pkg-0.0.0-py3.12.egg-info
+running install_scripts
+Installing camera_node script to /home/jaygee/PicoWCar/install/pi5_pkg/lib/pi5_pkg
+writing list of installed files to '/home/jaygee/PicoWCar/build/pi5_pkg/install.log'

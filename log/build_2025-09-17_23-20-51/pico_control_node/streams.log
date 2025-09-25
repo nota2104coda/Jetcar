@@ -1,0 +1,35 @@
+[3.435s] Invoking command in '/home/jaygee/PicoWCar/src/pi5_nodes/pico_control_node': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pico_control_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/pico_control_node build --build-base /home/jaygee/PicoWCar/build/pico_control_node/build install --record /home/jaygee/PicoWCar/build/pico_control_node/install.log --single-version-externally-managed install_data
+[3.890s] running egg_info
+[3.890s] creating ../../../build/pico_control_node/pico_control_node.egg-info
+[3.916s] writing ../../../build/pico_control_node/pico_control_node.egg-info/PKG-INFO
+[3.917s] writing dependency_links to ../../../build/pico_control_node/pico_control_node.egg-info/dependency_links.txt
+[3.917s] writing requirements to ../../../build/pico_control_node/pico_control_node.egg-info/requires.txt
+[3.917s] writing top-level names to ../../../build/pico_control_node/pico_control_node.egg-info/top_level.txt
+[3.918s] writing manifest file '../../../build/pico_control_node/pico_control_node.egg-info/SOURCES.txt'
+[3.979s] reading manifest file '../../../build/pico_control_node/pico_control_node.egg-info/SOURCES.txt'
+[3.980s] writing manifest file '../../../build/pico_control_node/pico_control_node.egg-info/SOURCES.txt'
+[3.981s] running build
+[3.982s] running build_py
+[3.983s] creating /home/jaygee/PicoWCar/build/pico_control_node/build
+[3.983s] creating /home/jaygee/PicoWCar/build/pico_control_node/build/lib
+[3.983s] creating /home/jaygee/PicoWCar/build/pico_control_node/build/lib/pico_control_node
+[3.984s] copying pico_control_node/setup.py -> /home/jaygee/PicoWCar/build/pico_control_node/build/lib/pico_control_node
+[3.984s] copying pico_control_node/__init__.py -> /home/jaygee/PicoWCar/build/pico_control_node/build/lib/pico_control_node
+[3.985s] running install
+[3.997s] running install_lib
+[4.032s] creating /home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages/pico_control_node
+[4.032s] copying /home/jaygee/PicoWCar/build/pico_control_node/build/lib/pico_control_node/setup.py -> /home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages/pico_control_node
+[4.032s] copying /home/jaygee/PicoWCar/build/pico_control_node/build/lib/pico_control_node/__init__.py -> /home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages/pico_control_node
+[4.032s] byte-compiling /home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages/pico_control_node/setup.py to setup.cpython-312.pyc
+[4.033s] byte-compiling /home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages/pico_control_node/__init__.py to __init__.cpython-312.pyc
+[4.033s] running install_data
+[4.034s] creating /home/jaygee/PicoWCar/install/pico_control_node/share/ament_index
+[4.034s] creating /home/jaygee/PicoWCar/install/pico_control_node/share/ament_index/resource_index
+[4.035s] creating /home/jaygee/PicoWCar/install/pico_control_node/share/ament_index/resource_index/packages
+[4.036s] copying resource/pico_control_node -> /home/jaygee/PicoWCar/install/pico_control_node/share/ament_index/resource_index/packages
+[4.036s] copying package.xml -> /home/jaygee/PicoWCar/install/pico_control_node/share/pico_control_node
+[4.036s] running install_egg_info
+[4.064s] Copying ../../../build/pico_control_node/pico_control_node.egg-info to /home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages/pico_control_node-0.0.0-py3.12.egg-info
+[4.066s] running install_scripts
+[4.277s] writing list of installed files to '/home/jaygee/PicoWCar/build/pico_control_node/install.log'
+[4.443s] Invoked command in '/home/jaygee/PicoWCar/src/pi5_nodes/pico_control_node' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pico_control_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pico_control_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/pico_control_node build --build-base /home/jaygee/PicoWCar/build/pico_control_node/build install --record /home/jaygee/PicoWCar/build/pico_control_node/install.log --single-version-externally-managed install_data

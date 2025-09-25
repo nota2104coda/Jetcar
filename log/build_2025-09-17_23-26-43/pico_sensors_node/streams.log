@@ -1,0 +1,26 @@
+[2.463s] Invoking command in '/home/jaygee/PicoWCar/docs/pi5_nodes/pico_sensors_node': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pico_sensors_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pico_sensors_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/pico_sensors_node build --build-base /home/jaygee/PicoWCar/build/pico_sensors_node/build install --record /home/jaygee/PicoWCar/build/pico_sensors_node/install.log --single-version-externally-managed install_data
+[2.900s] running egg_info
+[2.929s] writing ../../../build/pico_sensors_node/pico_sensors_node.egg-info/PKG-INFO
+[2.929s] writing dependency_links to ../../../build/pico_sensors_node/pico_sensors_node.egg-info/dependency_links.txt
+[2.930s] writing requirements to ../../../build/pico_sensors_node/pico_sensors_node.egg-info/requires.txt
+[2.931s] writing top-level names to ../../../build/pico_sensors_node/pico_sensors_node.egg-info/top_level.txt
+[2.995s] reading manifest file '../../../build/pico_sensors_node/pico_sensors_node.egg-info/SOURCES.txt'
+[3.000s] writing manifest file '../../../build/pico_sensors_node/pico_sensors_node.egg-info/SOURCES.txt'
+[3.000s] running build
+[3.000s] running build_py
+[3.000s] running install
+[3.014s] running install_lib
+[3.046s] creating /home/jaygee/PicoWCar/install/pico_sensors_node/lib/python3.12/site-packages/pico_sensors_node
+[3.047s] copying /home/jaygee/PicoWCar/build/pico_sensors_node/build/lib/pico_sensors_node/__init__.py -> /home/jaygee/PicoWCar/install/pico_sensors_node/lib/python3.12/site-packages/pico_sensors_node
+[3.048s] byte-compiling /home/jaygee/PicoWCar/install/pico_sensors_node/lib/python3.12/site-packages/pico_sensors_node/__init__.py to __init__.cpython-312.pyc
+[3.049s] running install_data
+[3.049s] creating /home/jaygee/PicoWCar/install/pico_sensors_node/share/ament_index
+[3.050s] creating /home/jaygee/PicoWCar/install/pico_sensors_node/share/ament_index/resource_index
+[3.050s] creating /home/jaygee/PicoWCar/install/pico_sensors_node/share/ament_index/resource_index/packages
+[3.050s] copying resource/pico_sensors_node -> /home/jaygee/PicoWCar/install/pico_sensors_node/share/ament_index/resource_index/packages
+[3.050s] copying package.xml -> /home/jaygee/PicoWCar/install/pico_sensors_node/share/pico_sensors_node
+[3.051s] running install_egg_info
+[3.084s] Copying ../../../build/pico_sensors_node/pico_sensors_node.egg-info to /home/jaygee/PicoWCar/install/pico_sensors_node/lib/python3.12/site-packages/pico_sensors_node-0.0.0-py3.12.egg-info
+[3.087s] running install_scripts
+[3.345s] writing list of installed files to '/home/jaygee/PicoWCar/build/pico_sensors_node/install.log'
+[3.788s] Invoked command in '/home/jaygee/PicoWCar/docs/pi5_nodes/pico_sensors_node' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/jaygee/PicoWCar/build/pico_sensors_node/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/jaygee/PicoWCar/install/pico_sensors_node/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/pico_sensors_node build --build-base /home/jaygee/PicoWCar/build/pico_sensors_node/build install --record /home/jaygee/PicoWCar/build/pico_sensors_node/install.log --single-version-externally-managed install_data
