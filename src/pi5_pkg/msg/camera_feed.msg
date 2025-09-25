@@ -1,7 +1,7 @@
-Standard ROS2 CompressedImage message for the video feed
+#Standard ROS2 CompressedImage message for the video feed
 sensor_msgs/msg/CompressedImage image
 
-Additional metadata specific to the Raspberry Pi Camera Module 3
+#Additional metadata specific to the Raspberry Pi Camera Module 3
 float32 digital_gain
 float32 analog_gain
 float32 exposure_time_us

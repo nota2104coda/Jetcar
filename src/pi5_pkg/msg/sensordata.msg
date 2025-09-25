@@ -9,6 +9,12 @@ bool front_cliff_detected
 bool rear_cliff_detected
 
 #for LD2450 radar
-float32[] distances
-float32[] objects
-string[] labels
+#float32[] distances
+
+#for VL53L5x
+
+#for MPU6050
+
+#for raw wheel speeds
+
+#for vehicle speed and heading angle
