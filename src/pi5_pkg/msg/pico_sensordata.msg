@@ -1,4 +1,4 @@
-# sensordata.msg
+# pico_sensordata.msg
 #takes inputs from rear sonar, front and rear cliff, LD2450 radar, MPU6050 and VL53L5X
 
 #rear sonar dist = 0 or 400 means invalid. 

@@ -1,4 +1,6 @@
+#camera_feed.msg
 #Standard ROS2 CompressedImage message for the video feed
+
 sensor_msgs/msg/CompressedImage image
 
 #Additional metadata specific to the Raspberry Pi Camera Module 3
