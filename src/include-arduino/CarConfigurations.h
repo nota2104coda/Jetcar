@@ -86,14 +86,14 @@
  * PICO W basic + 4x encoder 370 motors + rubber wheels + non steered + Pico motor driver+ 2x HCSR04 sensors front/rear + 2x IR cliff sensors 
  * + 5S2P NiMH battery 6V for motors/Pico
  */
-#if defined(MASTER_PICOW_SLAVE_ARD_4WD_NONSTEER_RUBBERWHL_2XSR04_2xCLIFF)
+#if defined(MASTER_PICOW_SLAVE_ARD_4WD_NONSTEER_RUBBERWHL_RRXSR04_2xCLIFF)
 #define MCU_PICOW	//RP2040W
-#define SLAVE_ARD
+#define SLAVE_ARDNANO    //Nano
 #define CAR_HAS_4_DCMOTORS	//
-#define CAR_HAS_UART
+//#define CAR_HAS_UART
 #define CAR_HAS_I2C
 #define CAR_HAS_4_MOTORENCODERS	//
-#define CAR_HAS_FRONT_RR_SONAR // Activate this if your car has two HCSR04 US distance sensors one at front and at rr
+#define CAR_HAS_RR_SONAR // Activate this if your car has two HCSR04 US distance sensors one at front and at rr
 #define CAR_HAS_FRONT_RR_CLIFF_SENSOR // Activate this if your car has IR cliff sensor fr and rr
 #define RPM2RADPS 0.10472
 #define GRAVITY	981 //cm per sec
