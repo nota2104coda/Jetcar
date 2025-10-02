@@ -32,8 +32,8 @@ class RobotStateNode(Node):
         self.timer = self.create_timer(0.05, self.publish_robot_state)
 
         # Placeholder for serial connection to Pico
-        # import serial
-        # self.pico_serial = serial.Serial('/dev/ttyACM0', 115200)
+        import serial
+        self.pico_serial = serial.Serial('/dev/ttyACM0', 115200)
 
         # Initial state variables
         self.x = 0.0

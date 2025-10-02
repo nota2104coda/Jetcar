@@ -35,7 +35,6 @@ endif()
 ament_package()
 
 install(PROGRAMS
-
 #Install your Python nodes
 pi5_pkg/camera_node.py
 pi5_pkg/hmi_node.py
