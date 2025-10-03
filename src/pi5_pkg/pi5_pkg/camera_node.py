@@ -1,6 +1,8 @@
 #!$HOME/PicoWCar/.venv python3
 
 import rclpy
+from rclpy.qos import QoSProfile, ReliabilityPolicy
+# ... and use ReliabilityPolicy.BEST_EFFORT instead of rclpy.qos.ReliabilityPolicy.BEST_EFFORT
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 import cv2
@@ -13,7 +15,7 @@ CAMERA_INDEX = 0
 class CameraNode(Node):
     def __init__(self):
         super().__init__("camera_node")
-        self.publisher_ = self.create_publisher(Image, "camera/image_raw", 10)
+        self.publisher_ = self.create_publisher(Image, "camera/image_raw", QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.bridge = CvBridge()
         self.cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_V4L2)
         if not self.cap.isOpened():

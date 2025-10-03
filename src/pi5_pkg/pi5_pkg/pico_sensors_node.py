@@ -30,6 +30,15 @@ class PicoSensorsNode(Node):
         self.declare_parameter('odom_frame_id', 'odom')
         self.declare_parameter('base_frame_id', 'base_link')
 
+        # --- Get Parameters ---
+        # Store parameters as attributes for cleaner access later
+        self.serial_port = self.get_parameter('serial_port').get_parameter_value().string_value
+        self.baud_rate = self.get_parameter('baud_rate').get_parameter_value().integer_value
+        self.wheel_base = self.get_parameter('wheel_base').get_parameter_value().double_value
+        self.wheel_radius = self.get_parameter('wheel_radius').get_parameter_value().double_value
+        self.odom_frame_id = self.get_parameter('odom_frame_id').get_parameter_value().string_value
+        self.base_frame_id = self.get_parameter('base_frame_id').get_parameter_value().string_value
+
         # --- QoS Profile ---
         qos_profile = QoSProfile(depth=10)
 
@@ -44,11 +53,9 @@ class PicoSensorsNode(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
 
         # --- Serial Connection ---
-        serial_port = self.get_parameter('serial_port').get_parameter_value().string_value
-        baud_rate = self.get_parameter('baud_rate').get_parameter_value().integer_value
         try:
-            self.pico_serial = serial.Serial(serial_port, baud_rate, timeout=1)
-            self.get_logger().info(f"Successfully connected to Pico on {serial_port}")
+            self.pico_serial = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
+            self.get_logger().info(f"Successfully connected to Pico on {self.serial_port}")
         except serial.SerialException as e:
             self.get_logger().error(f"Failed to connect to Pico on {serial_port}: {e}")
             rclpy.shutdown()
@@ -58,6 +65,7 @@ class PicoSensorsNode(Node):
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0 # Heading in radians
+        self.last_time = self.get_clock().now()
 
         # --- Timer ---
         # The timer will attempt to read and process data. The actual rate
@@ -117,17 +125,15 @@ class PicoSensorsNode(Node):
             return False
 
     def update_odometry(self, left_rad_s, right_rad_s):
-        wheel_radius = self.get_parameter('wheel_radius').get_parameter_value().double_value
-        wheel_base = self.get_parameter('wheel_base').get_parameter_value().double_value
-
         # Calculate linear and angular velocities
-        v_left = left_rad_s * wheel_radius
-        v_right = right_rad_s * wheel_radius
+        v_left = left_rad_s * self.wheel_radius
+        v_right = right_rad_s * self.wheel_radius
 
         vx = (v_right + v_left) / 2.0
-        wz = (v_right - v_left) / wheel_base
+        wz = (v_right - v_left) / self.wheel_base
 
         # Integrate odometry
+        # Note: self.last_time was initialized in __init__
         current_time = self.get_clock().now()
         dt = (current_time - self.last_time).nanoseconds / 1e9
         self.last_time = current_time
@@ -143,8 +149,8 @@ class PicoSensorsNode(Node):
         # --- Publish Odometry Message ---
         odom_msg = Odometry()
         odom_msg.header.stamp = current_time.to_msg()
-        odom_msg.header.frame_id = self.get_parameter('odom_frame_id').get_parameter_value().string_value
-        odom_msg.child_frame_id = self.get_parameter('base_frame_id').get_parameter_value().string_value
+        odom_msg.header.frame_id = self.odom_frame_id
+        odom_msg.child_frame_id = self.base_frame_id
 
         # Set the pose (position and orientation)
         odom_msg.pose.pose.position.x = self.x
@@ -159,8 +165,8 @@ class PicoSensorsNode(Node):
         # Also publish the transform between odom and base_link for TF tree
         t = TransformStamped()
         t.header.stamp = current_time.to_msg()
-        t.header.frame_id = self.get_parameter('odom_frame_id').get_parameter_value().string_value
-        t.child_frame_id = self.get_parameter('base_frame_id').get_parameter_value().string_value
+        t.header.frame_id = self.odom_frame_id
+        t.child_frame_id = self.base_frame_id
         t.transform.translation.x = self.x
         t.transform.translation.y = self.y
         t.transform.rotation = odom_msg.pose.pose.orientation
