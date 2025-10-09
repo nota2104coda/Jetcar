@@ -9,10 +9,10 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from pywebio.platform.flask import webio_view
-from pywebio import start_server
-from pywebio.output import put_scope, put_buttons, put_text, put_input, put_row, use_scope
+from pywebio import start_server, pin
+from pywebio.output import put_scope, put_buttons, put_text, put_row, use_scope
 from pywebio.session import set_env, run_js
-from pywebio.pin import pin, put_checkbox
+from pywebio.pin import put_checkbox, put_input
 import threading
 import time
 
@@ -21,9 +21,9 @@ class WebserverNode(Node):
     A ROS2 node that hosts a web server for controlling a robot.
     """
     def __init__(self):
-        super().__init__("webserver_node")
+        super().__init__("hmi_node")
         self.publisher_ = self.create_publisher(String, "robot_commands", 10)
-        self.get_logger().info("Webserver node has been started and is publishing to 'robot_commands'")
+        self.get_logger().info("hmi_node has been started and is publishing to 'robot_commands'")
 
     def publish_command(self, command: str):
         """Publishes a command to the 'robot_commands' topic."""
@@ -36,7 +36,7 @@ def pywebio_app(node: WebserverNode):
     """
     The main application logic for the PyWebIO web interface.
     """
-    set_env(title="PicoWCar Controller")
+    set_env(title="PicoWCar Controller",auto_scroll_bottom=True)
 
     put_scope('main_scope')
 
@@ -93,16 +93,16 @@ def ros_thread(node):
 
 def main(args=None):
     rclpy.init(args=args)
-    webserver_node = WebserverNode()
+    hmi_node = WebserverNode()
 
     # Run rclpy.spin in a separate thread
-    ros_spin_thread = threading.Thread(target=ros_thread, args=(webserver_node,))
+    ros_spin_thread = threading.Thread(target=ros_thread, args=(hmi_node,))
     ros_spin_thread.daemon = True
     ros_spin_thread.start()
 
     # Start the PyWebIO server
     # Use 0.0.0.0 to make it accessible on your local network
-    start_server(lambda: pywebio_app(webserver_node), port=8080, host='0.0.0.0', debug=False)
+    start_server(lambda: pywebio_app(hmi_node), port=8081, host='0.0.0.0', debug=False)
 
 if __name__ == '__main__':
     main()

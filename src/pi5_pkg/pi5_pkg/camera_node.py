@@ -11,7 +11,7 @@ import time
 from cv_bridge import CvBridge
 
 CAMERA_INDEX = 0
-
+#Note: QOS depth = 10 and timer 0.1sec fixed the latency. Otherwise it was 5.7sec to Foxglove
 class CameraNode(Node):
     def __init__(self):
         super().__init__("camera_node")
