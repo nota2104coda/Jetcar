@@ -9,7 +9,7 @@ This is the master code for the robot car
 
 //#include "4MotorMotionCtrl.h"
 
-#define MASTER_PICOW_SLAVE_ARD_4WD_NONSTEER_RUBBERWHL_2XSR04_2xCLIFF
+#define MASTER_PICOW_SLAVE_ARD_4WD_NONSTEER_RUBBERWHL_RRXSR04_2xCLIFF
 #include <Wire.h>
 #include "E:\Jeevan\projects\PicoWCar\include-arduino\CarConfigurations.h" // sets e.g. CAR_HAS_ENCODERS, USE_ADAFRUIT_MOTOR_SHIELD
 #include "E:\Jeevan\projects\PicoWCar\include-arduino\RobotCarPinDefinitionsAndMore.h" // Pinout depends on settings like CAR_HAS_ENCODERS etc.
@@ -19,25 +19,25 @@ vehstate Car;
 
 vehdemandclass VMC;
 
-SonarIRData receivedData;
+SonarIRclass SonarIR;
 
-// Requests SonarIRData from a slave and returns true if CRC is valid
-bool requestSonarIRData(uint8_t slaveAddr, SonarIRData &data) {
+// Requests SonarIR.data from a slave and returns true if CRC is valid
+bool requestSonarIRData(uint8_t slaveAddr, SonarIRclass &data) {
     // Request the struct
-    Wire.requestFrom(slaveAddr, (uint8_t)sizeof(SonarIRData));
+    Wire.requestFrom(slaveAddr, (uint8_t)sizeof(SonarIRclass));
 
     // Check if enough bytes are available
-    if (Wire.available() < sizeof(SonarIRData)) {
+    if (Wire.available() < sizeof(SonarIRclass)) {
         Serial.println("Not enough bytes available from slave");
         return false;
     }
     // Read full struct including CRC
-    Wire.readBytes((uint8_t*)&data, sizeof(SonarIRData));
+    Wire.readBytes((uint8_t*)&data, sizeof(SonarIRclass));
 
     // Recompute CRC over all fields except crc
     uint8_t crc = 0;
     uint8_t* p = (uint8_t*)&data;
-    for (size_t i = 0; i < sizeof(SonarIRData) - 1; i++) crc ^= p[i];
+    for (size_t i = 0; i < sizeof(SonarIRclass) - 1; i++) crc ^= p[i];
 
     // Verify CRC
     if (crc != data.crc) {

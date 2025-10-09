@@ -131,7 +131,7 @@
 MPU6050 is 
 LD2450 needs 5V supply but 3.3V logic for I2C*/
 //define the I2C broadcast format
-struct __attribute__((packed)) SonarIRData {
+struct __attribute__((packed)) SonarIRclass {
   short int frontDistance;
   bool frontSonarQF; //0 = poor, 1 = ok for all QFs
   short int rearDistance;
