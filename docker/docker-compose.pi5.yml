@@ -1,0 +1,25 @@
+# Production environment for Raspberry Pi 5
+services:
+  ros_master:
+    # The multi-stage Dockerfile handles the base layer automatically.
+    # Docker will cache the base layers, so subsequent builds are fast.
+    build:
+      context: ..  # Build from parent directory
+      dockerfile: docker/Dockerfile.pi5
+    privileged: true
+    image: picowcar-pi5-dev:latest # Use a tag for the final image
+    container_name: ros_master
+    restart: unless-stopped
+    devices:
+      - /dev/video0:/dev/video0 # Map camera device
+      - /dev/ttyACM0:/dev/ttyACM0 # Map Pico W USB serial device
+    volumes:
+      # Mount the entire project directory for live code changes
+      - ..:/workspace 
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    network_mode: host
+
+    # This command sources ROS and your workspace, then launches your robot.
+    # It keeps the container running.
+    command: /bin/bash -c "source /opt/ros/kilted/setup.bash && source /workspace/install/setup.bash && ros2 launch pi_5_nodes robot_launch.py"
