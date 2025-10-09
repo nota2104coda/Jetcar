@@ -1,8 +1,10 @@
+#!$HOME/PicoWCar/.venv/bin/python
+
 # I want a simple locally hosted webpage on the raspberry pi 5. it will have a text box for entering commands. 
 # it will have a button for "enter command". it will have a toggle for 'command vs buttons'. 
 # it will have forward and backward button and clockwise and anticlockwise button. 
 # It will, finally, have a power on/off button. Make a ROS2 node python script for this
-#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String

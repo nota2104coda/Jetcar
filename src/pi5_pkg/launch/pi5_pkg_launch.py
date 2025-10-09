@@ -8,11 +8,12 @@ import os
 def generate_launch_description():
     # Get the package directory
     pkg_share_dir = get_package_share_directory('pi5_pkg')
+    venv_path = os.path.expanduser('~/PicoWCar/.venv/lib/python3.12/site-packages')
     
     # Declare a launch argument for the robot model file
     robot_model_path_arg = DeclareLaunchArgument(
         'robot_model',
-        default_value=os.path.join(pkg_share_dir, 'urdf', 'robot_model.urdf.xacro'),
+        default_value=os.path.join(pkg_share_dir, 'urdf', 'skid_steer_4wd.urdf'),
         description='Path to the robot URDF/xacro file'
     )
     
@@ -31,9 +32,18 @@ def generate_launch_description():
     # Your custom Python nodes
     camera_node = Node(
         package='pi5_pkg',
-        executable='camera_node.py',
+        executable='camera_node',
         name='camera',
         output='screen'
+    )
+    hmi_node = Node(
+        package='pi5_pkg',
+        executable='hmi_node',
+        name='hmi_node',
+        output='screen',
+        env={
+                'PYTHONPATH': f"{venv_path}:{os.environ.get('PYTHONPATH', '')}"
+            }
     )
     # # smolvla_node = Node(
     #     package='pi5_pkg',
@@ -60,7 +70,7 @@ def generate_launch_description():
     return LaunchDescription([
         robot_model_path_arg,
         robot_state_publisher_node,
-        vla_node,
-        motor_control_node,
-        robot_state_node
+        hmi_node,
+        camera_node,
+        # smolvla_node,
     ])

@@ -1,4 +1,6 @@
 from setuptools import find_packages, setup
+import os
+from glob import glob
 
 package_name = 'pi5_pkg'
 
@@ -10,6 +12,8 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
+        (os.path.join('share', package_name, 'urdf'), glob('urdf/**/*', recursive=True)),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -21,6 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             "camera_node = pi5_pkg.camera_node:main",
+            'pico_sensors_node = pi5_pkg.pico_sensors_node:main',
+            'hmi_node = pi5_pkg.hmi_node:main'
         ],
     },
 )

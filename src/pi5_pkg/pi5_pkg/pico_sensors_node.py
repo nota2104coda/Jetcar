@@ -1,3 +1,4 @@
+#!$HOME/PicoWCar/.venv python3
 # This node reads processed data from the Pico and publishes it as Odometry.
 import rclpy
 from rclpy.node import Node
@@ -99,8 +100,8 @@ class PicoSensorsNode(Node):
 
             if 'cliff' in data:
                 # Assuming 0=clear, 1=cliff. We can publish a max_range for clear.
-                self.publish_range('cliff/front', self.cliff_front_publisher, 0.5 if data['cliff'][0] else 0.0)
-                self.publish_range('cliff/rear', self.cliff_rear_publisher, 0.5 if data['cliff'][1] else 0.0)
+                self.publish_range('cliff/front', self.cliff_front_publisher, 0.2 if data['cliff'][0] else 0.0)
+                self.publish_range('cliff/rear', self.cliff_rear_publisher, 0.2 if data['cliff'][1] else 0.0)
 
             # Add handlers for 'tof' and 'lidar' data here
 
@@ -179,7 +180,7 @@ class PicoSensorsNode(Node):
         msg.radiation_type = Range.ULTRASOUND if 'sonar' in frame_id else Range.INFRARED
         msg.field_of_view = 0.1 # Radians, example value
         msg.min_range = 0.02 # meters
-        msg.max_range = 4.0 if 'sonar' in frame_id else 0.5 # meters
+        msg.max_range = 4.0 if 'sonar' in frame_id else 0.5 # meters to make it drive cautiously if frame missing
         msg.range = float(distance)
         publisher.publish(msg)
 
