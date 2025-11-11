@@ -1,0 +1,15 @@
+# Core Scientific & Web/IO Libraries
+numpy
+scipy
+
+#for computer vision. use only for Raspberry Pi, not for Jetsons. 
+#The standard pip isnt CUDA-accelerated
+#opencv-python 
+
+#ROS2
+rclpy
+
+#serial comms with arduino etc
+pyserial  # USB serial communication with Pi Pico
+pyserial-asyncio  # Async serial support
+smbus2==0.4.3  # I2C communication for sensors
