@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  jetson-vlm:
+    image: picowcar/jetson-vlm:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.jetson-vlm
+    container_name: picowcar-vlm
+    runtime: nvidia
+    network_mode: host
+    privileged: true
+    
+    # GPU access
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+      
+      # VLM Configuration
+      - VLM_MODEL=liuhaotian/llava-v1.5-7b  # Lightweight for Orin Nano
+      - VLM_QUANTIZATION=q4f16_ft
+      - HF_HOME=/data/models/huggingface
+      - TRANSFORMERS_CACHE=/data/models/huggingface
+      
+      # ROS2 settings
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    
+    volumes:
+      # Model persistence across container runs
+      - ./docker/models:/data/models
+      
+      # Camera device access
+      - /dev:/dev:ro
+      - /sys:/sys:ro
+      
+      # Logs
+      - ./logs/vlm:/data/logs
+      
+      # Optional: Share ROS topics with host
+      - /tmp/ros:/tmp/ros
+    
+    # Resource limits - adjust based on your Orin Nano specs
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Optional: Separate camera bridge node (non-GPU)
+  camera-bridge:
+    image: picowcar/camera-bridge:latest
+    container_name: picowcar-camera
+    network_mode: host
+    privileged: true
+    
+    environment:
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+    
+    volumes:
+      - /dev:/dev:ro
+      - ./logs/camera:/data/logs
+    
+    depends_on:
+      - jetson-vlm
+
+  # Optional: ROS2 bridge for visualization
+  rviz:
+    image: dustynv/ros:iron-desktop
+    container_name: picowcar-rviz
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=0
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY}:/root/.Xauthority:rw
+    depends_on:
+      - jetson-vlm

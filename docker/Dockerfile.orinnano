@@ -1,0 +1,39 @@
+# Build on nano_llm with ROS2 support - already includes VLM capabilities
+FROM dustynv/nano_llm:24.7-iron
+
+# Install additional ROS2 dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-colcon-common-extensions \
+    python3-rosdep \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up model cache directory (outside container for persistence)
+ENV HF_HOME=/data/models/huggingface \
+    TRANSFORMERS_CACHE=/data/models/huggingface \
+    TORCH_HOME=/data/models/torch
+
+# Create workspace
+WORKDIR /opt/ros_ws
+
+# Copy model download script
+COPY docker/jetson-vlm/scripts/download_model.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/download_model.sh
+
+# Copy your ROS2 packages
+COPY src/jetson_vlm_pkg ./src/jetson_vlm_pkg
+COPY src/camera_bridge_pkg ./src/camera_bridge_pkg
+
+# Build ROS2 packages
+RUN . /opt/ros/iron/setup.sh && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    colcon build --symlink-install
+
+# Source setup
+RUN echo "source /opt/ros/iron/setup.bash" >> /opt/ros_ws/install/setup.bash && \
+    echo "source /opt/ros_ws/install/setup.bash" >> ~/.bashrc
+
+COPY docker/jetson-vlm/scripts/jetson-vlm-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["bash"]
