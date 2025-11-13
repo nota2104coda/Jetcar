@@ -1,5 +1,5 @@
 # Build on nano_llm with ROS2 support - already includes VLM capabilities
-FROM dustynv/nano_llm:24.7-iron
+FROM dustynv/vllm:0.7.4-r36.4.0-cu128-24.04
 
 # Install additional ROS2 dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -16,7 +16,7 @@ ENV HF_HOME=/data/models/huggingface \
 WORKDIR /opt/ros_ws
 
 # Copy model download script
-COPY docker/jetson-vlm/scripts/download_model.sh /usr/local/bin/
+COPY docker/vlm_container/scripts/download_model.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/download_model.sh
 
 # Copy your ROS2 packages

@@ -19,8 +19,8 @@ services:
       - ROS_LOCALHOST_ONLY=0
       
       # VLM Configuration
-      - VLM_MODEL=liuhaotian/llava-v1.5-7b  # Lightweight for Orin Nano
-      - VLM_QUANTIZATION=q4f16_ft
+      - VLM_MODEL=Qwen/Qwen2.5-VL-3B-Instruct  # Lightweight for Orin Nano
+      - VLM_QUANTIZATION=bnb4
       - HF_HOME=/data/models/huggingface
       - TRANSFORMERS_CACHE=/data/models/huggingface
       
@@ -54,33 +54,33 @@ services:
               capabilities: [gpu]
 
   # Optional: Separate camera bridge node (non-GPU)
-  camera-bridge:
-    image: picowcar/camera-bridge:latest
-    container_name: picowcar-camera
-    network_mode: host
-    privileged: true
+  # camera-bridge:
+  #   image: picowcar/camera-bridge:latest
+  #   container_name: picowcar-camera
+  #   network_mode: host
+  #   privileged: true
     
-    environment:
-      - ROS_DOMAIN_ID=0
-      - ROS_LOCALHOST_ONLY=0
+  #   environment:
+  #     - ROS_DOMAIN_ID=0
+  #     - ROS_LOCALHOST_ONLY=0
     
-    volumes:
-      - /dev:/dev:ro
-      - ./logs/camera:/data/logs
+  #   volumes:
+  #     - /dev:/dev:ro
+  #     - ./logs/camera:/data/logs
     
-    depends_on:
-      - jetson-vlm
+  #   depends_on:
+  #     - vlm_container
 
-  # Optional: ROS2 bridge for visualization
-  rviz:
-    image: dustynv/ros:iron-desktop
-    container_name: picowcar-rviz
-    network_mode: host
-    environment:
-      - DISPLAY=${DISPLAY}
-      - ROS_DOMAIN_ID=0
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ${XAUTHORITY}:/root/.Xauthority:rw
-    depends_on:
-      - jetson-vlm
+  # # Optional: ROS2 bridge for visualization
+  # rviz:
+  #   image: dustynv/ros:iron-desktop
+  #   container_name: picowcar-rviz
+  #   network_mode: host
+  #   environment:
+  #     - DISPLAY=${DISPLAY}
+  #     - ROS_DOMAIN_ID=0
+  #   volumes:
+  #     - /tmp/.X11-unix:/tmp/.X11-unix:rw
+  #     - ${XAUTHORITY}:/root/.Xauthority:rw
+  #   depends_on:
+  #     - vlm_container
