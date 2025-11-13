@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  jetson-vlm:
+  vlm_container:
     image: picowcar/jetson-vlm:latest
     build:
       context: ..
-      dockerfile: docker/Dockerfile.jetson-vlm
-    container_name: picowcar-vlm
+      dockerfile: docker/Dockerfile.orinnano
+    container_name: picowcar-vlm-instance
     runtime: nvidia
     network_mode: host
     privileged: true
