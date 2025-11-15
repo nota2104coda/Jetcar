@@ -1,5 +1,5 @@
 # Build on nano_llm with ROS2 support - already includes VLM capabilities
-FROM dustynv/ollama:0.6.8-r36.4-cu126-22.04
+FROM dustynv/vllm:0.7.4-r36.4.0-cu128-24.04
 
 # Install additional ROS2 dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
