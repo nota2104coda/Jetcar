@@ -5,8 +5,7 @@
 
 FROM dustynv/ollama:main-r36.4.0
 
-# Install additio
-nal utilities if needed
+# Install additional utilities if needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
