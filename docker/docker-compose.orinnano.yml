@@ -1,85 +1,57 @@
-# Docker Compose configuration for PicoWCar on NVIDIA Jetson Orin Nano
+
+
 services:
-  vlm_container:
-    image: picowcar/jetson-vlm:latest
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.orinnano
-    container_name: picowcar-vlm-instance
-    runtime: nvidia
-    network_mode: host
-    privileged: true
+  ollama-service:
+    image: dustynv/ollama:main-r36.4.0
+    container_name: picowcar-ollama-service
     
-    # GPU access
+    # Use NVIDIA GPU runtime
+    runtime: nvidia
+    
     environment:
+      # Ollama configuration
+      - OLLAMA_MODEL=moondream
+      - OLLAMA_MODELS=/root/.ollama
+      - OLLAMA_HOST=0.0.0.0:9000
+      - OLLAMA_CONTEXT_LEN=4096
+      - OLLAMA_LOGS=/root/.ollama/ollama.log
+      - DOCKER_PULL=always
+      
+      # HuggingFace cache (optional, for model downloads)
+      - HF_HUB_CACHE=/root/.cache/huggingface
+      
+      # NVIDIA GPU access
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - ROS_DOMAIN_ID=0
-      - ROS_LOCALHOST_ONLY=0
-      
-      # VLM Configuration
-      - VLM_MODEL=Qwen/Qwen2.5-VL-3B-Instruct  # Lightweight for Orin Nano
-      - VLM_QUANTIZATION=bnb4
-      - HF_HOME=/data/models/huggingface
-      - TRANSFORMERS_CACHE=/data/models/huggingface
-      
-      # ROS2 settings
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     
+    # Port mapping for Ollama API
+    ports:
+      - "9000:9000"
+    
+    # Mount model cache directories
     volumes:
-      # Model persistence across container runs
-      - ./docker/vlm_container/models:/data/models
-      
-      # Camera device access
-      - /dev:/dev:ro
-      - /sys:/sys:ro
-      
-      # Logs
-      - ./logs/vlm:/data/logs
-      
-      # Optional: Share ROS topics with host
-      - /tmp/ros:/tmp/ros
+      - /mnt/nvme/cache/ollama:/root/.ollama
+      - /mnt/nvme/cache:/root/.cache
     
-    # Resource limits - adjust based on your Orin Nano specs
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 6G
         reservations:
           memory: 2G
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-
-  # Optional: Separate camera bridge node (non-GPU)
-  # camera-bridge:
-  #   image: picowcar/camera-bridge:latest
-  #   container_name: picowcar-camera
-  #   network_mode: host
-  #   privileged: true
     
-  #   environment:
-  #     - ROS_DOMAIN_ID=0
-  #     - ROS_LOCALHOST_ONLY=0
+    # Always restart unless explicitly stopped
+    restart: unless-stopped
     
-  #   volumes:
-  #     - /dev:/dev:ro
-  #     - ./logs/camera:/data/logs
-    
-  #   depends_on:
-  #     - vlm_container
-
-  # # Optional: ROS2 bridge for visualization
-  # rviz:
-  #   image: dustynv/ros:iron-desktop
-  #   container_name: picowcar-rviz
-  #   network_mode: host
-  #   environment:
-  #     - DISPLAY=${DISPLAY}
-  #     - ROS_DOMAIN_ID=0
-  #   volumes:
-  #     - /tmp/.X11-unix:/tmp/.X11-unix:rw
-  #     - ${XAUTHORITY}:/root/.Xauthority:rw
-  #   depends_on:
-  #     - vlm_container
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s

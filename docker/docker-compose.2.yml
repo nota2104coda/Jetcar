@@ -1,0 +1,31 @@
+services:
+  phi3_vlm_server:
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu
+    ports:
+      - 11434:11434
+    environment:
+      - DOCKER_PULL=always
+      - OLLAMA_HOST=0.0.0.0
+      #- HF_HUB_CACHE=/root/.cache/huggingface
+      # (Optional) Tells the dustynv container to pull this model on startup
+      # - OLLAMA_MODEL_ON_STARTUP=microsoft/Phi-3.5-vision-instruct
+    pull_policy: always
+    volumes:
+      - /mnt/nvme/cache/ollama:/root/.ollama
+    image: dustynv/ollama:0.6.8-r36.4-cu126-22.04
+    command: ollama serve 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:11434"]
+      interval: 20s
+      timeout: 60s
+      retries: 45
+      start_period: 15s

@@ -1,39 +1,33 @@
-# Build on nano_llm with ROS2 support - already includes VLM capabilities
-FROM dustynv/ollama:0.6.8-r36.4-cu126-22.04
+# Jetson Orin Nano Ollama Container
+# Base: dustynv/ollama with Moondream support
+# This Dockerfile is optional - can directly use dustynv/ollama:main-r36.4.0
+# Keeping it for potential customization and documentation purposes
 
-# Install additional ROS2 dependencies
+FROM dustynv/ollama:main-r36.4.0
+
+# Install additio
+nal utilities if needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-colcon-common-extensions \
-    python3-rosdep \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up model cache directory (outside container for persistence)
-ENV HF_HOME=/data/models/huggingface \
-    TRANSFORMERS_CACHE=/data/models/huggingface \
-    TORCH_HOME=/data/models/torch
+# Create cache directories
+RUN mkdir -p /root/.ollama /root/.cache/huggingface
 
-# Create workspace
-WORKDIR /opt/ros_ws
+# Set environment for Ollama
+ENV OLLAMA_MODELS=/root/.ollama \
+    OLLAMA_HOST=0.0.0.0:9000 \
+    OLLAMA_CONTEXT_LEN=4096 \
+    OLLAMA_LOGS=/root/.ollama/ollama.log \
+    HF_HUB_CACHE=/root/.cache/huggingface
 
-# Copy model download script
-COPY docker/vlm_container/scripts/download_model.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/download_model.sh
+# Expose Ollama API port
+EXPOSE 9000
 
-# Copy your ROS2 packages
-COPY src/jetson_vlm_pkg ./src/jetson_vlm_pkg
-# COPY src/camera_bridge_pkg ./src/camera_bridge_pkg
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:9000/api/version || exit 1
 
-# Build ROS2 packages
-RUN . /opt/ros/humble/setup.sh && \
-    rosdep install --from-paths src --ignore-src -r -y && \
-    colcon build --symlink-install
-
-# Source setup
-RUN echo "source /opt/ros/humble/setup.bash" >> /opt/ros_ws/install/setup.bash && \
-    echo "source /opt/ros_ws/install/setup.bash" >> ~/.bashrc
-
-COPY docker/vlm_container/scripts/jetson-vlm-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["bash"]
+# The dustynv/ollama image already has an entrypoint
+# Default will pull and run the model specified in OLLAMA_MODEL env var
