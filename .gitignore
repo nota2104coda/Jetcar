@@ -19,6 +19,7 @@ __pycache__/
 /mnt/nvme/cache/
 docker/vlm_container/models/
 docker/models/
+libs/jetson-containers
 *.safetensors
 *.bin
 

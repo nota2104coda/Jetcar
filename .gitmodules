@@ -1,3 +1,0 @@
-[submodule "libs/jetson-containers"]
-	path = libs/jetson-containers
-	url = https://github.com/dusty-nv/jetson-containers.git
