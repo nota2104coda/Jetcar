@@ -91,14 +91,14 @@
 		#define PIN_ENC_REAR_LEFT_G 27
 	#endif
 	#if defined(CAR_HAS_RR_SONAR) && defined(SLAVE_ARDNANO)
-		#define PIN_TRIG_SONAR_REAR 
-		#define PIN_ECHO_SONAR_REAR 		
+		#define PIN_TRIG_SONAR_REAR 32
+		#define PIN_ECHO_SONAR_REAR 31		
 		#define SONAR_MAX_DISTANCE 350 //cm max distance. anything beyond is clipped to max.
 		#define MIN_SONAR_DELAY 25 //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
 	#endif
 	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) && defined(SLAVE_ARDNANO)
-		#define PIN_FRONT_CLIFF 6
-		#define PIN_REAR_CLIFF 7
+		#define PIN_FRONT_CLIFF 29
+		#define PIN_REAR_CLIFF 34
 	#endif
 
 	// #if defined(CAR_HAS_SPI_DISPLAY)
@@ -110,15 +110,15 @@
 	// #endif
 	#if defined(CAR_HAS_I2C)
 		#define MASTER_PICOW_ADDR 0x08
-		#define SLAVE_ARDNANO_ADDR 0x09 
-		#define SERVO_CTRL_ADDR 0xA
-		#define LIDAR_ADDR	0x29
-		#define LD2450_RADAR_ADDR 0x62
-		#define MPU6050_ADDR 0x68
-		#define PICOW_I2C1_SDA 31
-		#define PICOW_I2C1_SCL 32
-		#define ARD_I2C_SDA A4
-		#define ARD_I2C_SCL A5
+		// #define SLAVE_ARDNANO_ADDR 0x09 
+		// #define SERVO_CTRL_ADDR 0xA
+		#define LIDAR_LD06_ADDR	0x29
+		#define RADAR_LD2450_ADDR 0x62
+		#define IMU_MPU6050_ADDR 0x68
+		#define PICOW_I2C1_SDA 21
+		#define PICOW_I2C1_SCL 22
+		// #define ARD_I2C_SDA A4
+		// #define ARD_I2C_SCL A5
 	#endif
 	#if defined(CAR_HAS_UART)
 		#define PICOW_UART_RX 0 //GP0
