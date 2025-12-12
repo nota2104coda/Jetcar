@@ -86,9 +86,9 @@
  * PICO W basic + 4x encoder 370 motors + rubber wheels + non steered + Pico motor driver+ 2x HCSR04 sensors front/rear + 2x IR cliff sensors 
  * + 5S2P NiMH battery 6V for motors/Pico
  */
-#if defined(MASTER_PICOW_SLAVE_ARD_4WD_NONSTEER_RUBBERWHL_RRXSR04_2xCLIFF)
+#if defined(MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_RRXSR04_2xCLIFF)
 #define MCU_PICOW	//RP2040W
-#define SLAVE_ARDNANO    //Nano
+// #define SLAVE_ARDNANO    //Nano
 #define CAR_HAS_4_DCMOTORS	//
 #define CAR_HAS_UART
 #define CAR_HAS_I2C
@@ -97,13 +97,13 @@
 #define CAR_HAS_RR_SONAR // Activate this if your car has one HCSR04 US distance sensors at rr
 #define CAR_HAS_FRONT_RR_CLIFF_SENSOR // Activate this if your car has IR cliff sensor fr and rr
 #define RPM2RADPS 0.10472
-#define GRAVITY	981 //cm per sec
-#define WHEEL_RAD 3  //6 cm dia
-#define RADPS2CMPS 3 //same as wheel radius
+#define GRAVITY	9.81 //m per sec2
+#define WHEEL_RAD 0.03  //6 cm dia
+#define RADPS2MPS 0.03 //same as wheel radius, since v = r*w
 #define GEARRATIO 46  //ratio of motor speed to wheel speed
 #define MOTOR_RPM_2_MPS (RPM2RADPS * WHEEL_RAD / GEARRATIO / 100)
 #define NO_RTTTL_FOR_CAR                // Saves up to 3654 bytes
-#define CONFIG_NAME         "4WD rubber wheel + PICOW master + 5S2P NiMH + IR cliff + US distance" // BASIC_CONFIG_NAME and CONFIG_NAME is printed by printConfigInfo()
+#define CONFIG_NAME         "4WD rubber wheel + PICOW master + 5S2P NiMH + IR cliff frt and rr + US distance" // BASIC_CONFIG_NAME and CONFIG_NAME is printed by printConfigInfo()
 #endif
 
 
