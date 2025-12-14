@@ -11,8 +11,8 @@ This is the master code for the robot car
 
 #define MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_RRXSR04_2xCLIFF
 #include <Wire.h>
-#include "E:\Jeevan\projects\PicoWCar\include-arduino\CarConfigurations.h" // sets e.g. CAR_HAS_ENCODERS, USE_ADAFRUIT_MOTOR_SHIELD
-#include "E:\Jeevan\projects\PicoWCar\include-arduino\RobotCarPinDefinitionsAndMore.h" // Pinout depends on settings like CAR_HAS_ENCODERS etc.
+#include "../../../libs/arduino/CarConfigurations.h" // sets e.g. CAR_HAS_ENCODERS, USE_ADAFRUIT_MOTOR_SHIELD
+#include "../../../libs/arduino/RobotCarPinDefinitionsAndMore.h" // Pinout depends on settings like CAR_HAS_ENCODERS etc.
 //#include "PWMDcMotor.hpp"
 
 vehstate Car;

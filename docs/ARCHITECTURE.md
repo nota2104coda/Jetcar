@@ -6,7 +6,6 @@ High-level: autonomous navigation to objects (e.g. red football) using RGB-D SLA
 ## Devices
 - Jetson Orin Nano: mapping, perception, planning, web server
 - Raspberry Pi Pico W: motor control, encoders
-- Arduino Nano: sonars, VL53L5CX, MPU6050
 - Sensors: Realsense D435 (front), rplidar, LD2450, VL53L5CX, CSI rear camera, SR04 sonars, MPU6050
 
 ## Packages and responsibilities
@@ -26,14 +25,9 @@ High-level: autonomous navigation to objects (e.g. red football) using RGB-D SLA
 - Action: NavigateToObject (custom) -> returns status & final pose
 
 ## Communications
-- Preferred: micro-ROS for Pico + Arduino where feasible
-- Fallback: robust serial protocol + serial_bridge node
+## Repo Layout
 
-## Build & test
-- Provide ROS2 workspace under ros2_ws/
-- Unit tests + simulation (Ignition/Gazebo)
-
-## repo layout
+```plaintext
 PicoWCar/
 ├─ ARCHITECTURE.md
 ├─ README.md
@@ -46,6 +40,8 @@ PicoWCar/
 ├─ scripts/
 ├─ src/
 │  ├─ ardpicoW/   # arduino code for RPi Pico W
+│     ├─ pico-arduinoIDE/   # arduino IDE version of code for Pi Pico
+│     └─ pico-PlatformIO/   #platformio version of code for Pi Pico
 │  ├─ arduino-nano/   #arduino code for Arduino Nano
 │  ├─ pi5_pkg/
 │  │  ├─ launch/
@@ -53,17 +49,17 @@ PicoWCar/
 │  │  ├─ pi5_pkg/
 │  │  │  ├─ hw_pico_node.py
 │  │  │  ├─ hw_realsense_node.py
-│  │  │  ├─ mapping_node.py
-│  │  │  ├─ navigation_node.py
+│  │  │  ├─ vslam_node.py
+│  │  │  ├─ nav2_node.py
+│  │  │  ├─ ld06_lidar_node.py
 │  │  │  ├─ perception_node.py
-│  │  │  ├─ motion_control_node.py
+│  │  │  ├─ robot_motion_node.py
 │  │  │  └─ hmi_node.py
 │  │  ├─ resource/
 │  │  ├─ urdf/
-├─ firmware/
-│  ├─ pico_motor_control/   # micro-ROS or serial firmware
-│  └─ arduino_sensor_fw/
+│  │  ├─ rosnodes-requirements.txt/
 ├─ docs/
-│  └─ wiring_diagram.png
-└─ ci/   # tests, containers
+   └─ designs/
+      |─wiring
+        |─wiring-withANano.fzz
 
