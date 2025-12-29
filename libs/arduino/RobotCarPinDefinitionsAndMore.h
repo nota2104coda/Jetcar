@@ -68,46 +68,46 @@
  */
 
 #if defined(MCU_PICOW)
-	#if defined(CAR_HAS_4_DCMOTORS)
-	//DC motors driven by Pico
-		#define PIN_MOTOR_VPLUS_FRONT_RIGHT 4
-		#define PIN_MOTOR_VMINUS_FRONT_RIGHT 5
-		#define PIN_MOTOR_VPLUS_FRONT_LEFT 6
-		#define PIN_MOTOR_VMINUS_FRONT_LEFT 7
-		#define PIN_MOTOR_VPLUS_REAR_RIGHT 9
-		#define PIN_MOTOR_VMINUS_REAR_RIGHT 10
-		#define PIN_MOTOR_VPLUS_REAR_LEFT 11 
-		#define PIN_MOTOR_VMINUS_REAR_LEFT 12
+	#if defined(CAR_HAS_4_DCMOTORS_WAVESHARE)
+	//DC motors driven by Waveshare 4 motor driver with PCA9685 and TB6612FNG
+	//PCA9685 is on pins SDA 26, SCL 27 of Pico W
+		#define MOTOR_FR 0 /*white A1, red A2*/
+		#define MOTOR_RR 1 /*red B1 white B2*/
+		#define MOTOR_FL 2  /*red C1 white C2*/
+		#define MOTOR_RL 3	/*white D1 red D2*/
+		#define GEAR_RATIO 46
 	#endif
 	#if defined(CAR_HAS_4_MOTORENCODERS)
 	//motor encoders read on Pico
-		#define PIN_ENC_FRONT_RIGHT_Y 14
-		#define PIN_ENC_FRONT_RIGHT_G 15
-		#define PIN_ENC_FRONT_LEFT_Y 16
-		#define PIN_ENC_FRONT_LEFT_G 17
-		#define PIN_ENC_REAR_RIGHT_Y 19
-		#define PIN_ENC_REAR_RIGHT_G 20
-		#define PIN_ENC_REAR_LEFT_Y 26
-		#define PIN_ENC_REAR_LEFT_G 27
+		#define PIN_ENC_FRONT_RIGHT_Y 18
+		#define PIN_ENC_FRONT_RIGHT_G 19
+		#define PIN_ENC_FRONT_LEFT_G 12
+		#define PIN_ENC_FRONT_LEFT_Y 13
+		#define PIN_ENC_REAR_RIGHT_Y 16
+		#define PIN_ENC_REAR_RIGHT_G 17
+		#define PIN_ENC_REAR_LEFT_G 14
+		#define PIN_ENC_REAR_LEFT_Y 15
 	#endif
-	#if defined(CAR_HAS_RR_SONAR) && defined(SLAVE_ARDNANO)
-		#define PIN_TRIG_SONAR_REAR 32
-		#define PIN_ECHO_SONAR_REAR 31		
+	#if defined(CAR_HAS_SONAR) 		
+		#define PIN_TRIG_SONAR_FRONT 2
+		#define PIN_ECHO_SONAR_FRONT 3		
+		#define PIN_TRIG_SONAR_REAR 27
+		#define PIN_ECHO_SONAR_REAR 26		
 		#define SONAR_MAX_DISTANCE 350 //cm max distance. anything beyond is clipped to max.
 		#define MIN_SONAR_DELAY 25 //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
 	#endif
-	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) && defined(SLAVE_ARDNANO)
-		#define PIN_FRONT_CLIFF 29
-		#define PIN_REAR_CLIFF 34
+	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) 
+		#define PIN_FRONT_CLIFF 22
+		#define PIN_REAR_CLIFF 28
 	#endif
-
-	// #if defined(CAR_HAS_SPI_DISPLAY)
-	// //use SPI0 on GP16-GP19 on Pico W
-	// 	#define MOSI 25
-	// 	#define MISO 21
-	// 	#define SCK 24
-	// 	#define CS0 22
-	// #endif
+//10,11 is still free
+	#if defined(CAR_HAS_SPI_DISPLAY)
+	//SPI TX means MOSI
+		#define MOSI 7
+		#define MISO 8
+		#define SCK 6
+		#define CS0 9
+	#endif
 	#if defined(CAR_HAS_I2C)
 		#define MASTER_PICOW_ADDR 0x08
 		// #define SLAVE_ARDNANO_ADDR 0x09 
@@ -115,14 +115,17 @@
 		#define LIDAR_LD06_ADDR	0x29
 		#define RADAR_LD2450_ADDR 0x62
 		#define IMU_MPU6050_ADDR 0x68
-		#define PICOW_I2C1_SDA 21
-		#define PICOW_I2C1_SCL 22
+		#define PICOW_I2C0_SDA 20	//also used for PCA9685
+		#define PICOW_I2C0_SCL 21	//also used for PCA9685
+		#define MOTOR_DRV_ADDR 0x40 //PCA9685 address for Waveshare motor driver
 		// #define ARD_I2C_SDA A4
 		// #define ARD_I2C_SCL A5
 	#endif
 	#if defined(CAR_HAS_UART)
-		#define PICOW_UART_RX 0 //GP0
-		#define PICOW_UART_TX 1 //GP1
+		#define PICOW_RADAR_UART_RX 0 
+		#define PICOW_RADAR_UART_TX 1 
+		#define PICOW_JETSON_UART_RX 4 
+		#define PICOW_JETSON_UART_TX 5 
 #endif
 
 /*VL53L5X is 3.3V

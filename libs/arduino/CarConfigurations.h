@@ -89,7 +89,7 @@
 #if defined(MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_RRXSR04_2xCLIFF)
 #define MCU_PICOW	//RP2040W
 // #define SLAVE_ARDNANO    //Nano
-#define CAR_HAS_4_DCMOTORS	//
+#define CAR_HAS_4_DCMOTORS_WAVESHARE	//denotes use of waveshare 4 motor driver with PCA9685
 #define CAR_HAS_UART
 #define CAR_HAS_I2C
 #define CAR_HAS_4_MOTORENCODERS	//

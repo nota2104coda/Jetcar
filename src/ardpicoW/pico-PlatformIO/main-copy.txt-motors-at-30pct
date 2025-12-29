@@ -1,3 +1,5 @@
+/*all motors now spinning in right direction(forward) and at right speeds shown on each channel, i.e. correct directions.
+*/
 
 #include <SimpleFOC.h>
 #include <Wire.h>
