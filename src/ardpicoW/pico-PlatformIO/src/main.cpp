@@ -3,45 +3,25 @@
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
-// I2C on pins 20 (SDA) and 21 (SCL) for Waveshare board
-arduino::MbedI2C myWire(20, 21);
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40, myWire);
+#define MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_2XSONAR_2xCLIFF
+#include <Adafruit_Sensor.h>
+#include <Adafruit_MPU6050.h>
 
-// TB6612FNG Motor Driver - each motor needs 3 channels:
-// Motor 1: PWM=0, IN1=1, IN2=2
-// Motor 2: PWM=3, IN1=4, IN2=5
-// Motor 3: PWM=6, IN1=7, IN2=8
-// Motor 4: PWM=9, IN1=10, IN2=11
+static constexpr float kGearRatio = 46.0f;
 
-// Encoder pins (adjust based on your wiring)
-// Motor 1 encoder: pins 2, 3
-// Motor 2 encoder: pins 4, 5
-// Motor 3 encoder: pins 6, 7
-// Motor 4 encoder: pins 8, 9
-#define MOTOR_FR 0 /*white A1, red A2*/
-#define MOTOR_RR 1 /*red B1 white B2*/
-#define MOTOR_FL 2  /*red C1 white C2*/
-#define MOTOR_RL 3	/*white D1 red D2*/
-#define GEAR_RATIO 46
+#include "../../../../libs/arduino/CarConfigurations.h"
+#include "../../../../libs/arduino/RobotCarPinDefinitionsAndMore.h"
 
-//motor encoders read on Pico
-#define PIN_ENC_FRONT_RIGHT_Y 18
-#define PIN_ENC_FRONT_RIGHT_G 19
-#define PIN_ENC_FRONT_LEFT_G 12
-#define PIN_ENC_FRONT_LEFT_Y 13
-#define PIN_ENC_REAR_RIGHT_Y 16
-#define PIN_ENC_REAR_RIGHT_G 17
-#define PIN_ENC_REAR_LEFT_G 14
-#define PIN_ENC_REAR_LEFT_Y 15
-// SimpleFOC Encoder: Encoder(pinA, pinB, PPR, index)
-const int PPR = 11; // Pulses per revolution (adjust for your encoders)
-Encoder encFR = Encoder(PIN_ENC_FRONT_RIGHT_Y, PIN_ENC_FRONT_RIGHT_G, PPR);
-Encoder encFL = Encoder(PIN_ENC_FRONT_LEFT_Y, PIN_ENC_FRONT_LEFT_G, PPR);
-Encoder encRR = Encoder(PIN_ENC_REAR_RIGHT_Y, PIN_ENC_REAR_RIGHT_G, PPR);
-Encoder encRL = Encoder(PIN_ENC_REAR_LEFT_Y, PIN_ENC_REAR_LEFT_G, PPR);
-unsigned long lastTime = 0;
+arduino::MbedI2C myWire(PICOW_I2C0_SDA, PICOW_I2C0_SCL);
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(MOTOR_DRV_ADDR, myWire);
+Adafruit_MPU6050 mpu;
+//note how the left encoder sequence is GY vs right encoders are YG
+Encoder encFR = Encoder(PIN_ENC_FRONT_RIGHT_Y, PIN_ENC_FRONT_RIGHT_G, PULSE_PER_REV);
+Encoder encFL = Encoder(PIN_ENC_FRONT_LEFT_G,PIN_ENC_FRONT_LEFT_Y, PULSE_PER_REV);
+Encoder encRR = Encoder(PIN_ENC_REAR_RIGHT_Y, PIN_ENC_REAR_RIGHT_G, PULSE_PER_REV);
+Encoder encRL = Encoder(PIN_ENC_REAR_LEFT_G,PIN_ENC_REAR_LEFT_Y,  PULSE_PER_REV);
+unsigned long lastPublish = 0;
 
-// SimpleFOC interrupt callbacks for encoders
 void encFRA() { encFR.handleA(); }
 void encFRB() { encFR.handleB(); }
 void encRRA() { encRR.handleA(); }
@@ -51,31 +31,24 @@ void encFLB() { encFL.handleB(); }
 void encRLA() { encRL.handleA(); }
 void encRLB() { encRL.handleB(); }
 
-// Function to set motor speed and direction (-1.0 to 1.0) for TB6612FNG
 void setMotor(uint8_t motorNum, float speed) {
-  uint8_t pwmCh = motorNum * 3;      // PWM channel
-  uint8_t in1Ch = motorNum * 3 + 1;  // IN1 channel
-  uint8_t in2Ch = motorNum * 3 + 2;  // IN2 channel
-  
-  // Clamp speed
+  uint8_t pwmCh = motorNum * 3;
+  uint8_t in1Ch = motorNum * 3 + 1;
+  uint8_t in2Ch = motorNum * 3 + 2;
+
   if (speed > 1.0) speed = 1.0;
   if (speed < -1.0) speed = -1.0;
-  
+
   uint16_t pwm_val = (uint16_t)(abs(speed) * 4095);
-  
-  // Set PWM speed
   pwm.setPWM(pwmCh, 0, pwm_val);
-  
+
   if (speed > 0) {
-    // Forward: IN1=HIGH, IN2=LOW
     pwm.setPWM(in1Ch, 0, 4095);
     pwm.setPWM(in2Ch, 0, 0);
   } else if (speed < 0) {
-    // Reverse: IN1=LOW, IN2=HIGH
     pwm.setPWM(in1Ch, 0, 0);
     pwm.setPWM(in2Ch, 0, 4095);
   } else {
-    // Stop: IN1=LOW, IN2=LOW (or both HIGH for brake)
     pwm.setPWM(in1Ch, 0, 0);
     pwm.setPWM(in2Ch, 0, 0);
   }
@@ -83,17 +56,17 @@ void setMotor(uint8_t motorNum, float speed) {
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
-  Serial.println("Initializing Waveshare TB6612FNG Motor Board with Encoders...");
-  
+  while (!Serial) {
+    delay(10);
+  }
+
+  Serial.println("Initializing Pico W I2C bus, encoders, and sensors...");
   myWire.begin();
   pwm.begin();
-  pwm.setPWMFreq(1600); // Fast PWM for DC motors
+  pwm.setPWMFreq(1600);
   delay(10);
-  
-  Serial.println("PCA9685 Ready - Setting motors to 30% forward");
-  
-  // Initialize encoders
+
+  Serial.println("PCA9685 ready; enabling encoders.");
   encFR.init();
   encFR.enableInterrupts(encFRA, encFRB);
   encRR.init();
@@ -102,49 +75,75 @@ void setup() {
   encFL.enableInterrupts(encFLA, encFLB);
   encRL.init();
   encRL.enableInterrupts(encRLA, encRLB);
-  
-  Serial.println("Motor1_RPM,Motor2_RPM,Motor3_RPM,Motor4_RPM"); // Header for Serial Plotter
-  
-  // Set all 4 motors to 30% speed forward
-  setMotor(MOTOR_FR, 0.2);  // Motor 1
-  setMotor(MOTOR_RR, 0.4);  // Motor 2
-  setMotor(MOTOR_FL, 0.6);  // Motor 3
-  setMotor(MOTOR_RL, 0.8);  // Motor 4
-  
-  lastTime = millis();
+
+  Serial.println("Encoders initialized.");
+
+  if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, &myWire)) {
+    Serial.println("MPU6050 not detected. Check wiring.");
+    while (true) {
+      delay(1000);
+      Serial.println("MPU6050 not found; verify power and I2C.");
+    }
+  }
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  Serial.println("MPU6050 ready; streaming wheel RPMs and sensor data every 100ms.");
+  lastPublish = millis();
 }
 
 void loop() {
   unsigned long currentTime = millis();
-  
-  if (currentTime - lastTime >= 100) {  // Update every 100ms
-    // Get shaft velocity in rad/s from SimpleFOC Encoder
+
+  if (currentTime - lastPublish >= 100) {
     encFR.update();
     encRR.update();
     encFL.update();
     encRL.update();
-    
-    float vel1 = encFR.getVelocity()/GEAR_RATIO;  // rad/s
-    float vel2 = encRR.getVelocity()/GEAR_RATIO;  // rad/s
-    float vel3 = encFL.getVelocity()/GEAR_RATIO;  // rad/s
-    float vel4 = encRL.getVelocity()/GEAR_RATIO;  // rad/s
-    
-    // Convert rad/s to RPM: RPM = (rad/s * 60) / (2 * PI)
+
+    float vel1 = encFR.getVelocity() / kGearRatio;
+    float vel2 = encRR.getVelocity() / kGearRatio;
+    float vel3 = encFL.getVelocity() / kGearRatio;
+    float vel4 = encRL.getVelocity() / kGearRatio;
+
     float rpm1 = (vel1 * 60.0) / (2.0 * PI);
     float rpm2 = (vel2 * 60.0) / (2.0 * PI);
     float rpm3 = (vel3 * 60.0) / (2.0 * PI);
     float rpm4 = (vel4 * 60.0) / (2.0 * PI);
-    
-    // Print in Serial Plotter format (comma-separated)
-    Serial.print(">rpm1: ");
+
+    sensors_event_t accel;
+    sensors_event_t gyro;
+    sensors_event_t temp;
+    mpu.getEvent(&accel, &gyro, &temp);
+
+    Serial.print(">rpm1:");
     Serial.println(rpm1, 1);
-    Serial.print(">rpm2: ");
+    Serial.print(">rpm2:");
     Serial.println(rpm2, 1);
-    Serial.print(">rpm3: ");
+    Serial.print(">rpm3:");
     Serial.println(rpm3, 1);
-    Serial.print(">rpm4: ");
+    Serial.print(">rpm4:");
     Serial.println(rpm4, 1);
-    
-    lastTime = currentTime;
+
+    Serial.print(">accel_x:");
+    Serial.println(accel.acceleration.x, 2);
+    Serial.print(">accel_y:");
+    Serial.println(accel.acceleration.y, 2);
+    Serial.print(">accel_z:");
+    Serial.println(accel.acceleration.z, 2);
+
+    Serial.print(">gyro_x:");
+    Serial.println(gyro.gyro.x, 2);
+    Serial.print(">gyro_y:");
+    Serial.println(gyro.gyro.y, 2);
+    Serial.print(">gyro_z:");
+    Serial.println(gyro.gyro.z, 2);
+
+    Serial.print(">temp_c:");
+    Serial.println(temp.temperature, 2);
+
+    lastPublish = currentTime;
   }
 }

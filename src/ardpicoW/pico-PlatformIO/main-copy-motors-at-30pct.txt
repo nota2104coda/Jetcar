@@ -1,9 +1,8 @@
-/*all motors now spinning in right direction(forward) and at right speeds shown on each channel, i.e. correct directions.
-*/
 
 #include <SimpleFOC.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#include "../../../../libs/arduino/RobotCarPinDefinitionsAndMore.h"
 
 // I2C on pins 20 (SDA) and 21 (SCL) for Waveshare board
 arduino::MbedI2C myWire(20, 21);
@@ -108,10 +107,10 @@ void setup() {
   Serial.println("Motor1_RPM,Motor2_RPM,Motor3_RPM,Motor4_RPM"); // Header for Serial Plotter
   
   // Set all 4 motors to 30% speed forward
-  setMotor(MOTOR_FR, 0.2);  // Motor 1
-  setMotor(MOTOR_RR, 0.4);  // Motor 2
-  setMotor(MOTOR_FL, 0.6);  // Motor 3
-  setMotor(MOTOR_RL, 0.8);  // Motor 4
+  // setMotor(MOTOR_FR, 0.2);  // Motor 1
+  // setMotor(MOTOR_RR, 0.4);  // Motor 2
+  // setMotor(MOTOR_FL, 0.6);  // Motor 3
+  // setMotor(MOTOR_RL, 0.8);  // Motor 4
   
   lastTime = millis();
 }

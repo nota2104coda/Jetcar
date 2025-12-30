@@ -75,7 +75,6 @@
 		#define MOTOR_RR 1 /*red B1 white B2*/
 		#define MOTOR_FL 2  /*red C1 white C2*/
 		#define MOTOR_RL 3	/*white D1 red D2*/
-		#define GEAR_RATIO 46
 	#endif
 	#if defined(CAR_HAS_4_MOTORENCODERS)
 	//motor encoders read on Pico
@@ -89,18 +88,17 @@
 		#define PIN_ENC_REAR_LEFT_Y 15
 	#endif
 	#if defined(CAR_HAS_SONAR) 		
-		#define PIN_TRIG_SONAR_FRONT 2
-		#define PIN_ECHO_SONAR_FRONT 3		
-		#define PIN_TRIG_SONAR_REAR 27
-		#define PIN_ECHO_SONAR_REAR 26		
+		#define PIN_TRIG_SONAR_FRONT 26	//light purple at US sensor, white at Pico
+		#define PIN_ECHO_SONAR_FRONT 27	//brown at US sensor, grey at Pico	
+		#define PIN_TRIG_SONAR_REAR 11  //purple at Pico, blue at US sensor	
+		#define PIN_ECHO_SONAR_REAR 10	//blue at pico, brown at US sensor	
 		#define SONAR_MAX_DISTANCE 350 //cm max distance. anything beyond is clipped to max.
 		#define MIN_SONAR_DELAY 25 //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
 	#endif
-	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) 
-		#define PIN_FRONT_CLIFF 22
-		#define PIN_REAR_CLIFF 28
+	#if defined(CAR_HAS_FRONT_RR_SONAR) 
+		#define PIN_FRONT_CLIFF 2	//yellow at Pico, white at cliff sensor
+		#define PIN_REAR_CLIFF 3	//green at Pico, white at cliff sensor
 	#endif
-//10,11 is still free
 	#if defined(CAR_HAS_SPI_DISPLAY)
 	//SPI TX means MOSI
 		#define MOSI 7
@@ -126,6 +124,7 @@
 		#define PICOW_RADAR_UART_TX 1 
 		#define PICOW_JETSON_UART_RX 4 
 		#define PICOW_JETSON_UART_TX 5 
+	#endif
 #endif
 
 /*VL53L5X is 3.3V
