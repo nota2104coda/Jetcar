@@ -1,0 +1,78 @@
+#include <Arduino.h>
+
+#define MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_2XSONAR_2xCLIFF
+#include "../../../../libs/arduino/CarConfigurations.h"
+#include "../../../../libs/arduino/RobotCarPinDefinitionsAndMore.h"
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+  
+  Serial.println("[TEST] Pin diagnostic test");
+  Serial.print("[TEST] PIN_TRIG_SONAR_FRONT = ");
+  Serial.println(PIN_TRIG_SONAR_FRONT);
+  Serial.print("[TEST] PIN_TRIG_SONAR_REAR = ");
+  Serial.println(PIN_TRIG_SONAR_REAR);
+  Serial.print("[TEST] PIN_ECHO_SONAR_FRONT = ");
+  Serial.println(PIN_ECHO_SONAR_FRONT);
+  Serial.print("[TEST] PIN_ECHO_SONAR_REAR = ");
+  Serial.println(PIN_ECHO_SONAR_REAR);
+  
+  // Test onboard LED first (known good pin)
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+  Serial.println("[TEST] LED_BUILTIN (GPIO25) set HIGH - LED should be ON");
+  Serial.println("[TEST] Measure GPIO25 - should be 3.3V");
+  delay(2000);
+  
+  Serial.println("[TEST] Setting trigger pins to constant HIGH for voltage testing");
+  
+  // Set trigger pins as outputs
+  pinMode(PIN_TRIG_SONAR_FRONT, OUTPUT);
+  pinMode(PIN_TRIG_SONAR_REAR, OUTPUT);
+  
+  // Set echo pins as inputs to monitor
+  pinMode(PIN_ECHO_SONAR_FRONT, INPUT);
+  pinMode(PIN_ECHO_SONAR_REAR, INPUT);
+  
+  // Drive trigger pins HIGH
+  digitalWrite(PIN_TRIG_SONAR_FRONT, HIGH);
+  digitalWrite(PIN_TRIG_SONAR_REAR, HIGH);
+  
+} 
+
+void loop() {
+  // Keep pins HIGH and report echo pin states every second
+  delay(1000);
+  
+  int frontEcho = analogRead(PIN_ECHO_SONAR_FRONT);
+  int rearEcho = digitalRead(PIN_ECHO_SONAR_REAR);
+   // Read back to confirm
+  int frontTrigState = digitalRead(PIN_TRIG_SONAR_FRONT);
+  int rearTrigState = digitalRead(PIN_TRIG_SONAR_REAR);
+  
+  Serial.print("[TEST] Front trigger pin readback: ");
+  Serial.println(frontTrigState ? "HIGH" : "LOW");
+  Serial.print("[TEST] Rear trigger pin readback: ");
+  Serial.println(rearTrigState ? "HIGH" : "LOW");
+  
+  Serial.println("[TEST] Measure voltages now:");
+  Serial.print("  - GPIO");
+  Serial.print(PIN_TRIG_SONAR_FRONT);
+  Serial.println(" (front trig): should be 3.3V");
+  Serial.print("  - GPIO");
+  Serial.print(PIN_TRIG_SONAR_REAR);
+  Serial.println(" (rear trig): should be 3.3V");
+  Serial.println("  - At level shifter LV inputs: should be 3.3V");
+  Serial.println("  - At level shifter HV outputs: should be 5V");
+  Serial.println("  - At sensor trigger pins: should be 5V");
+
+  Serial.print("[TEST] Echo pins - Front: ");
+  Serial.print(frontEcho);
+  Serial.print(", Rear: ");
+  Serial.println(rearEcho);
+  
+  // Optional: toggle to test level shifter response
+  // digitalWrite(PIN_TRIG_SONAR_FRONT, !digitalRead(PIN_TRIG_SONAR_FRONT));
+  // digitalWrite(PIN_TRIG_SONAR_REAR, !digitalRead(PIN_TRIG_SONAR_REAR));
+}

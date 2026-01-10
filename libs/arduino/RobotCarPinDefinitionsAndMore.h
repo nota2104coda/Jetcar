@@ -87,15 +87,14 @@
 		#define PIN_ENC_REAR_LEFT_G 14
 		#define PIN_ENC_REAR_LEFT_Y 15
 	#endif
-	#if defined(CAR_HAS_SONAR) 		
-		#define PIN_TRIG_SONAR_FRONT 26	//light purple at US sensor, white at Pico
-		#define PIN_ECHO_SONAR_FRONT 27	//brown at US sensor, grey at Pico	
+	#if defined(CAR_HAS_FRT_RR_SONAR) 		
+		#define PIN_TRIG_SONAR_FRONT 26	//white at Pico, grey at US sensor, 
+		#define PIN_ECHO_SONAR_FRONT 27	//grey at Pico, brown at US sensor, 	
 		#define PIN_TRIG_SONAR_REAR 11  //purple at Pico, blue at US sensor	
 		#define PIN_ECHO_SONAR_REAR 10	//blue at pico, brown at US sensor	
-		#define SONAR_MAX_DISTANCE 350 //cm max distance. anything beyond is clipped to max.
-		#define MIN_SONAR_DELAY 25 //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
+		
 	#endif
-	#if defined(CAR_HAS_FRONT_RR_SONAR) 
+	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) 
 		#define PIN_FRONT_CLIFF 2	//yellow at Pico, white at cliff sensor
 		#define PIN_REAR_CLIFF 3	//green at Pico, white at cliff sensor
 	#endif
@@ -126,7 +125,72 @@
 		#define PICOW_JETSON_UART_TX 5 
 	#endif
 #endif
-
+/* class to define control of all 4 motors of an AWD car. It inherits from Adafruit's classfor PCA9685 driver. 
+It adds a method to check for I2C ACK. It adds Encoder to read the individual speeds and store them. 
+Also adds diagnostic states */
+/*class PCA9685_AWDDriver {
+private:
+  Adafruit_PWMServoDriver pwm;
+  Encoder encFR, encFL, encRR, encRL;
+  uint32_t lastMotorCommandTime;
+  
+public:
+  PCA9685_AWDDriver(uint8_t addr, TwoWire *theWire,
+                     uint8_t frA, uint8_t frB,
+                     uint8_t flA, uint8_t flB,
+                     uint8_t rrA, uint8_t rrB,
+                     uint8_t rlA, uint8_t rlB)
+    : pwm(addr, theWire),
+      encFR(frA, frB, PULSE_PER_REV),
+      encFL(flA, flB, PULSE_PER_REV),
+      encRR(rrA, rrB, PULSE_PER_REV),
+      encRL(rlA, rlB, PULSE_PER_REV),
+      lastMotorCommandTime(0) {}
+  
+  bool begin(uint16_t freqHz) {
+    // PCA9685 init with ACK check...
+  }
+  
+  void initEncoders() {
+    encFR.init();
+    encFL.init();
+    encRR.init();
+    encRL.init();
+  }
+  
+  void enableEncoderInterrupts(void (*frA)(), void (*frB)(),
+                               void (*flA)(), void (*flB)(),
+                               void (*rrA)(), void (*rrB)(),
+                               void (*rlA)(), void (*rlB)()) {
+    encFR.enableInterrupts(frA, frB);
+    encFL.enableInterrupts(flA, flB);
+    encRR.enableInterrupts(rrA, rrB);
+    encRL.enableInterrupts(rlA, rlB);
+  }
+  
+  float getRPM(uint8_t motorNum) {
+    switch(motorNum) {
+      case 0: return encFR.getRPM();
+      case 1: return encFL.getRPM();
+      case 2: return encRR.getRPM();
+      case 3: return encRL.getRPM();
+      default: return 0.0F;
+    }
+  }
+  
+  bool isRPMSane(float rpm) {
+    return (fabsf(rpm) <= kMaxSaneRpm);
+  }
+  
+  void setMotor(uint8_t motorNum, float torqueCmd) {
+    // Motor control logic...
+    lastMotorCommandTime = millis();
+  }
+  
+  uint32_t getLastCommandTime() {
+    return lastMotorCommandTime;
+  }
+}; */
 /*VL53L5X is 3.3V
 MPU6050 is 
 LD2450 needs 5V supply but 3.3V logic for I2C*/
