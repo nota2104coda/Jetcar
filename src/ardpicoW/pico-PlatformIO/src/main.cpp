@@ -1,4 +1,3 @@
-#comment
 #include <cstdint>
 #include <SimpleFOC.h>
 #include <Wire.h>
@@ -7,6 +6,18 @@
 #include <hardware/watchdog.h>
 
 #define MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_2XSONAR_2xCLIFF
+
+// Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
+#define LOOP_DEBUG 1
+
+#if LOOP_DEBUG
+  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__)
+  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__)
+#else
+  #define DEBUG_PRINT(...) ((void)0)
+  #define DEBUG_PRINTLN(...) ((void)0)
+#endif
+
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MPU6050.h>
 
@@ -41,10 +52,10 @@ enum class SystemState : uint8_t {
   ERROR = 3
 };
 
-#include "../../../../libs/arduino/CarConfigurations.h"
-#include "../../../../libs/arduino/RobotCarPinDefinitionsAndMore.h"
-#include "CliffSensor.h"
-#include "PCA9685_AWDDriver.h"
+#include "/home/jeevan/PicoWCar/libs/arduino/CarConfigurations.h"
+#include "/home/jeevan/PicoWCar/libs/arduino/RobotCarPinDefinitionsAndMore.h"
+#include "/home/jeevan/PicoWCar/src/ardpicoW/pico-PlatformIO/src/CliffSensor.h"
+#include "/home/jeevan/PicoWCar/src/ardpicoW/pico-PlatformIO/src/PCA9685_AWDDriver.h"
 
 CliffSensor frontCliff(PIN_FRONT_CLIFF);
 CliffSensor rearCliff(PIN_REAR_CLIFF);
@@ -62,7 +73,8 @@ SystemState systemState = SystemState::INIT;
 bool mpuAvailable = false;
 
 // I2C and peripherals
-arduino::MbedI2C picomasteri2c(PICOW_I2C0_SDA, PICOW_I2C0_SCL);
+// Use TwoWire pointer (generic interface) instantiated with arduino::MbedI2C for custom pins
+TwoWire *picomasteri2c = nullptr;
 Adafruit_MPU6050 mpu;
 
 // motorDriver will be created in setup() after I2C.begin() to avoid early I2C access
@@ -97,11 +109,13 @@ void setup() {
   Serial.println("[INIT] Cliff sensors initialized.");
 
   Serial.println("[INIT] I2C bus and motor driver...");
-  picomasteri2c.begin();
+  // Create arduino::MbedI2C with custom pins and assign to TwoWire pointer
+  picomasteri2c = new arduino::MbedI2C(PICOW_I2C0_SDA, PICOW_I2C0_SCL);
+  picomasteri2c->begin();
   
   // Create motorDriver AFTER I2C is initialized
   motorDriver = new PCA9685_AWDDriver(
-    MOTOR_DRV_ADDR, &picomasteri2c,
+    MOTOR_DRV_ADDR, picomasteri2c,
     PIN_ENC_FRONT_RIGHT_Y, PIN_ENC_FRONT_RIGHT_G,
     PIN_ENC_FRONT_LEFT_G, PIN_ENC_FRONT_LEFT_Y,
     PIN_ENC_REAR_RIGHT_Y, PIN_ENC_REAR_RIGHT_G,
@@ -110,8 +124,8 @@ void setup() {
   );
   
   // Check PCA9685 presence
-  picomasteri2c.beginTransmission(MOTOR_DRV_ADDR);
-  int ackStatus = picomasteri2c.endTransmission();
+  picomasteri2c->beginTransmission(MOTOR_DRV_ADDR);
+  int ackStatus = picomasteri2c->endTransmission();
   if (ackStatus != 0) {
     Serial.println("[ERROR] PCA9685 not responding on I2C");
     systemState = SystemState::ERROR;
@@ -124,7 +138,7 @@ void setup() {
   
 
   // Concept 3 & 4: Graceful MPU6050 failure handling (no infinite loop)
-  if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, &picomasteri2c)) {
+  if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, picomasteri2c)) {
     delay(2000);
     Serial.println("[WARN] MPU6050 not detected. Running in DEGRADED mode without IMU.");
     mpuAvailable = false;
@@ -140,9 +154,7 @@ void setup() {
 
   Serial.println("[INIT] System ready. Streaming data every 100ms.");
   lastPublish = millis();
-  lastMotorCommandTime = millis();
-
-  
+  lastMotorCommandTime = millis();  
 }
 
 void loop() {
@@ -151,37 +163,43 @@ void loop() {
 
   const uint32_t currentTime = millis();
   
+  // Loop timing control - only run main logic every kLoopPeriodMs
+  if ((currentTime - lastPublish) < kLoopPeriodMs) {
+    return;
+  }
+  lastPublish = currentTime;
+  
   // Check motor safety timeouts (non-blocking)
   if (motorDriver && motorDriver->checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
     if (systemState == SystemState::RUNNING || systemState == SystemState::DEGRADED) {
-      Serial.println("[SAFETY] Motor timeout - stopped inactive motors");
+      DEBUG_PRINTLN("[SAFETY] Motor timeout - stopped inactive motors");
     }
   }
   
   // Non-blocking sonar polling with 50ms timeout per sensor
-  delay(50); //delay to avoid crosstalk between two sonars
-  const uint32_t sonarRearStart = millis();
   if ((millis() - lastSonarRearPoll) >= kSonarPollIntervalMs) {
-    Serial.println("[DEBUG] Rear sonar poll triggered");
+    delay(50); //delay to avoid crosstalk between two sonars
+    const uint32_t sonarRearStart = millis();
+    DEBUG_PRINTLN("[DEBUG] Rear sonar poll triggered");
     uint32_t attempts = 0;
     while ((millis() - sonarRearStart) < kSonarMaxWaitMs) {
       const int32_t reading = sonarR.ping_cm();
       attempts++;
-      Serial.print("[DEBUG] Rear reading: ");
-      Serial.print(reading);
-      Serial.print(" cm (attempt ");
-      Serial.print(attempts);
-      Serial.println(")");
+      DEBUG_PRINT("[DEBUG] Rear reading: ");
+      DEBUG_PRINT(reading);
+      DEBUG_PRINT(" cm (attempt ");
+      DEBUG_PRINT(attempts);
+      DEBUG_PRINTLN(")");
       // Concept 2: Validate sonar reading is in sane range
       if ((reading > 0) && (reading < (kMaxSonarRangem * conv_M_TO_CM))) {
         sonarDistanceRear = reading;
         lastSonarRearPoll = millis();
-        Serial.println("[DEBUG] Rear sonar valid reading captured");
+        DEBUG_PRINTLN("[DEBUG] Rear sonar valid reading captured");
         break;
       }
     }
     if (attempts > 0 && sonarDistanceRear == 7) {
-      Serial.println("[DEBUG] Rear sonar: no valid reading after attempts");
+      DEBUG_PRINTLN("[DEBUG] Rear sonar: no valid reading after attempts");
     }
   }
 
@@ -199,14 +217,14 @@ void loop() {
     rpmRL = motorDriver->getRPM(MOTOR_RL);
   }
   
-  Serial.print(">rpmFR:");
-  Serial.println(rpmFR, 1);
-  Serial.print(">rpmFL:");
-  Serial.println(rpmFL, 1);
-  Serial.print(">rpmRR:");
-  Serial.println(rpmRR, 1);
-  Serial.print(">rpmRL:");
-  Serial.println(rpmRL, 1);
+  DEBUG_PRINT(">rpmFR:");
+  DEBUG_PRINTLN(rpmFR, 1);
+  DEBUG_PRINT(">rpmFL:");
+  DEBUG_PRINTLN(rpmFL, 1);
+  DEBUG_PRINT(">rpmRR:");
+  DEBUG_PRINTLN(rpmRR, 1);
+  DEBUG_PRINT(">rpmRL:");
+  DEBUG_PRINTLN(rpmRL, 1);
 
   sensors_event_t accel;
   sensors_event_t gyro;
@@ -227,33 +245,31 @@ void loop() {
     temp.temperature = 0.0F;
   }
 
-  Serial.print(">accel_x:");
-  Serial.println(accel.acceleration.x, 2);
-  Serial.print(">accel_y:");
-  Serial.println(accel.acceleration.y, 2);
-  Serial.print(">accel_z:");
-  Serial.println(accel.acceleration.z, 2);
+  DEBUG_PRINT(">accel_x:");
+  DEBUG_PRINTLN(accel.acceleration.x, 2);
+  DEBUG_PRINT(">accel_y:");
+  DEBUG_PRINTLN(accel.acceleration.y, 2);
+  DEBUG_PRINT(">accel_z:");
+  DEBUG_PRINTLN(accel.acceleration.z, 2);
 
-  Serial.print(">gyro_x:");
-  Serial.println(gyro.gyro.x, 2);
-  Serial.print(">gyro_y:");
-  Serial.println(gyro.gyro.y, 2);
-  Serial.print(">gyro_z:");
-  Serial.println(gyro.gyro.z, 2);
+  DEBUG_PRINT(">gyro_x:");
+  DEBUG_PRINTLN(gyro.gyro.x, 2);
+  DEBUG_PRINT(">gyro_y:");
+  DEBUG_PRINTLN(gyro.gyro.y, 2);
+  DEBUG_PRINT(">gyro_z:");
+  DEBUG_PRINTLN(gyro.gyro.z, 2);
 
-  Serial.print(">temp_c:");
-  Serial.println(temp.temperature, 2);
+  DEBUG_PRINT(">temp_c:");
+  DEBUG_PRINTLN(temp.temperature, 2);
  
-  Serial.print(">sonar_rear_cm:");
-  Serial.println(sonarDistanceRear);
+  DEBUG_PRINT(">sonar_rear_cm:");
+  DEBUG_PRINTLN(sonarDistanceRear);
 
   // Read and print cliff sensors
   frontCliff.read();
   rearCliff.read();
-  Serial.print(">cliff_front:");
-  Serial.println(frontCliff.getLastState() ? 1 : 0);
-  Serial.print(">cliff_rear:");
-  Serial.println(rearCliff.getLastState() ? 1 : 0);
-
-  lastPublish = currentTime;
+  DEBUG_PRINT(">cliff_front:");
+  DEBUG_PRINTLN(frontCliff.getLastState() ? 1 : 0);
+  DEBUG_PRINT(">cliff_rear:");
+  DEBUG_PRINTLN(rearCliff.getLastState() ? 1 : 0);
 }

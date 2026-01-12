@@ -8,6 +8,7 @@
 class PCA9685_AWDDriver {
 private:
   Adafruit_PWMServoDriver pwm;
+  TwoWire *wire_;  // Store the I2C bus pointer
   Encoder encFR, encFL, encRR, encRL;
   uint32_t lastMotorCommandTime[4];  // Individual timestamp for each motor
   uint8_t pulsesPerRev;
@@ -33,7 +34,8 @@ public:
                      uint8_t rrA, uint8_t rrB,
                      uint8_t rlA, uint8_t rlB,
                      uint8_t ppr = 12, float maxRpm = 200.0)
-    : pwm(addr),
+    : pwm(addr, *theWire),  // Pass reference to TwoWire object
+      wire_(theWire),
       encFR(frA, frB, ppr),
       encFL(flA, flB, ppr),
       encRR(rrA, rrB, ppr),
