@@ -84,7 +84,7 @@ PCA9685_AWDDriver *motorDriver = nullptr;
 void setup() {
   // Concept 5: Enable hardware watchdog (2 second timeout). Dont see how this helps. what conditions should I reboot
   // TEMPORARILY DISABLED FOR DEBUGGING
-  // watchdog_enable(kWatchdogTimeoutMs, true);
+  watchdog_enable(kWatchdogTimeoutMs, true);
 
   // Concept 1: Timeout on Serial connection
   Serial.begin(kSerialBaud);
@@ -92,7 +92,7 @@ void setup() {
   const uint32_t serialStart = millis();
   while ((!Serial) && ((millis() - serialStart) < kSerialWaitMs)) {
     delay(10);
-    // watchdog_update();  // Disabled for debugging
+    watchdog_update();  // Disabled for debugging
   }
 
   Serial.println();
@@ -159,7 +159,7 @@ void setup() {
 
 void loop() {
   // Concept 5: Feed the watchdog to prevent reset
-  // watchdog_update();  // Disabled for debugging
+  watchdog_update();  // Disabled for debugging
 
   const uint32_t currentTime = millis();
   
