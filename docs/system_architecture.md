@@ -15,31 +15,30 @@ This document outlines the high-level system architecture for the robot rover pr
                              |
                              v
 +-------------------------------------------------------------+
-|                     Raspberry Pi 5 (Pi5)                   |
-|  - ROS2 Nodes: Web Server, Navigation, Vision, Control      |
-|  - CSI Camera (Image Processing)                            |
-|  - USB Serial Communication with Pi Pico W                 |
+|                     Jetson Orin Nano                       |
+|  - ROS2 Nodes: Web Server, Navigation, Vision, Control     |
+|  - I2C Communication with Pi Pico W                        |
 |  - Dockerized ROS2 Environment                             |
 +-------------------------------------------------------------+
                              |
                              v
 +-------------------------------------------------------------+
-|                        Pi Pico W                           |
+|                        Pi Pico W                            |
 |  - Sensor Integration:                                      |
 |    - LD2450 Radar (UART)                                    |
 |    - VL53L5X Lidar (UART)                                   |
 |    - MPU6050 (UART)                                         |
 |  - Actuator Control:                                        |
 |    - Motor Drivers (PWM)                                    |
-|    - Servo for Camera Mount (PWM)                          |
+|    - Servo for Camera Mount (PWM)                           |
 |  - SPI Display for Debugging                                |
-|  - Communication with Arduino Mega (UART)                  |
+|  - Communication with Arduino Mega (UART)                   |
 +-------------------------------------------------------------+
                              |
                              v
 +-------------------------------------------------------------+
 |                     Arduino Mega                           |
-|  - Sensor Integration:                                      |
+|  - Sensor Integration:                                     |
 |    - Ultrasonic Sensors (Front/Rear)                       |
 |    - Infrared Cliff Sensors (Front/Rear)                   |
 |  - Communication with Pi Pico W (UART)                     |

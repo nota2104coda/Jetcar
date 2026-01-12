@@ -11,6 +11,7 @@ import time
 from cv_bridge import CvBridge
 
 CAMERA_INDEX = 0
+refresh_time = 0.05  # seconds
 #Note: QOS depth = 1 and timer 0.1sec fixed the latency. Otherwise it was 5.7sec to Foxglove
 class CameraNode(Node):
     def __init__(self):
@@ -33,7 +34,7 @@ class CameraNode(Node):
         self.cap.set(cv2.CAP_PROP_FPS, 10)
         time.sleep(2)  # Camera warm-up
         # Match the timer to the desired frame rate.
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(refresh_time, self.timer_callback)
         self.get_logger().info("Camera node has been started and camera opened.")
 
     def timer_callback(self):

@@ -214,7 +214,7 @@
 #if defined(MOTOR_SHIELD_2WD_TOF_CONFIGURATION)
 #define CAR_HAS_TOF_DISTANCE_SENSOR     // Use a VL53L1X TimeOfFlight distance sensor
 #define MOTOR_SHIELD_2WD_BASIC_CONFIGURATION
-#define CONe:\Jeevan\projects\PicoWCar\pico\pico-arduinoIDE\picoW-robot-master\CarConfigurations.hFIG_NAME         " + TOF distance"
+#define CONFIG_NAME e:\Jeevan\projects\PicoWCar\pico\pico-arduinoIDE\picoW-robot-master\CarConfigurations.h         " + TOF distance"
 #endif
 
 /*

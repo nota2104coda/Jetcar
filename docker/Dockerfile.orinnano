@@ -1,0 +1,32 @@
+# Jetson Orin Nano Ollama Container
+# Base: dustynv/ollama with Moondream support
+# This Dockerfile is optional - can directly use dustynv/ollama:main-r36.4.0
+# Keeping it for potential customization and documentation purposes
+
+FROM dustynv/ollama:main-r36.4.0
+
+# Install additional utilities if needed
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create cache directories
+RUN mkdir -p /root/.ollama /root/.cache/huggingface
+
+# Set environment for Ollama
+ENV OLLAMA_MODELS=/root/.ollama \
+    OLLAMA_HOST=0.0.0.0:9000 \
+    OLLAMA_CONTEXT_LEN=4096 \
+    OLLAMA_LOGS=/root/.ollama/ollama.log \
+    HF_HUB_CACHE=/root/.cache/huggingface
+
+# Expose Ollama API port
+EXPOSE 9000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:9000/api/version || exit 1
+
+# The dustynv/ollama image already has an entrypoint
+# Default will pull and run the model specified in OLLAMA_MODEL env var

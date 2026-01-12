@@ -1,0 +1,34 @@
+Quick debugging steps for serial not working:
+
+1. Create a minimal test - replace your setup() with:
+```cpp
+void setup() {
+  Serial.begin(115200);
+  delay(2000);  // Give time for serial monitor to connect
+  Serial.println("TEST: Serial works!");
+}
+
+void loop() {
+  Serial.println("TEST: Loop running");
+  delay(1000);
+}
+```
+
+2. If that works, gradually uncomment sections to find what's hanging:
+   - First add watchdog
+   - Then cliff sensors
+   - Then I2C
+   - Then motor driver
+   - Then MPU6050
+
+3. Most likely culprits:
+   - motorDriver.begin() hanging on encoder interrupt setup
+   - I2C bus issue
+   - Watchdog resetting before serial output
+
+4. Check hardware:
+   - Is USB cable connected properly?
+   - Try different USB port
+   - Check if device shows up: ls -la /dev/ttyACM*
+
+5. Try uploading WITHOUT the motor driver connected to I2C to isolate hardware vs software

@@ -1,0 +1,57 @@
+
+
+services:
+  ollama-service:
+    image: dustynv/ollama:main-r36.4.0
+    container_name: picowcar-ollama-service
+    
+    # Use NVIDIA GPU runtime
+    runtime: nvidia
+    
+    environment:
+      # Ollama configuration
+      - OLLAMA_MODEL=moondream
+      - OLLAMA_MODELS=/root/.ollama
+      - OLLAMA_HOST=0.0.0.0:9000
+      - OLLAMA_CONTEXT_LEN=4096
+      - OLLAMA_LOGS=/root/.ollama/ollama.log
+      - DOCKER_PULL=always
+      
+      # HuggingFace cache (optional, for model downloads)
+      - HF_HUB_CACHE=/root/.cache/huggingface
+      
+      # NVIDIA GPU access
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    
+    # Port mapping for Ollama API
+    ports:
+      - "9000:9000"
+    
+    # Mount model cache directories
+    volumes:
+      - /mnt/nvme/cache/ollama:/root/.ollama
+      - /mnt/nvme/cache:/root/.cache
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Always restart unless explicitly stopped
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s

@@ -15,4 +15,22 @@ pycache/
 *.pyd
 __pycache__/
 
+# VLM Model cache (too large for git)
+/mnt/nvme/cache/
+docker/vlm_container/models/
+docker/models/
+libs/jetson-containers
+*.safetensors
+*.bin
+
+# Docker artifacts
+docker/logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
 

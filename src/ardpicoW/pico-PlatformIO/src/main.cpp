@@ -1,95 +1,275 @@
-/*
-  UDPSendReceive.pde:
-  This sketch receives UDP message strings, prints them to the serial port
-  and sends an "acknowledge" string back to the sender
+#include <cstdint>
+#include <SimpleFOC.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+#include <NewPing.h>
+#include <hardware/watchdog.h>
 
-  A Processing sketch is included at the end of file that can be used to send
-  and received messages for testing with a computer.
+#define MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_2XSONAR_2xCLIFF
 
-  created 21 Aug 2010
-  by Michael Margolis
+// Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
+#define LOOP_DEBUG 1
 
-  This code is in the public domain.
-
-  adapted from Ethernet library examples
-*/
-
-
-#include <WiFi.h>
-#include <WiFiUdp.h>
-#include <math.h>
-
-#ifndef STASSID
-#define STASSID "yourRouterName"
-#define STAPSK "yourWifiPasswd"
+#if LOOP_DEBUG
+  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__)
+  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__)
+#else
+  #define DEBUG_PRINT(...) ((void)0)
+  #define DEBUG_PRINTLN(...) ((void)0)
 #endif
 
-IPAddress PC_IP(192, 168, 0, 20);           // <<< IMPORTANT: Replace with your PC's ACTUAL IP address (comma-separated)
-const unsigned int PC_PORT = 12345;          // Port on your PC to listen for UDP data (must match Processing)
-unsigned int localPort = 12345;  // local port to listen on
+#include <Adafruit_Sensor.h>
+#include <Adafruit_MPU6050.h>
 
-// --- Signal Configuration ---
-const float FREQUENCY = 0.5;    // Frequency of the sine/cosine waves in Hz
-const float AMPLITUDE = 100.0;  // Amplitude of the sine/cosine waves
-const float OFFSET = 127.0;     // Offset to keep values positive
+//follow metric system everywhere. all distances in m, speeds m/s, acceleration m/s^2, angles in rad, angular velocity in rad/s
 
-long startTime; // To track time for sine wave calculation
-unsigned long counter = 0; // Simple counter for third signal
+// System constants
+static constexpr float kGearRatio = 46.0;
+static constexpr uint32_t kLoopPeriodMs = 100;
+static constexpr uint32_t kSerialBaud = 115200;
+static constexpr uint32_t kSerialWaitMs = 500; // Wait up to 500ms for Serial to start
+static constexpr uint32_t kPwmFreqHz = 1600;
+static constexpr uint32_t kSonarPollIntervalMs = 500;
+static constexpr uint32_t kSonarMaxWaitMs = 50; // Max wait per sonar reading. if its beyond, it should default to kMaxSonarRangem
+static constexpr uint32_t kWatchdogTimeoutMs = 2000; // 2 second watchdog timeout
+static constexpr uint32_t kMotorSafetyTimeoutMs = 1000; // 1 second motor command timeout
+static constexpr float kMaxSaneRpm = 200.0; // Max sane RPM for encoders
+static constexpr int32_t kMaxSonarRangem = 4; // Max range for sonar in m
+static constexpr int32_t conv_M_TO_CM = 100; // Conversion factor from meters to centimeters
+static constexpr int32_t min_sonar_delayMs = 25; //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
+static constexpr int32_t PULSE_PER_REV = 12;    //for encoders 
+static constexpr float RPM2RADPS =  0.10472;
+static constexpr float GRAVITY = 	9.81; //m per sec2
+static constexpr float WHEEL_RAD =  0.03;  //6 cm dia wheels
+static constexpr float RADPS2MPS = 0.03; //same as wheel radius, since v = r*w
+static constexpr float MOTOR_RPM_TO_MPS = (RPM2RADPS * WHEEL_RAD / kGearRatio);
 
-// buffers for receiving and sending data
-char packetBuffer[UDP_TX_PACKET_MAX_SIZE + 1];  // buffer to hold incoming packet,
-char ReplyBuffer[] = "acknowledged\r\n";        // a string to send back
+// System state machine
+enum class SystemState : uint8_t {
+  INIT = 0,
+  RUNNING = 1,
+  DEGRADED = 2,  // Running without IMU
+  ERROR = 3
+};
 
-WiFiUDP Udp;
+#include "/home/jeevan/PicoWCar/libs/arduino/CarConfigurations.h"
+#include "/home/jeevan/PicoWCar/libs/arduino/RobotCarPinDefinitionsAndMore.h"
+#include "/home/jeevan/PicoWCar/src/ardpicoW/pico-PlatformIO/src/CliffSensor.h"
+#include "/home/jeevan/PicoWCar/src/ardpicoW/pico-PlatformIO/src/PCA9685_AWDDriver.h"
+
+CliffSensor frontCliff(PIN_FRONT_CLIFF);
+CliffSensor rearCliff(PIN_REAR_CLIFF);
+
+// NewPing sonarF(PIN_TRIG_SONAR_FRONT, PIN_ECHO_SONAR_FRONT, kMaxSonarRangem*conv_M_TO_CM); //the lib needs cm as max range
+NewPing sonarR(PIN_TRIG_SONAR_REAR, PIN_ECHO_SONAR_REAR, kMaxSonarRangem*conv_M_TO_CM);
+
+uint32_t lastPublish = 0;
+int32_t sonarDistanceFront = 5;
+int32_t sonarDistanceRear = 7;
+uint32_t lastSonarFrontPoll = 0;
+uint32_t lastSonarRearPoll = 0;
+uint32_t lastMotorCommandTime = 0;
+SystemState systemState = SystemState::INIT;
+bool mpuAvailable = false;
+
+// I2C and peripherals
+// Use TwoWire pointer (generic interface) instantiated with arduino::MbedI2C for custom pins
+TwoWire *picomasteri2c = nullptr;
+Adafruit_MPU6050 mpu;
+
+// motorDriver will be created in setup() after I2C.begin() to avoid early I2C access
+PCA9685_AWDDriver *motorDriver = nullptr;
+
 
 void setup() {
-  Serial.begin(115200);
-  WiFi.begin(STASSID, STAPSK);
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print('.');
-    delay(500);
+  // Concept 5: Enable hardware watchdog (2 second timeout). Dont see how this helps. what conditions should I reboot
+  // TEMPORARILY DISABLED FOR DEBUGGING
+  watchdog_enable(kWatchdogTimeoutMs, true);
+
+  // Concept 1: Timeout on Serial connection
+  Serial.begin(kSerialBaud);
+  delay(500);  // Give serial extra time
+  const uint32_t serialStart = millis();
+  while ((!Serial) && ((millis() - serialStart) < kSerialWaitMs)) {
+    delay(10);
+    watchdog_update();  // Disabled for debugging
   }
-  Serial.print("Connected! IP address: ");
-  Serial.println(WiFi.localIP());
-  Serial.printf("UDP server on port %d\n", localPort);
-  Udp.begin(localPort);
-  delay(100); 
-  startTime = millis(); // Record the start time
-  Serial.println("Pico Sine Wave Generator Ready");
+
+  Serial.println();
+  Serial.println("==========================================");
+  Serial.println("[DEBUG] Pico W BOOT - Watchdog DISABLED");
+  Serial.flush();
+
+  Serial.println("[INIT] Pico W starting...");
+  systemState = SystemState::INIT;
+
+  Serial.println("[INIT] Initializing cliff sensors...");
+  frontCliff.init();
+  rearCliff.init();
+  Serial.println("[INIT] Cliff sensors initialized.");
+
+  Serial.println("[INIT] I2C bus and motor driver...");
+  // Create arduino::MbedI2C with custom pins and assign to TwoWire pointer
+  picomasteri2c = new arduino::MbedI2C(PICOW_I2C0_SDA, PICOW_I2C0_SCL);
+  picomasteri2c->begin();
+  
+  // Create motorDriver AFTER I2C is initialized
+  motorDriver = new PCA9685_AWDDriver(
+    MOTOR_DRV_ADDR, picomasteri2c,
+    PIN_ENC_FRONT_RIGHT_Y, PIN_ENC_FRONT_RIGHT_G,
+    PIN_ENC_FRONT_LEFT_G, PIN_ENC_FRONT_LEFT_Y,
+    PIN_ENC_REAR_RIGHT_Y, PIN_ENC_REAR_RIGHT_G,
+    PIN_ENC_REAR_LEFT_G, PIN_ENC_REAR_LEFT_Y,
+    PULSE_PER_REV, kMaxSaneRpm
+  );
+  
+  // Check PCA9685 presence
+  picomasteri2c->beginTransmission(MOTOR_DRV_ADDR);
+  int ackStatus = picomasteri2c->endTransmission();
+  if (ackStatus != 0) {
+    Serial.println("[ERROR] PCA9685 not responding on I2C");
+    systemState = SystemState::ERROR;
+  }
+
+  // Initialize motor driver (PCA9685 + encoders)
+  Serial.println("[INIT] Initializing motor driver and encoders...");
+  motorDriver->begin(kPwmFreqHz);
+  Serial.println("[INIT] Motor driver and encoders initialized.");
+  
+
+  // Concept 3 & 4: Graceful MPU6050 failure handling (no infinite loop)
+  if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, picomasteri2c)) {
+    delay(2000);
+    Serial.println("[WARN] MPU6050 not detected. Running in DEGRADED mode without IMU.");
+    mpuAvailable = false;
+    systemState = SystemState::DEGRADED;
+  } else {
+    mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    Serial.println("[INIT] MPU6050 ready.");
+    mpuAvailable = true;
+    systemState = SystemState::RUNNING;
+  }
+
+  Serial.println("[INIT] System ready. Streaming data every 100ms.");
+  lastPublish = millis();
+  lastMotorCommandTime = millis();  
 }
 
 void loop() {
-  // // if there's data available, read a packet
-  // int packetSize = Udp.parsePacket();
-  // if (packetSize) {
-  //   Serial.printf("Received packet of size %d from %s:%d\n    (to %s:%d)\n", packetSize, Udp.remoteIP().toString().c_str(), Udp.remotePort(), Udp.destinationIP().toString().c_str(), Udp.localPort());
+  // Concept 5: Feed the watchdog to prevent reset
+  watchdog_update();  // Disabled for debugging
 
-  //   // read the packet into packetBufffer
-  //   int n = Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-  //   packetBuffer[n] = 0;
-  //   Serial.println("Contents:");
-  //   Serial.println(packetBuffer);
+  const uint32_t currentTime = millis();
+  
+  // Loop timing control - only run main logic every kLoopPeriodMs
+  if ((currentTime - lastPublish) < kLoopPeriodMs) {
+    return;
+  }
+  lastPublish = currentTime;
+  
+  // Check motor safety timeouts (non-blocking)
+  if (motorDriver && motorDriver->checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
+    if (systemState == SystemState::RUNNING || systemState == SystemState::DEGRADED) {
+      DEBUG_PRINTLN("[SAFETY] Motor timeout - stopped inactive motors");
+    }
+  }
+  
+  // Non-blocking sonar polling with 50ms timeout per sensor
+  if ((millis() - lastSonarRearPoll) >= kSonarPollIntervalMs) {
+    delay(50); //delay to avoid crosstalk between two sonars
+    const uint32_t sonarRearStart = millis();
+    DEBUG_PRINTLN("[DEBUG] Rear sonar poll triggered");
+    uint32_t attempts = 0;
+    while ((millis() - sonarRearStart) < kSonarMaxWaitMs) {
+      const int32_t reading = sonarR.ping_cm();
+      attempts++;
+      DEBUG_PRINT("[DEBUG] Rear reading: ");
+      DEBUG_PRINT(reading);
+      DEBUG_PRINT(" cm (attempt ");
+      DEBUG_PRINT(attempts);
+      DEBUG_PRINTLN(")");
+      // Concept 2: Validate sonar reading is in sane range
+      if ((reading > 0) && (reading < (kMaxSonarRangem * conv_M_TO_CM))) {
+        sonarDistanceRear = reading;
+        lastSonarRearPoll = millis();
+        DEBUG_PRINTLN("[DEBUG] Rear sonar valid reading captured");
+        break;
+      }
+    }
+    if (attempts > 0 && sonarDistanceRear == 7) {
+      DEBUG_PRINTLN("[DEBUG] Rear sonar: no valid reading after attempts");
+    }
+  }
 
-  //   // send a reply, to the IP address and port that sent us the packet we received
-  //   Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-  //   Udp.write(ReplyBuffer);
-  //   Udp.endPacket();
-  // }
-   // Calculate elapsed time in seconds
-  float elapsedTime = (millis() - startTime) / 1000.0;
-  // Calculate the sine wave value
-  float sineValue = AMPLITUDE * sin(2 * PI * FREQUENCY * elapsedTime) + OFFSET;
+  // Motor control and sensor reading
+  float rpmFR = 0.0F, rpmFL = 0.0F, rpmRR = 0.0F, rpmRL = 0.0F;
+  if (motorDriver) {
+    motorDriver->setMotor(MOTOR_FR, 0.3F); // Front Right
+    motorDriver->setMotor(MOTOR_FL, 0.3F); // Front Left
+    motorDriver->setMotor(MOTOR_RR, 0.3F); // Rear Right
+    motorDriver->setMotor(MOTOR_RL, 0.3F); // Rear Left
+    delay(100); // Give encoders time to accumulate counts
+    rpmFR = motorDriver->getRPM(MOTOR_FR);
+    rpmFL = motorDriver->getRPM(MOTOR_FL);
+    rpmRR = motorDriver->getRPM(MOTOR_RR);
+    rpmRL = motorDriver->getRPM(MOTOR_RL);
+  }
+  
+  DEBUG_PRINT(">rpmFR:");
+  DEBUG_PRINTLN(rpmFR, 1);
+  DEBUG_PRINT(">rpmFL:");
+  DEBUG_PRINTLN(rpmFL, 1);
+  DEBUG_PRINT(">rpmRR:");
+  DEBUG_PRINTLN(rpmRR, 1);
+  DEBUG_PRINT(">rpmRL:");
+  DEBUG_PRINTLN(rpmRL, 1);
 
-  // Convert float to a String
-  String message = String(sineValue, 2); // Format to 2 decimal places
-  //message += "\n"; // Add a newline character as a delimiter for Processing
-  // Send the UDP packet
-  Udp.beginPacket(PC_IP, PC_PORT); // Start sending to PC_IP on PC_PORT
-  Udp.print(message);              // Write the message string
-  Udp.endPacket();                 // Send the packet
+  sensors_event_t accel;
+  sensors_event_t gyro;
+  sensors_event_t temp;
 
-  Serial.print("Sent: ");        // Uncomment for debugging on Serial Monitor
-  Serial.println(message);
+  // Concept 3: Only read IMU if available
+  if (mpuAvailable) {
+    mpu.getEvent(&accel, &gyro, &temp);
+  } 
+  else {
+    // Safe defaults when IMU unavailable
+    accel.acceleration.x = 0.0F;
+    accel.acceleration.y = 0.0F;
+    accel.acceleration.z = 0.0F;
+    gyro.gyro.x = 0.0F;
+    gyro.gyro.y = 0.0F;
+    gyro.gyro.z = 0.0F;
+    temp.temperature = 0.0F;
+  }
 
-  delay(100); // Send data approximately 100 times per second (adjust as needed)
+  DEBUG_PRINT(">accel_x:");
+  DEBUG_PRINTLN(accel.acceleration.x, 2);
+  DEBUG_PRINT(">accel_y:");
+  DEBUG_PRINTLN(accel.acceleration.y, 2);
+  DEBUG_PRINT(">accel_z:");
+  DEBUG_PRINTLN(accel.acceleration.z, 2);
+
+  DEBUG_PRINT(">gyro_x:");
+  DEBUG_PRINTLN(gyro.gyro.x, 2);
+  DEBUG_PRINT(">gyro_y:");
+  DEBUG_PRINTLN(gyro.gyro.y, 2);
+  DEBUG_PRINT(">gyro_z:");
+  DEBUG_PRINTLN(gyro.gyro.z, 2);
+
+  DEBUG_PRINT(">temp_c:");
+  DEBUG_PRINTLN(temp.temperature, 2);
+ 
+  DEBUG_PRINT(">sonar_rear_cm:");
+  DEBUG_PRINTLN(sonarDistanceRear);
+
+  // Read and print cliff sensors
+  frontCliff.read();
+  rearCliff.read();
+  DEBUG_PRINT(">cliff_front:");
+  DEBUG_PRINTLN(frontCliff.getLastState() ? 1 : 0);
+  DEBUG_PRINT(">cliff_rear:");
+  DEBUG_PRINTLN(rearCliff.getLastState() ? 1 : 0);
 }

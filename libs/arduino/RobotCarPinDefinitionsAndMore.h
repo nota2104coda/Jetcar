@@ -68,65 +68,129 @@
  */
 
 #if defined(MCU_PICOW)
-	#if defined(CAR_HAS_4_DCMOTORS)
-	//DC motors driven by Pico
-		#define PIN_MOTOR_VPLUS_FRONT_RIGHT 4
-		#define PIN_MOTOR_VMINUS_FRONT_RIGHT 5
-		#define PIN_MOTOR_VPLUS_FRONT_LEFT 6
-		#define PIN_MOTOR_VMINUS_FRONT_LEFT 7
-		#define PIN_MOTOR_VPLUS_REAR_RIGHT 9
-		#define PIN_MOTOR_VMINUS_REAR_RIGHT 10
-		#define PIN_MOTOR_VPLUS_REAR_LEFT 11 
-		#define PIN_MOTOR_VMINUS_REAR_LEFT 12
+	#if defined(CAR_HAS_4_DCMOTORS_WAVESHARE)
+	//DC motors driven by Waveshare 4 motor driver with PCA9685 and TB6612FNG
+	//PCA9685 is on pins SDA 26, SCL 27 of Pico W
+		#define MOTOR_FR 0 /*white A1, red A2*/
+		#define MOTOR_RR 1 /*red B1 white B2*/
+		#define MOTOR_FL 2  /*red C1 white C2*/
+		#define MOTOR_RL 3	/*white D1 red D2*/
 	#endif
 	#if defined(CAR_HAS_4_MOTORENCODERS)
 	//motor encoders read on Pico
-		#define PIN_ENC_FRONT_RIGHT_Y 14
-		#define PIN_ENC_FRONT_RIGHT_G 15
-		#define PIN_ENC_FRONT_LEFT_Y 16
-		#define PIN_ENC_FRONT_LEFT_G 17
-		#define PIN_ENC_REAR_RIGHT_Y 19
-		#define PIN_ENC_REAR_RIGHT_G 20
-		#define PIN_ENC_REAR_LEFT_Y 26
-		#define PIN_ENC_REAR_LEFT_G 27
+		#define PIN_ENC_FRONT_RIGHT_Y 18
+		#define PIN_ENC_FRONT_RIGHT_G 19
+		#define PIN_ENC_FRONT_LEFT_G 12
+		#define PIN_ENC_FRONT_LEFT_Y 13
+		#define PIN_ENC_REAR_RIGHT_Y 16
+		#define PIN_ENC_REAR_RIGHT_G 17
+		#define PIN_ENC_REAR_LEFT_G 14
+		#define PIN_ENC_REAR_LEFT_Y 15
 	#endif
-	#if defined(CAR_HAS_RR_SONAR) && defined(SLAVE_ARDNANO)
-		#define PIN_TRIG_SONAR_REAR 
-		#define PIN_ECHO_SONAR_REAR 		
-		#define SONAR_MAX_DISTANCE 350 //cm max distance. anything beyond is clipped to max.
-		#define MIN_SONAR_DELAY 25 //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
+	#if defined(CAR_HAS_FRT_RR_SONAR) 		
+		#define PIN_TRIG_SONAR_FRONT 26	//white at Pico, grey at US sensor, 
+		#define PIN_ECHO_SONAR_FRONT 27	//grey at Pico, brown at US sensor, 	
+		#define PIN_TRIG_SONAR_REAR 11  //purple at Pico, blue at US sensor	
+		#define PIN_ECHO_SONAR_REAR 10	//blue at pico, brown at US sensor	
+		
 	#endif
-	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) && defined(SLAVE_ARDNANO)
-		#define PIN_FRONT_CLIFF 6
-		#define PIN_REAR_CLIFF 7
+	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) 
+		#define PIN_FRONT_CLIFF 2	//yellow at Pico, white at cliff sensor
+		#define PIN_REAR_CLIFF 3	//green at Pico, white at cliff sensor
 	#endif
-
-	// #if defined(CAR_HAS_SPI_DISPLAY)
-	// //use SPI0 on GP16-GP19 on Pico W
-	// 	#define MOSI 25
-	// 	#define MISO 21
-	// 	#define SCK 24
-	// 	#define CS0 22
-	// #endif
+	#if defined(CAR_HAS_SPI_DISPLAY)
+	//SPI TX means MOSI
+		#define MOSI 7
+		#define MISO 8
+		#define SCK 6
+		#define CS0 9
+	#endif
 	#if defined(CAR_HAS_I2C)
 		#define MASTER_PICOW_ADDR 0x08
-		#define SLAVE_ARDNANO_ADDR 0x09 
-		#define SERVO_CTRL_ADDR 0xA
-		#define LIDAR_ADDR	0x29
-		#define LD2450_RADAR_ADDR 0x62
-		#define MPU6050_ADDR 0x68
-		#define PICOW_I2C1_SDA 31
-		#define PICOW_I2C1_SCL 32
-		#define ARD_I2C_SDA A4
-		#define ARD_I2C_SCL A5
-		#define PICOW_UART_RX 0 //GP0
-		#define PICOW_UART_TX 1 //GP1 
+		// #define SLAVE_ARDNANO_ADDR 0x09 
+		// #define SERVO_CTRL_ADDR 0xA
+		#define LIDAR_LD06_ADDR	0x29
+		#define RADAR_LD2450_ADDR 0x62
+		#define IMU_MPU6050_ADDR 0x68
+		#define PICOW_I2C0_SDA 20	//also used for PCA9685
+		#define PICOW_I2C0_SCL 21	//also used for PCA9685
+		#define MOTOR_DRV_ADDR 0x40 //PCA9685 address for Waveshare motor driver
+		// #define ARD_I2C_SDA A4
+		// #define ARD_I2C_SCL A5
 	#endif
 	#if defined(CAR_HAS_UART)
-		#define PICOW_UART_RX 0 //GP0
-		#define PICOW_UART_TX 1 //GP1
+		#define PICOW_RADAR_UART_RX 0 
+		#define PICOW_RADAR_UART_TX 1 
+		#define PICOW_JETSON_UART_RX 4 
+		#define PICOW_JETSON_UART_TX 5 
+	#endif
 #endif
-
+/* class to define control of all 4 motors of an AWD car. It inherits from Adafruit's classfor PCA9685 driver. 
+It adds a method to check for I2C ACK. It adds Encoder to read the individual speeds and store them. 
+Also adds diagnostic states */
+/*class PCA9685_AWDDriver {
+private:
+  Adafruit_PWMServoDriver pwm;
+  Encoder encFR, encFL, encRR, encRL;
+  uint32_t lastMotorCommandTime;
+  
+public:
+  PCA9685_AWDDriver(uint8_t addr, TwoWire *theWire,
+                     uint8_t frA, uint8_t frB,
+                     uint8_t flA, uint8_t flB,
+                     uint8_t rrA, uint8_t rrB,
+                     uint8_t rlA, uint8_t rlB)
+    : pwm(addr, theWire),
+      encFR(frA, frB, PULSE_PER_REV),
+      encFL(flA, flB, PULSE_PER_REV),
+      encRR(rrA, rrB, PULSE_PER_REV),
+      encRL(rlA, rlB, PULSE_PER_REV),
+      lastMotorCommandTime(0) {}
+  
+  bool begin(uint16_t freqHz) {
+    // PCA9685 init with ACK check...
+  }
+  
+  void initEncoders() {
+    encFR.init();
+    encFL.init();
+    encRR.init();
+    encRL.init();
+  }
+  
+  void enableEncoderInterrupts(void (*frA)(), void (*frB)(),
+                               void (*flA)(), void (*flB)(),
+                               void (*rrA)(), void (*rrB)(),
+                               void (*rlA)(), void (*rlB)()) {
+    encFR.enableInterrupts(frA, frB);
+    encFL.enableInterrupts(flA, flB);
+    encRR.enableInterrupts(rrA, rrB);
+    encRL.enableInterrupts(rlA, rlB);
+  }
+  
+  float getRPM(uint8_t motorNum) {
+    switch(motorNum) {
+      case 0: return encFR.getRPM();
+      case 1: return encFL.getRPM();
+      case 2: return encRR.getRPM();
+      case 3: return encRL.getRPM();
+      default: return 0.0F;
+    }
+  }
+  
+  bool isRPMSane(float rpm) {
+    return (fabsf(rpm) <= kMaxSaneRpm);
+  }
+  
+  void setMotor(uint8_t motorNum, float torqueCmd) {
+    // Motor control logic...
+    lastMotorCommandTime = millis();
+  }
+  
+  uint32_t getLastCommandTime() {
+    return lastMotorCommandTime;
+  }
+}; */
 /*VL53L5X is 3.3V
 MPU6050 is 
 LD2450 needs 5V supply but 3.3V logic for I2C*/
