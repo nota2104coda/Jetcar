@@ -72,13 +72,20 @@ uint32_t lastMotorCommandTime = 0;
 SystemState systemState = SystemState::INIT;
 bool mpuAvailable = false;
 
-// I2C and peripherals
-// Use TwoWire pointer (generic interface) instantiated with arduino::MbedI2C for custom pins
-TwoWire *picomasteri2c = nullptr;
+// I2C and peripherals - construct statically, initialize in setup()
+static arduino::MbedI2C picomasteri2cInstance(PICOW_I2C0_SDA, PICOW_I2C0_SCL);
+TwoWire *picomasteri2c = &picomasteri2cInstance;
 Adafruit_MPU6050 mpu;
 
-// motorDriver will be created in setup() after I2C.begin() to avoid early I2C access
-PCA9685_AWDDriver *motorDriver = nullptr;
+// Motor driver object lives in static storage for deterministic lifetime
+static PCA9685_AWDDriver motorDriver(
+  MOTOR_DRV_ADDR, picomasteri2c,
+  PIN_ENC_FRONT_RIGHT_Y, PIN_ENC_FRONT_RIGHT_G,
+  PIN_ENC_FRONT_LEFT_G, PIN_ENC_FRONT_LEFT_Y,
+  PIN_ENC_REAR_RIGHT_Y, PIN_ENC_REAR_RIGHT_G,
+  PIN_ENC_REAR_LEFT_G, PIN_ENC_REAR_LEFT_Y,
+  PULSE_PER_REV, kMaxSaneRpm
+);
 
 
 void setup() {
@@ -109,19 +116,8 @@ void setup() {
   Serial.println("[INIT] Cliff sensors initialized.");
 
   Serial.println("[INIT] I2C bus and motor driver...");
-  // Create arduino::MbedI2C with custom pins and assign to TwoWire pointer
-  picomasteri2c = new arduino::MbedI2C(PICOW_I2C0_SDA, PICOW_I2C0_SCL);
+  // I2C object already constructed statically; just begin the bus now
   picomasteri2c->begin();
-  
-  // Create motorDriver AFTER I2C is initialized
-  motorDriver = new PCA9685_AWDDriver(
-    MOTOR_DRV_ADDR, picomasteri2c,
-    PIN_ENC_FRONT_RIGHT_Y, PIN_ENC_FRONT_RIGHT_G,
-    PIN_ENC_FRONT_LEFT_G, PIN_ENC_FRONT_LEFT_Y,
-    PIN_ENC_REAR_RIGHT_Y, PIN_ENC_REAR_RIGHT_G,
-    PIN_ENC_REAR_LEFT_G, PIN_ENC_REAR_LEFT_Y,
-    PULSE_PER_REV, kMaxSaneRpm
-  );
   
   // Check PCA9685 presence
   picomasteri2c->beginTransmission(MOTOR_DRV_ADDR);
@@ -133,7 +129,7 @@ void setup() {
 
   // Initialize motor driver (PCA9685 + encoders)
   Serial.println("[INIT] Initializing motor driver and encoders...");
-  motorDriver->begin(kPwmFreqHz);
+  motorDriver.begin(kPwmFreqHz);
   Serial.println("[INIT] Motor driver and encoders initialized.");
   
 
@@ -170,7 +166,7 @@ void loop() {
   lastPublish = currentTime;
   
   // Check motor safety timeouts (non-blocking)
-  if (motorDriver && motorDriver->checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
+  if (motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
     if (systemState == SystemState::RUNNING || systemState == SystemState::DEGRADED) {
       DEBUG_PRINTLN("[SAFETY] Motor timeout - stopped inactive motors");
     }
@@ -205,17 +201,15 @@ void loop() {
 
   // Motor control and sensor reading
   float rpmFR = 0.0F, rpmFL = 0.0F, rpmRR = 0.0F, rpmRL = 0.0F;
-  if (motorDriver) {
-    motorDriver->setMotor(MOTOR_FR, 0.3F); // Front Right
-    motorDriver->setMotor(MOTOR_FL, 0.3F); // Front Left
-    motorDriver->setMotor(MOTOR_RR, 0.3F); // Rear Right
-    motorDriver->setMotor(MOTOR_RL, 0.3F); // Rear Left
-    delay(100); // Give encoders time to accumulate counts
-    rpmFR = motorDriver->getRPM(MOTOR_FR);
-    rpmFL = motorDriver->getRPM(MOTOR_FL);
-    rpmRR = motorDriver->getRPM(MOTOR_RR);
-    rpmRL = motorDriver->getRPM(MOTOR_RL);
-  }
+  motorDriver.setMotor(MOTOR_FR, 0.3F); // Front Right
+  motorDriver.setMotor(MOTOR_FL, 0.3F); // Front Left
+  motorDriver.setMotor(MOTOR_RR, 0.3F); // Rear Right
+  motorDriver.setMotor(MOTOR_RL, 0.3F); // Rear Left
+  delay(100); // Give encoders time to accumulate counts
+  rpmFR = motorDriver.getRPM(MOTOR_FR);
+  rpmFL = motorDriver.getRPM(MOTOR_FL);
+  rpmRR = motorDriver.getRPM(MOTOR_RR);
+  rpmRL = motorDriver.getRPM(MOTOR_RL);
   
   DEBUG_PRINT(">rpmFR:");
   DEBUG_PRINTLN(rpmFR, 1);
