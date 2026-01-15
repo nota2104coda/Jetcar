@@ -29,7 +29,7 @@ static constexpr uint32_t kLoopPeriodMs = 100;
 static constexpr uint32_t kSerialBaud = 115200;
 static constexpr uint32_t kSerialWaitMs = 500; // Wait up to 500ms for Serial to start
 static constexpr uint32_t kPwmFreqHz = 1600;
-static constexpr uint32_t kSonarPollIntervalMs = 500;
+static constexpr uint32_t kSonarPollIntervalMs = 50;
 static constexpr uint32_t kSonarMaxWaitMs = 50; // Max wait per sonar reading. if its beyond, it should default to kMaxSonarRangem
 static constexpr uint32_t kWatchdogTimeoutMs = 2000; // 2 second watchdog timeout
 static constexpr uint32_t kMotorSafetyTimeoutMs = 1000; // 1 second motor command timeout
@@ -89,8 +89,7 @@ static PCA9685_AWDDriver motorDriver(
 
 
 void setup() {
-  // Concept 5: Enable hardware watchdog (2 second timeout). Dont see how this helps. what conditions should I reboot
-  // TEMPORARILY DISABLED FOR DEBUGGING
+  // Concept 5: Enable hardware watchdog (2 second timeout). 
   watchdog_enable(kWatchdogTimeoutMs, true);
 
   // Concept 1: Timeout on Serial connection
@@ -99,7 +98,7 @@ void setup() {
   const uint32_t serialStart = millis();
   while ((!Serial) && ((millis() - serialStart) < kSerialWaitMs)) {
     delay(10);
-    watchdog_update();  // Disabled for debugging
+    watchdog_update(); 
   }
 
   Serial.println();
@@ -116,10 +115,10 @@ void setup() {
   Serial.println("[INIT] Cliff sensors initialized.");
 
   Serial.println("[INIT] I2C bus and motor driver...");
-  // I2C object already constructed statically; just begin the bus now
+  // I2C object already constructed statically; just begin the bus now. blank argument means its master.
   picomasteri2c->begin();
   
-  // Check PCA9685 presence
+  // Check PCA9685 presence. interesting that the argument used in function defn is integer rather than hex? 
   picomasteri2c->beginTransmission(MOTOR_DRV_ADDR);
   int ackStatus = picomasteri2c->endTransmission();
   if (ackStatus != 0) {
@@ -165,7 +164,7 @@ void loop() {
   }
   lastPublish = currentTime;
   
-  // Check motor safety timeouts (non-blocking)
+  // Check motor safety timeouts (non-blocking). if not commanded in last kMotorSafetyTimeoutMs sec, then stop all motors.
   if (motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
     if (systemState == SystemState::RUNNING || systemState == SystemState::DEGRADED) {
       DEBUG_PRINTLN("[SAFETY] Motor timeout - stopped inactive motors");

@@ -135,9 +135,11 @@ public:
     
     for (uint8_t i = 0; i < 4; i++) {
       if ((now - lastMotorCommandTime[i]) > timeoutMs) {
-        setMotor(i, 0.0F);  // Stop this motor
         anyTimedOut = true;
       }
+    }
+    if (anyTimedOut) {
+      stopAllMotors();
     }
     
     return anyTimedOut;  // Returns true if any motor was stopped
