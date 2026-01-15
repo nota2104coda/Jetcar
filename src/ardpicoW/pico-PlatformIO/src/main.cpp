@@ -73,8 +73,7 @@ SystemState systemState = SystemState::INIT;
 bool mpuAvailable = false;
 
 // I2C and peripherals - construct statically, initialize in setup()
-static arduino::MbedI2C picomasteri2cInstance(PICOW_I2C0_SDA, PICOW_I2C0_SCL);
-TwoWire *picomasteri2c = &picomasteri2cInstance;
+TwoWire *picomasteri2c = &Wire;  // or &Wire1 depending on which I2C bus
 Adafruit_MPU6050 mpu;
 
 // Motor driver object lives in static storage for deterministic lifetime
@@ -116,6 +115,8 @@ void setup() {
 
   Serial.println("[INIT] I2C bus and motor driver...");
   // I2C object already constructed statically; just begin the bus now. blank argument means its master.
+  picomasteri2c->setSDA(PICOW_I2C0_SDA);
+  picomasteri2c->setSCL(PICOW_I2C0_SCL);
   picomasteri2c->begin();
   
   // Check PCA9685 presence. interesting that the argument used in function defn is integer rather than hex? 
