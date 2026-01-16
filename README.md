@@ -1,28 +1,31 @@
 # PicoWCar Project
 
 ## Overview
-PicoWCar is a 4-wheel robot system using Jetson Orin Nano, Pi Pico W, and Arduino Nano. It fuses camera, lidar, radar, and other sensor data for autonomous navigation and object search, controlled via a web interface. Development will use ROS2 Humble and docker containers for easy dependency management and deployment.
-The sensors it has are : front - realsense D435 depth camera via USB, LD2450 human tracking lidar. Rear - rolling shutter CSI camera , 8x8 lidar VL53L5CX. Also a MPU6050 acceleration sensor. Also it has front and rear sonar SR04 type. The sensors are connected to an arduino nano and a raspberry pi pico W . The arduino/pico report back to a jetson orin nano over USB or another suitable bus. For simplicity, I havent mentioned which devices connect to arduino or pico. That's based on simplifying wiring. The pico drives the 4 wheel motors. The jetson orin nano with jetpack 6.2 runs ROS2 nodes to read the data from the arduinos and cameras and pipe back the commands for motion. It also runs a local web server to collect commands from the user. It will also have a rplidar 2D lidar at top.
-The purpose of the robot is: when the user asks to navigate to the red football, it scans the room, does SLAM and navigates to the ball and stops at a safe distance. If the path is below a chair, it should intelligently see the height and go below or around. 
+PicoWCar is a 4-wheel robot system using Jetson Orin Nano and Pi Pico W RP2040. It fuses Realsense 435 camera, LD06 lidar and other sensor data for autonomous navigation and object search, controlled via a web interface. Development will use ROS2 Humble and docker containers for easy dependency management and deployment.
 
+## Use Cases: 
+when the user asks to navigate to the red football, it scans the room by spinning the body, until the object is found. It then navigates to the ball and stops at a safe distance. If the path is below a chair, it should intelligently see the height and go below or around. 
+
+## Learning Objective
+ Learn use of FreeRTOS on Pi Pico, with concurrent processes on both cores. Learn to configure a robot in ROS2 Humble. Learn to apply LLM/VLM for mobile robots.
 
 ## Hardware Architecture
-- **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to Pico W via USB serial or UART or similar bus.
-- **Pi Pico W**: Controls motors, reads sensors (radar, lidar, IMU, encoders, SPI display), communicates with Arduino Nano and Jetson Orin Nano
+- **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to Pico W via UART.
+- **Raspberry Pi Pico W**: Controls motors, reads sensors (radar, lidar, IMU,wheel encoders, SPI display), communicates with Arduino Nano and Jetson Orin Nano
 - **Arduino Nano**: Reads ultrasonic and IR cliff sensors, communicates with Pico W
-
+  **Sensors**: The sensors it has are : front - realsense D435 depth camera via USB, LD2450 human tracking lidar. 8x8 lidar VL53L5CX. Rear: HC-SR04 sonar. On body:  MPU6050 acceleration sensor. The sensors are connected to an arduino nano and a raspberry pi pico W . The arduino/pico report back to a jetson orin nano over USB or another suitable bus. For simplicity, I havent mentioned which devices connect to arduino or pico. That's based on simplifying wiring. The pico drives the 4 wheel motors. The jetson orin nano with jetpack 6.2 runs ROS2 nodes to read the data from the arduinos and cameras and pipe back the commands for motion. It also runs a local web server to collect commands from the user. It will also have a rplidar 2D lidar at top.
+  **Actuators**: 4x 370 type DC brushed motors with encoders. gear ratio 46, pulses per rev 11, hall encoder with forward and reverse sensor pickups.
 
 ## Quick Start
 1. **Clone the repo**
-2. **Build Docker container**
-   - For PC: `docker-compose -f docker/docker-compose.dev.yml up --build`
-   - For Pi5: `docker-compose -f docker/docker-compose.pi5.yml up --build`
-3. **Develop ROS2 nodes in `src/pi5_nodes/`**
-4. **Define custom messages in `robot_msgs/msg/` and build with `colcon`
+2. **Develop ROS2 nodes in `src/pi5_pkg/`**
+4. **Develop Pi Pico W code in `src/ardpicoW/pico-PlatformIO/`**
+5. Define custom messages in `robot_msgs/msg/` and build with `colcon`
 5. **Access web interface at `http://localhost:8080`**
 
 ## Diagrams
-See `docs/diagrams/architecture.md` for system and software architecture diagrams (Mermaid format).
+See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.
+See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format).
 
 ## Next Steps
 - Implement sensor fusion and navigation logic in ROS2 nodes

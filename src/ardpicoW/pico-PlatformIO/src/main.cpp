@@ -1,9 +1,16 @@
 #include <cstdint>
+#define __FREERTOS 1
+#include <FreeRTOS.h>
+#include <task.h>
+#include <queue.h>
+#include <semphr.h>
 #include <SimpleFOC.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <NewPing.h>
 #include <hardware/watchdog.h>
+
+
 
 #define MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_2XSONAR_2xCLIFF
 
@@ -87,6 +94,138 @@ static PCA9685_AWDDriver motorDriver(
 );
 
 
+// Shared data structures with synchronization
+struct SensorBuffer {
+  float accelX, accelY, accelZ;
+  float gyroX, gyroY, gyroZ;
+  float temp;
+  int32_t sonarRear;
+  bool cliffFront, cliffRear;
+  uint32_t timestamp;
+};
+
+struct MotorCommand {
+  float speedFR, speedFL, speedRR, speedRL;
+  uint32_t commandTime;
+};
+
+// Thread-safe queues and semaphores
+QueueHandle_t sensorQueue = NULL;      // Core1 → Core0: sensor data
+QueueHandle_t motorCmdQueue = NULL;    // Core0 → Core1: motor commands
+QueueHandle_t uartRxQueue = NULL;      // UART ISR → Core0: commands
+SemaphoreHandle_t sensorMutex = NULL;  // Protect shared sensor buffer
+
+// Global sensor buffer (protected by mutex)
+static SensorBuffer currentSensors = {0};
+static volatile bool sonarReadyFlag = false;
+
+// Forward declaration for telemetry function
+void sendTelemetry(const SensorBuffer &sensors);
+
+// Core 0 Task: Time-critical sensor + motor control
+void core0Task(void *pvParameters) {
+  TickType_t lastWakeTime;
+  TickType_t loopPeriod;
+  lastWakeTime = xTaskGetTickCount();
+  loopPeriod = pdMS_TO_TICKS(100); // 100ms loop
+  
+  while (1) {
+    // A. Read all local sensors (IMU, cliff, encoders)
+    sensors_event_t accel, gyro, temp;
+    if (mpuAvailable) {
+      mpu.getEvent(&accel, &gyro, &temp);
+    }
+    frontCliff.read();
+    rearCliff.read();
+    
+    // Update shared buffer
+    xSemaphoreTake(sensorMutex, portMAX_DELAY);
+    currentSensors.accelX = accel.acceleration.x;
+    currentSensors.accelY = accel.acceleration.y;
+    currentSensors.accelZ = accel.acceleration.z;
+    currentSensors.gyroX = gyro.gyro.x;
+    currentSensors.gyroY = gyro.gyro.y;
+    currentSensors.gyroZ = gyro.gyro.z;
+    currentSensors.temp = temp.temperature;
+    currentSensors.cliffFront = frontCliff.getLastState();
+    currentSensors.cliffRear = rearCliff.getLastState();
+    currentSensors.timestamp = millis();
+    xSemaphoreGive(sensorMutex);
+    
+    // B. Check if sonar should be read (non-blocking flag from Core1)
+    // Core1 will set a flag when sonar is ready
+    if (sonarReadyFlag) {
+      if (xSemaphoreTake(sensorMutex, portMAX_DELAY) == pdTRUE) {
+        currentSensors.sonarRear = sonarDistanceRear; // From Core1
+        xSemaphoreGive(sensorMutex);
+      }
+      sonarReadyFlag = false;
+    }
+    
+    // C. Read UART command arbitration
+    MotorCommand cmdUART = {0}, cmdFoxglove = {0}, cmdFinal = {0};
+    if (xQueueReceive(uartRxQueue, &cmdUART, 0) == pdTRUE) {
+      cmdFinal = cmdUART; // UART has priority
+    }
+    if (xQueueReceive(motorCmdQueue, &cmdFoxglove, 0) == pdTRUE && cmdFinal.speedFR == 0) {
+      cmdFinal = cmdFoxglove; // Foxglove secondary
+    }
+    
+    // D. Execute motor commands
+    if (cmdFinal.speedFR != 0 || cmdFinal.speedFL != 0 || 
+        cmdFinal.speedRR != 0 || cmdFinal.speedRL != 0) {
+      motorDriver.setMotor(MOTOR_FR, cmdFinal.speedFR);
+      motorDriver.setMotor(MOTOR_FL, cmdFinal.speedFL);
+      motorDriver.setMotor(MOTOR_RR, cmdFinal.speedRR);
+      motorDriver.setMotor(MOTOR_RL, cmdFinal.speedRL);
+      lastMotorCommandTime = millis();
+    }
+    
+    // Check motor safety timeout
+    motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs);
+    
+    // Output telemetry to UART
+    sendTelemetry(currentSensors);
+    
+    // Watchdog feed
+    watchdog_update();
+    
+    // Wait until next loop period (blocks if early)
+    vTaskDelayUntil(&lastWakeTime, loopPeriod);
+  }
+}
+
+// Core 1 Task: WiFi + Sonar (blocking I/O tolerant)
+void core1Task(void *pvParameters) {
+  TickType_t sonarPollPeriod;
+  TickType_t lastSonarTime;
+  sonarPollPeriod = pdMS_TO_TICKS(500);
+  lastSonarTime = xTaskGetTickCount();
+  
+  while (1) {
+    // A. Non-blocking sonar poll (only if time permits)
+    TickType_t now;
+    now = xTaskGetTickCount();
+    if ((now - lastSonarTime) >= sonarPollPeriod) {
+      int32_t reading = sonarR.ping_cm();
+      if (reading > 0 && reading < (kMaxSonarRangem * conv_M_TO_CM)) {
+        if (xSemaphoreTake(sensorMutex, portMAX_DELAY) == pdTRUE) {
+          currentSensors.sonarRear = reading;
+          xSemaphoreGive(sensorMutex);
+        }
+        sonarReadyFlag = true;
+      }
+      lastSonarTime = now;
+    }
+    
+    // B. WiFi operations (can block here)
+    // Read commands from Foxglove, post to motorCmdQueue
+    // Send telemetry via WiFi
+    
+    vTaskDelay(pdMS_TO_TICKS(50)); // Yield CPU, check sonar every 50ms
+  }
+}
+
 void setup() {
   // Concept 5: Enable hardware watchdog (2 second timeout). 
   watchdog_enable(kWatchdogTimeoutMs, true);
@@ -151,119 +290,64 @@ void setup() {
   Serial.println("[INIT] System ready. Streaming data every 100ms.");
   lastPublish = millis();
   lastMotorCommandTime = millis();  
+  
+  // Create synchronization primitives
+  sensorMutex = xSemaphoreCreateMutex();
+  sensorQueue = xQueueCreate(5, sizeof(SensorBuffer));
+  motorCmdQueue = xQueueCreate(5, sizeof(MotorCommand));
+  uartRxQueue = xQueueCreate(10, sizeof(MotorCommand));
+  
+  // Create tasks
+  xTaskCreate(
+    core0Task,        // Function
+    "Core0Task",      // Name
+    4096,             // Stack size (bytes)
+    NULL,             // Parameters
+    3,                // Priority (higher = more priority)
+    NULL              // Task handle
+  );
+  
+  xTaskCreate(
+    core1Task,
+    "Core1Task",
+    4096,
+    NULL,
+    2,                // Lower priority than Core0
+    NULL
+  );
+  
+  // FreeRTOS scheduler starts automatically
 }
 
 void loop() {
-  // Concept 5: Feed the watchdog to prevent reset
-  watchdog_update();  // Disabled for debugging
+  // Arduino loop() becomes idle when tasks are running
+  vTaskDelay(pdMS_TO_TICKS(1000));
+}
 
-  const uint32_t currentTime = millis();
-  
-  // Loop timing control - only run main logic every kLoopPeriodMs
-  if ((currentTime - lastPublish) < kLoopPeriodMs) {
-    return;
-  }
-  lastPublish = currentTime;
-  
-  // Check motor safety timeouts (non-blocking). if not commanded in last kMotorSafetyTimeoutMs sec, then stop all motors.
-  if (motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
-    if (systemState == SystemState::RUNNING || systemState == SystemState::DEGRADED) {
-      DEBUG_PRINTLN("[SAFETY] Motor timeout - stopped inactive motors");
-    }
-  }
-  
-  // Non-blocking sonar polling with 50ms timeout per sensor
-  if ((millis() - lastSonarRearPoll) >= kSonarPollIntervalMs) {
-    delay(50); //delay to avoid crosstalk between two sonars
-    const uint32_t sonarRearStart = millis();
-    DEBUG_PRINTLN("[DEBUG] Rear sonar poll triggered");
-    uint32_t attempts = 0;
-    while ((millis() - sonarRearStart) < kSonarMaxWaitMs) {
-      const int32_t reading = sonarR.ping_cm();
-      attempts++;
-      DEBUG_PRINT("[DEBUG] Rear reading: ");
-      DEBUG_PRINT(reading);
-      DEBUG_PRINT(" cm (attempt ");
-      DEBUG_PRINT(attempts);
-      DEBUG_PRINTLN(")");
-      // Concept 2: Validate sonar reading is in sane range
-      if ((reading > 0) && (reading < (kMaxSonarRangem * conv_M_TO_CM))) {
-        sonarDistanceRear = reading;
-        lastSonarRearPoll = millis();
-        DEBUG_PRINTLN("[DEBUG] Rear sonar valid reading captured");
-        break;
-      }
-    }
-    if (attempts > 0 && sonarDistanceRear == 7) {
-      DEBUG_PRINTLN("[DEBUG] Rear sonar: no valid reading after attempts");
-    }
-  }
-
-  // Motor control and sensor reading
-  float rpmFR = 0.0F, rpmFL = 0.0F, rpmRR = 0.0F, rpmRL = 0.0F;
-  motorDriver.setMotor(MOTOR_FR, 0.3F); // Front Right
-  motorDriver.setMotor(MOTOR_FL, 0.3F); // Front Left
-  motorDriver.setMotor(MOTOR_RR, 0.3F); // Rear Right
-  motorDriver.setMotor(MOTOR_RL, 0.3F); // Rear Left
-  delay(100); // Give encoders time to accumulate counts
-  rpmFR = motorDriver.getRPM(MOTOR_FR);
-  rpmFL = motorDriver.getRPM(MOTOR_FL);
-  rpmRR = motorDriver.getRPM(MOTOR_RR);
-  rpmRL = motorDriver.getRPM(MOTOR_RL);
-  
-  DEBUG_PRINT(">rpmFR:");
-  DEBUG_PRINTLN(rpmFR, 1);
-  DEBUG_PRINT(">rpmFL:");
-  DEBUG_PRINTLN(rpmFL, 1);
-  DEBUG_PRINT(">rpmRR:");
-  DEBUG_PRINTLN(rpmRR, 1);
-  DEBUG_PRINT(">rpmRL:");
-  DEBUG_PRINTLN(rpmRL, 1);
-
-  sensors_event_t accel;
-  sensors_event_t gyro;
-  sensors_event_t temp;
-
-  // Concept 3: Only read IMU if available
-  if (mpuAvailable) {
-    mpu.getEvent(&accel, &gyro, &temp);
-  } 
-  else {
-    // Safe defaults when IMU unavailable
-    accel.acceleration.x = 0.0F;
-    accel.acceleration.y = 0.0F;
-    accel.acceleration.z = 0.0F;
-    gyro.gyro.x = 0.0F;
-    gyro.gyro.y = 0.0F;
-    gyro.gyro.z = 0.0F;
-    temp.temperature = 0.0F;
-  }
-
+// Telemetry output function
+void sendTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINT(">accel_x:");
-  DEBUG_PRINTLN(accel.acceleration.x, 2);
+  DEBUG_PRINTLN(sensors.accelX, 2);
   DEBUG_PRINT(">accel_y:");
-  DEBUG_PRINTLN(accel.acceleration.y, 2);
+  DEBUG_PRINTLN(sensors.accelY, 2);
   DEBUG_PRINT(">accel_z:");
-  DEBUG_PRINTLN(accel.acceleration.z, 2);
+  DEBUG_PRINTLN(sensors.accelZ, 2);
 
   DEBUG_PRINT(">gyro_x:");
-  DEBUG_PRINTLN(gyro.gyro.x, 2);
+  DEBUG_PRINTLN(sensors.gyroX, 2);
   DEBUG_PRINT(">gyro_y:");
-  DEBUG_PRINTLN(gyro.gyro.y, 2);
+  DEBUG_PRINTLN(sensors.gyroY, 2);
   DEBUG_PRINT(">gyro_z:");
-  DEBUG_PRINTLN(gyro.gyro.z, 2);
+  DEBUG_PRINTLN(sensors.gyroZ, 2);
 
   DEBUG_PRINT(">temp_c:");
-  DEBUG_PRINTLN(temp.temperature, 2);
+  DEBUG_PRINTLN(sensors.temp, 2);
  
   DEBUG_PRINT(">sonar_rear_cm:");
-  DEBUG_PRINTLN(sonarDistanceRear);
+  DEBUG_PRINTLN(sensors.sonarRear);
 
-  // Read and print cliff sensors
-  frontCliff.read();
-  rearCliff.read();
   DEBUG_PRINT(">cliff_front:");
-  DEBUG_PRINTLN(frontCliff.getLastState() ? 1 : 0);
+  DEBUG_PRINTLN(sensors.cliffFront ? 1 : 0);
   DEBUG_PRINT(">cliff_rear:");
-  DEBUG_PRINTLN(rearCliff.getLastState() ? 1 : 0);
+  DEBUG_PRINTLN(sensors.cliffRear ? 1 : 0);
 }
