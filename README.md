@@ -28,10 +28,16 @@ See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.
 See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format).
 
 ## Next Steps
+Pico W
+- Implement FreeRTOS as per software architecture diagram
+- Web service to get commands from webpage to Pico W
+- Vehicle control class - arbitrate between commands and safe distance from sensors
+- UART commands reading on Pico for motion
+- UART sensor data piping to Jetson
+Jetson
 - Implement sensor fusion and navigation logic in ROS2 nodes
-- Integrate serial communication with Pico W
+- Integrate UART communication with Pico W
 - Expand web interface for visualization
-- Flash Pico W and Arduino Mega with respective firmware
 
 ## Memory budget
 Can your robot run all of this at once?
