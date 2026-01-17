@@ -20,8 +20,10 @@ when the user asks to navigate to the red football, it scans the room by spinnin
 1. **Clone the repo**
 2. **Develop ROS2 nodes in `src/pi5_pkg/`**
 4. **Develop Pi Pico W code in `src/ardpicoW/pico-PlatformIO/`**
-5. Define custom messages in `robot_msgs/msg/` and build with `colcon`
-5. **Access web interface at `http://localhost:8080`**
+5. Define custom messages in `src/robot_msgs/msg/` and build with `colcon`
+6. **Access web interface at `http://localhost:8080`**
+7. **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
+8. **Define robot urdf** in `src/pi5_pkg/urdf`
 
 ## Diagrams
 See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.
