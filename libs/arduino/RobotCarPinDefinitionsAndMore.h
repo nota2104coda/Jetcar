@@ -95,8 +95,8 @@
 		
 	#endif
 	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) 
-		#define PIN_FRONT_CLIFF 2	//yellow at Pico, white at cliff sensor
-		#define PIN_REAR_CLIFF 3	//green at Pico, white at cliff sensor
+		#define PIN_FRONT_CLIFF 3	//yellow at Pico, white at cliff sensor
+		#define PIN_REAR_CLIFF 2	//green at Pico, white at cliff sensor
 	#endif
 	#if defined(CAR_HAS_SPI_DISPLAY)
 	//SPI TX means MOSI

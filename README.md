@@ -32,6 +32,7 @@ See `docs/designs/architecture.md` for system and software architecture diagrams
 ## Next Steps
 Pico W
 - Implement FreeRTOS as per software architecture diagram
+  STATUS: Two-core design works 
 - Web service to get commands from webpage to Pico W
 - Vehicle control class - arbitrate between commands and safe distance from sensors
 - UART commands reading on Pico for motion
