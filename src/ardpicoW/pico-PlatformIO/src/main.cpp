@@ -16,25 +16,38 @@
 
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
 #define LOOP_DEBUG_A 0
-#define LOOP_DEBUG_B 1
+#define LOOP_DEBUG_B 0
+#define WEB_ONLY_LOGS 1
 
 #if LOOP_DEBUG_A
-  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__)
-  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__)
+  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
 #else
   #define DEBUG_PRINT(...) ((void)0)
   #define DEBUG_PRINTLN(...) ((void)0)
 #endif
 #if LOOP_DEBUG_B
-  #define DEBUG_B_PRINT(...) Serial.print(__VA_ARGS__)
-  #define DEBUG_B_PRINTLN(...) Serial.println(__VA_ARGS__)
+  #define DEBUG_B_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_B_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
 #else
+  #define DEBUG_B_PRINT(...) ((void)0)
+  #define DEBUG_B_PRINTLN(...) ((void)0)
+#endif
+
+#if WEB_ONLY_LOGS
+  #undef DEBUG_PRINT
+  #undef DEBUG_PRINTLN
+  #undef DEBUG_B_PRINT
+  #undef DEBUG_B_PRINTLN
+  #define DEBUG_PRINT(...) ((void)0)
+  #define DEBUG_PRINTLN(...) ((void)0)
   #define DEBUG_B_PRINT(...) ((void)0)
   #define DEBUG_B_PRINTLN(...) ((void)0)
 #endif
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MPU6050.h>
+#include "WebControl.h"
 
 //follow metric system everywhere. all distances in m, speeds m/s, acceleration m/s^2, angles in rad, angular velocity in rad/s
 
@@ -202,11 +215,19 @@ void core0Task(void *pvParameters) {
     
     // C. Read UART command arbitration
     MotorCommand cmdUART = {0}, cmdFoxglove = {0}, cmdFinal = {0};
-    if (xQueueReceive(uartRxQueue, &cmdUART, 0) == pdTRUE) {
-      cmdFinal = cmdUART; // UART has priority
-    }
-    if (xQueueReceive(motorCmdQueue, &cmdFoxglove, 0) == pdTRUE && cmdFinal.tqFR == 0) {
-      cmdFinal = cmdFoxglove; // Foxglove secondary
+    bool enabled = is_robot_enabled();
+    uint8_t mode = get_control_mode();
+
+    if (enabled) {
+      if (mode == 1) { // UART Mode
+        if (xQueueReceive(uartRxQueue, &cmdUART, 0) == pdTRUE) {
+          cmdFinal = cmdUART;
+        }
+      } else { // Web Mode
+        if (xQueueReceive(motorCmdQueue, &cmdFoxglove, 0) == pdTRUE) {
+          cmdFinal = cmdFoxglove;
+        }
+      }
     }
     
     // D. Execute motor commands
@@ -222,15 +243,13 @@ void core0Task(void *pvParameters) {
         // motorDriver.setMotor(MOTOR_FL, cmdFinal.tqFL);
         // motorDriver.setMotor(MOTOR_RR, cmdFinal.tqRR);
         // motorDriver.setMotor(MOTOR_RL, cmdFinal.tqRL);
-        motorDriver.setMotor(MOTOR_FR, 0.1); //for testing
-        motorDriver.setMotor(MOTOR_FL, 0.1);
-        motorDriver.setMotor(MOTOR_RR, 0.1);
-        motorDriver.setMotor(MOTOR_RL, 0.1);
+        motorDriver.setMotor(MOTOR_FR, 0.0f); //for testing
+        motorDriver.setMotor(MOTOR_FL, 0.0f);
+        motorDriver.setMotor(MOTOR_RR, 0.0f);
+        motorDriver.setMotor(MOTOR_RL, 0.0f);
         lastMotorCommandTime = millis();
-      }
-    }
-
-    // After motor command section
+      } 
+    }   
     uint32_t t_afterMotors = millis();
     DEBUG_B_PRINT(">[TIMING] Motors: ");
     DEBUG_B_PRINTLN(t_afterMotors - t_afterSensors);
@@ -248,8 +267,8 @@ void core0Task(void *pvParameters) {
         lastCore1LoopCounter = Core1LoopCounter;
         lastCore1ChangeTime = now;
     }
-    // Timeout threshold in ms (e.g., 200ms)
-    const uint32_t core1TimeoutMs = 200;
+    // Timeout threshold in ms (e.g., 2000ms)
+    const uint32_t core1TimeoutMs = 2000;
     if ((now - lastCore1ChangeTime) > core1TimeoutMs) {
         // Core1 is stalled, do not feed watchdog
         DEBUG_B_PRINTLN("[WATCHDOG] Core1 stalled (timeout), not feeding watchdog!");
@@ -280,6 +299,11 @@ void core1Task(void *pvParameters) {
   lastSonarTime = xTaskGetTickCount();
   TickType_t lastWakeTime = xTaskGetTickCount();
   static uint32_t lastCore1LoopTime = 0;
+
+#if !WEB_ONLY_LOGS
+  Serial.print("[Core1] Stack high water mark (bytes): ");
+  Serial.println(uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+#endif
 
   while (1) {
     // Increment heartbeat every loop
@@ -326,7 +350,31 @@ void core1Task(void *pvParameters) {
     DEBUG_B_PRINT(">[HEARTBEAT Core1] millis: ");
     DEBUG_B_PRINTLN(millis() - lastCore1LoopTime);
     lastCore1LoopTime = millis();
+    static uint32_t lastStackLog = 0;
+    if (millis() - lastStackLog > 2000) {
+      lastStackLog = millis();
+      DEBUG_B_PRINT("[Core1] Stack high water mark (bytes): ");
+      DEBUG_B_PRINTLN(uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+    }
     vTaskDelayUntil(&lastWakeTime, sonarPollPeriod);
+  }
+}
+
+// Core 1 Task: WiFi processing (dedicated)
+void wifiTask(void *pvParameters) {
+#if !WEB_ONLY_LOGS
+  Serial.println("[WiFiTask] Starting WiFi task...");
+#endif
+  TickType_t lastWakeTime = xTaskGetTickCount();
+  const TickType_t wifiPeriod = pdMS_TO_TICKS(10);
+  uint32_t lastLog = 0;
+  while (1) {
+    if (millis() - lastLog > 2000) {
+      lastLog = millis();
+      Serial.println("[WiFiTask] alive");
+    }
+    process_web_clients();
+    vTaskDelayUntil(&lastWakeTime, wifiPeriod);
   }
 }
 
@@ -423,6 +471,10 @@ void setup() {
   motorCmdQueue = xQueueCreate(5, sizeof(MotorCommand));
   uartRxQueue = xQueueCreate(10, sizeof(MotorCommand));
   
+  // Initialize web control
+  Serial.println("[INIT] Starting web control...");
+  start_web_control();
+  
   // Create tasks
   xTaskCreate(
     core0Task,        // Function
@@ -436,9 +488,18 @@ void setup() {
   xTaskCreate(
     core1Task,
     "Core1Task",
-    4096,
+    8192,
     NULL,
     2,                // Lower priority than Core0
+    NULL
+  );
+
+  xTaskCreate(
+    wifiTask,
+    "WiFiTask",
+    8192,
+    NULL,
+    1,
     NULL
   );
   
@@ -487,4 +548,12 @@ void sendTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINTLN(sensors.cliffFront ? 1 : 0);
   DEBUG_PRINT(">cliff_rear:");
   DEBUG_PRINTLN(sensors.cliffRear ? 1 : 0);
+}
+
+void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL) {
+  if (motorCmdQueue == NULL) {
+    return;
+  }
+  MotorCommand cmd = {tqFR, tqFL, tqRR, tqRL, millis()};
+  xQueueSend(motorCmdQueue, &cmd, 0);
 }
