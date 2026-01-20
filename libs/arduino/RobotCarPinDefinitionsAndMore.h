@@ -243,4 +243,26 @@ class vehdemandclass {
     void motionExec();//to execute demands
 };
 
+//UART SCHEMA
+/*Line protocol (ASCII, newline-delimited)
 
+Telemetry (outgoing from Pico): prefix TEL
+TEL,<ts_ms>,<ax>,<ay>,<az>,<gx>,<gy>,<gz>,<temp_c>,<sonar_f_cm>,<sonar_r_cm>,<cliff_f>,<cliff_r>,<spdFL>,<spdFR>,<spdRL>,<spdRR>
+Example: TEL,12345,0.01,-0.02,9.78,0.00,0.01,0.00,24.5,120,255,0,1,12.3,12.0,11.8,11.9
+Command (incoming to Pico): prefix CMD
+Predefined verbs: CMD,forward | CMD,backward | CMD,left | CMD,right | CMD,stop | CMD,enable | CMD,disable
+Direct torque command: CMD,set,<tqFR>,<tqFL>,<tqRR>,<tqRL>
+Example: CMD,set,0.3,0.3,0.3,0.3
+Parsing rules
+
+Fields are comma-separated, \n terminated.
+Floats in decimal; booleans as 0/1; integers for timestamps and sonar/cliff.
+Ignore/skip lines that don’t start with the expected prefix.
+For robustness, cap torques to safe limits after parsing.
+Integration points
+
+Telemetry emit: replace sendTelemetry body to print the TEL,... line once per loop interval.
+Command ingest: adjust process_uart_commands to:
+Read a line
+If it starts with CMD,set, parse four floats
+Else map the verb to the preset torques or enable/disable

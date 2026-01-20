@@ -1,9 +1,4 @@
 #include <cstdint>
-#define __FREERTOS 1
-#include <FreeRTOS.h>
-#include <task.h>
-#include <queue.h>
-#include <semphr.h>
 #include <SimpleFOC.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
@@ -11,13 +6,12 @@
 #include <hardware/watchdog.h>
 
 
-
 #define MASTER_PICOW_4WD_NONSTEER_RUBBERWHL_2XSONAR_2xCLIFF
 
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
 #define LOOP_DEBUG_A 0
 #define LOOP_DEBUG_B 0
-#define WEB_ONLY_LOGS 1
+#define LOOP_DEBUG_UART 1
 
 #if LOOP_DEBUG_A
   #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
@@ -34,20 +28,17 @@
   #define DEBUG_B_PRINTLN(...) ((void)0)
 #endif
 
-#if WEB_ONLY_LOGS
-  #undef DEBUG_PRINT
-  #undef DEBUG_PRINTLN
-  #undef DEBUG_B_PRINT
-  #undef DEBUG_B_PRINTLN
-  #define DEBUG_PRINT(...) ((void)0)
-  #define DEBUG_PRINTLN(...) ((void)0)
-  #define DEBUG_B_PRINT(...) ((void)0)
-  #define DEBUG_B_PRINTLN(...) ((void)0)
+#if LOOP_DEBUG_UART
+  #define DEBUG_UART_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_UART_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_UART_PRINT(...) ((void)0)
+  #define DEBUG_UART_PRINTLN(...) ((void)0)
 #endif
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MPU6050.h>
-#include "WebControl.h"
+#include <Arduino.h>
 
 //follow metric system everywhere. all distances in m, speeds m/s, acceleration m/s^2, angles in rad, angular velocity in rad/s
 
@@ -97,7 +88,6 @@ int32_t sonarDistanceRear = 7;
 uint32_t lastSonarFrontPoll = 0;
 uint32_t lastSonarRearPoll = 0;
 uint32_t lastMotorCommandTime = 0;
-volatile uint32_t Core1LoopCounter = 0;
 SystemState systemState = SystemState::INIT;
 bool mpuAvailable = false;
 
@@ -133,250 +123,19 @@ struct MotorCommand {
   uint32_t commandTime;
 };
 
-// Thread-safe queues and semaphores
-QueueHandle_t sensorQueue = NULL;      // Core1 → Core0: sensor data
-QueueHandle_t motorCmdQueue = NULL;    // Core0 → Core1: motor commands
-QueueHandle_t uartRxQueue = NULL;      // UART ISR → Core0: commands
-SemaphoreHandle_t sensorMutex = NULL;  // Protect shared sensor buffer
-
-// Global sensor buffer (protected by mutex)
+// Simple shared state (single core)
 static SensorBuffer currentSensors = {0};
-static volatile bool sonarReadyFlag = false;
+static MotorCommand latestMotorCmd = {0, 0, 0, 0, 0};
+static bool robotEnabled = true;
+
+// Forward declarations
+void process_uart_commands();
 
 // Forward declaration for telemetry function
 void sendTelemetry(const SensorBuffer &sensors);
 
-// Core 0 Task: Time-critical sensor + motor control
-void core0Task(void *pvParameters) {
-  TickType_t lastWakeTime;
-  TickType_t loopPeriod;
-  lastWakeTime = xTaskGetTickCount();
-  loopPeriod = pdMS_TO_TICKS(50); // 50ms loop
-  
-  static uint32_t lastCore0ChangeTime = 0;
-  static uint32_t lastCore1LoopCounter = 0;
-  static uint32_t lastCore1ChangeTime = 0;
-  // Add a global boot counter (retained in RTC memory if possible)
-  volatile uint32_t bootCounter = 0;
-  
-  
-  while (1) {
-    
-    // Timing diagnostics in core0Task
-    uint32_t t_start = millis();
-    // A. Read all local sensors (IMU, cliff, encoders)
-    sensors_event_t accel, gyro, temp;
-    if (mpuAvailable) {
-      mpu.getEvent(&accel, &gyro, &temp);
-    }
-    frontCliff.read();
-    rearCliff.read();
-    
-    
-
-    // Update shared buffer
-    xSemaphoreTake(sensorMutex, portMAX_DELAY);
-    currentSensors.accelX = accel.acceleration.x;
-    currentSensors.accelY = accel.acceleration.y;
-    currentSensors.accelZ = accel.acceleration.z;
-    currentSensors.gyroX = gyro.gyro.x;
-    currentSensors.gyroY = gyro.gyro.y;
-    currentSensors.gyroZ = gyro.gyro.z;
-    currentSensors.temp = temp.temperature;
-    currentSensors.speedFL = motorDriver.getRPM(MOTOR_FL) * MOTOR_RPM_TO_CMPS;
-    currentSensors.speedFR = motorDriver.getRPM(MOTOR_FR) * MOTOR_RPM_TO_CMPS;
-    currentSensors.speedRL = motorDriver.getRPM(MOTOR_RL) * MOTOR_RPM_TO_CMPS;  
-    currentSensors.speedRR = motorDriver.getRPM(MOTOR_RR) * MOTOR_RPM_TO_CMPS;
-    // // Debug: print raw RPM readings
-    // DEBUG_B_PRINT("Raw RPM FL: "); DEBUG_B_PRINTLN(currentSensors.speedFL);
-    // DEBUG_B_PRINT("Raw RPM FR: "); DEBUG_B_PRINTLN(currentSensors.speedFR);
-    // DEBUG_B_PRINT("Raw RPM RL: "); DEBUG_B_PRINTLN(currentSensors.speedRL);
-    // DEBUG_B_PRINT("Raw RPM RR: "); DEBUG_B_PRINTLN(currentSensors.speedRR);
-    currentSensors.cliffFront = frontCliff.getLastState();
-    currentSensors.cliffRear = rearCliff.getLastState();
-    currentSensors.timestamp = millis();
-    // After sensor read and buffer update
-    uint32_t t_afterSensors = millis();
-    DEBUG_B_PRINT(">[TIMING] Sensors: ");
-    DEBUG_B_PRINTLN(t_afterSensors - t_start);
-
-    xSemaphoreGive(sensorMutex);
-    
-    // B. Check if sonar should be read (non-blocking flag from Core1)
-    // Core1 will set a flag when sonar is ready
-    if (sonarReadyFlag) {
-      if (xSemaphoreTake(sensorMutex, portMAX_DELAY) == pdTRUE) {
-        currentSensors.sonarRearcm = sonarDistanceRear; // From Core1
-        currentSensors.sonarFrontcm = sonarDistanceFront; // From Core1
-        xSemaphoreGive(sensorMutex);
-      }
-      sonarReadyFlag = false;
-    }
-    
-    // C. Read UART command arbitration
-    MotorCommand cmdUART = {0}, cmdFoxglove = {0}, cmdFinal = {0};
-    bool enabled = is_robot_enabled();
-    uint8_t mode = get_control_mode();
-
-    if (enabled) {
-      if (mode == 1) { // UART Mode
-        if (xQueueReceive(uartRxQueue, &cmdUART, 0) == pdTRUE) {
-          cmdFinal = cmdUART;
-        }
-      } else { // Web Mode
-        if (xQueueReceive(motorCmdQueue, &cmdFoxglove, 0) == pdTRUE) {
-          cmdFinal = cmdFoxglove;
-        }
-      }
-    }
-    
-    // D. Execute motor commands
-     // Check motor safety timeouts (non-blocking)
-    switch (motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) { 
-      case true:{
-        if (systemState == SystemState::RUNNING || systemState == SystemState::DEGRADED) {
-          DEBUG_PRINTLN("[SAFETY] Motor timeout - stopped inactive motors");
-        }
-        break;}
-      case false:{
-        // motorDriver.setMotor(MOTOR_FR, cmdFinal.tqFR);
-        // motorDriver.setMotor(MOTOR_FL, cmdFinal.tqFL);
-        // motorDriver.setMotor(MOTOR_RR, cmdFinal.tqRR);
-        // motorDriver.setMotor(MOTOR_RL, cmdFinal.tqRL);
-        motorDriver.setMotor(MOTOR_FR, 0.0f); //for testing
-        motorDriver.setMotor(MOTOR_FL, 0.0f);
-        motorDriver.setMotor(MOTOR_RR, 0.0f);
-        motorDriver.setMotor(MOTOR_RL, 0.0f);
-        lastMotorCommandTime = millis();
-      } 
-    }   
-    uint32_t t_afterMotors = millis();
-    DEBUG_B_PRINT(">[TIMING] Motors: ");
-    DEBUG_B_PRINTLN(t_afterMotors - t_afterSensors);
-
-    // Output telemetry to UART
-    sendTelemetry(currentSensors);
-    // After telemetry
-    uint32_t t_afterTelemetry = millis();
-    DEBUG_B_PRINT(">[TIMING] Telemetry: ");
-    DEBUG_B_PRINTLN(t_afterTelemetry - t_afterMotors);
-
-    // Watchdog feed with timeout-based stall detection
-    uint32_t now = millis();
-    if (Core1LoopCounter != lastCore1LoopCounter) {
-        lastCore1LoopCounter = Core1LoopCounter;
-        lastCore1ChangeTime = now;
-    }
-    // Timeout threshold in ms (e.g., 2000ms)
-    const uint32_t core1TimeoutMs = 2000;
-    if ((now - lastCore1ChangeTime) > core1TimeoutMs) {
-        // Core1 is stalled, do not feed watchdog
-        DEBUG_B_PRINTLN("[WATCHDOG] Core1 stalled (timeout), not feeding watchdog!");
-    } else {
-        watchdog_update(); // Only feed if Core1 is alive
-    }
-    
-    // Heartbeat print should show up every 100ms
-    DEBUG_B_PRINT(">[HEARTBEAT Core0] millis: ");
-    DEBUG_B_PRINTLN(millis()-lastCore0ChangeTime);
-    lastCore0ChangeTime = millis();    
-    
-    // At end of loop
-    uint32_t t_end = millis();
-    DEBUG_B_PRINT("[TIMING] Loop total: ");
-    DEBUG_B_PRINTLN(t_end - t_start);
-
-    // Wait until next loop period (blocks if early)
-    vTaskDelayUntil(&lastWakeTime, loopPeriod);
-  }
-}
-
-// Core 1 Task: WiFi + Sonar (blocking I/O tolerant)
-void core1Task(void *pvParameters) {
-  TickType_t sonarPollPeriod;
-  TickType_t lastSonarTime;
-  sonarPollPeriod = pdMS_TO_TICKS(50); // 50ms period
-  lastSonarTime = xTaskGetTickCount();
-  TickType_t lastWakeTime = xTaskGetTickCount();
-  static uint32_t lastCore1LoopTime = 0;
-
-#if !WEB_ONLY_LOGS
-  Serial.print("[Core1] Stack high water mark (bytes): ");
-  Serial.println(uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
-#endif
-
-  while (1) {
-    // Increment heartbeat every loop
-    Core1LoopCounter++;
-  
-    TickType_t now;
-    now = xTaskGetTickCount();
-    // A. Non-blocking sonar poll (only if time permits)
-
-    if ((now - lastSonarTime) >= sonarPollPeriod) {
-      int32_t reading = sonarR.ping_cm();
-      DEBUG_B_PRINT(">Raw sonarR.ping_cm(): "); DEBUG_B_PRINTLN(reading);
-      if (reading > 0 && reading < kMaxSonarRangecm ) {
-        if (xSemaphoreTake(sensorMutex, portMAX_DELAY) == pdTRUE) {
-          currentSensors.sonarRearcm = reading;
-          xSemaphoreGive(sensorMutex);
-        }
-        sonarReadyFlag = true;
-      }
-      lastSonarTime = now;
-    }
-    delay(min_sonar_delayMs); // Delay to avoid crosstalk between sonars
-
-    int32_t frontReading = sonarF.ping_cm();
-    DEBUG_B_PRINT(">Raw sonarF.ping_cm(): "); DEBUG_B_PRINTLN(frontReading);
-    // Atomically update both front and rear sonar readings
-    if (frontReading > 0 && frontReading < kMaxSonarRangecm ) {
-      if (xSemaphoreTake(sensorMutex, portMAX_DELAY) == pdTRUE) {
-        currentSensors.sonarFrontcm = frontReading;
-        // Use the last valid rear reading (already set above)
-        // Optionally, you can re-read rear sonar here if needed
-        // currentSensors.sonarRearcm = rearReading;
-        xSemaphoreGive(sensorMutex);
-      }
-      sonarReadyFlag = true;
-    }
-    lastSonarTime = now;
-
-    // B. WiFi operations (can block here)
-    // Read commands from Foxglove, post to motorCmdQueue
-    // Send telemetry via WiFi
-
-    // Heartbeat print. should be 50ms each time
-    DEBUG_B_PRINT(">[HEARTBEAT Core1] millis: ");
-    DEBUG_B_PRINTLN(millis() - lastCore1LoopTime);
-    lastCore1LoopTime = millis();
-    static uint32_t lastStackLog = 0;
-    if (millis() - lastStackLog > 2000) {
-      lastStackLog = millis();
-      DEBUG_B_PRINT("[Core1] Stack high water mark (bytes): ");
-      DEBUG_B_PRINTLN(uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
-    }
-    vTaskDelayUntil(&lastWakeTime, sonarPollPeriod);
-  }
-}
-
-// Core 1 Task: WiFi processing (dedicated)
-void wifiTask(void *pvParameters) {
-#if !WEB_ONLY_LOGS
-  Serial.println("[WiFiTask] Starting WiFi task...");
-#endif
-  TickType_t lastWakeTime = xTaskGetTickCount();
-  const TickType_t wifiPeriod = pdMS_TO_TICKS(10);
-  uint32_t lastLog = 0;
-  while (1) {
-    if (millis() - lastLog > 2000) {
-      lastLog = millis();
-      Serial.println("[WiFiTask] alive");
-    }
-    process_web_clients();
-    vTaskDelayUntil(&lastWakeTime, wifiPeriod);
-  }
-}
+// Single-threaded loop bookkeeping
+static uint32_t lastLoopStart = 0;
 
 // Add a global boot counter (retained in RTC memory if possible)
 volatile uint32_t bootCounter = 0;
@@ -389,14 +148,15 @@ void setup() {
   // Concept 5: Enable hardware watchdog (2 second timeout). 
   watchdog_enable(kWatchdogTimeoutMs, true);
 
-  // Concept 1: Timeout on Serial connection
-  Serial.begin(kSerialBaud);
-  delay(500);  // Give serial extra time
+  // Concept 1: Timeout on USB Serial (for debug/monitoring)
+  Serial.begin(115200);
+  delay(500);
   const uint32_t serialStart = millis();
   while ((!Serial) && ((millis() - serialStart) < kSerialWaitMs)) {
     delay(10);
-    watchdog_update(); 
+    watchdog_update();
   }
+
 
   Serial.println();
   Serial.println("==========================================");
@@ -405,6 +165,7 @@ void setup() {
 
   Serial.println("[INIT] Pico W starting...");
   systemState = SystemState::INIT;
+
 
   Serial.println("[INIT] Initializing cliff sensors...");
   frontCliff.init();
@@ -460,55 +221,133 @@ void setup() {
     mpuAvailable = true;
     systemState = SystemState::RUNNING;
   }
+  // --- UART handshake: Wait for Jetson to send CMD,stop before proceeding ---
+
+  // UART1 for Jetson comms
+  Serial.println("[INIT] setting up UART as slave");
+  Serial1.setTX(PICOW_JETSON_UART_TX);
+  Serial1.setRX(PICOW_JETSON_UART_RX);
+  Serial1.begin(kSerialBaud);
+  delay(500);
+  Serial.println("[UART] Waiting for Jetson handshake (CMD,stop) before setup...");
+  uint32_t uartWaitStart = millis();
+  bool gotJetson = false;
+  while ((millis() - uartWaitStart) < 10000) { // Wait up to 10 seconds
+    if (Serial1.available()) {
+      String jetsonMsg = Serial1.readStringUntil('\n');
+      jetsonMsg.trim();
+      if (jetsonMsg.equalsIgnoreCase("CMD,stop")) {
+        gotJetson = true;
+        Serial.println("[UART] Jetson handshake received (CMD,stop), proceeding with setup.");
+        break;
+      }
+    }
+    delay(10);
+    watchdog_update();
+  }
+  if (!gotJetson) {
+    Serial.println("[UART] No Jetson handshake (CMD,stop) received. Will keep waiting in main loop.");
+  }
+
+  // Only proceed with hardware setup if Jetson handshake (CMD,stop) was received
+  while (!gotJetson) {
+    if (Serial1.available()) {
+      String jetsonMsg = Serial1.readStringUntil('\n');
+      jetsonMsg.trim();
+      if (jetsonMsg.equalsIgnoreCase("CMD,stop")) {
+        gotJetson = true;
+        Serial.println("[UART] Jetson handshake received (CMD,stop), proceeding with setup.");
+        break;
+      }
+    }
+    delay(10);
+    watchdog_update();
+  }
 
   Serial.println("[INIT] System ready. Streaming data every 100ms.");
   lastPublish = millis();
   lastMotorCommandTime = millis();  
-  
-  // Create synchronization primitives
-  sensorMutex = xSemaphoreCreateMutex();
-  sensorQueue = xQueueCreate(5, sizeof(SensorBuffer));
-  motorCmdQueue = xQueueCreate(5, sizeof(MotorCommand));
-  uartRxQueue = xQueueCreate(10, sizeof(MotorCommand));
-  
-  // Initialize web control
-  Serial.println("[INIT] Starting web control...");
-  start_web_control();
-  
-  // Create tasks
-  xTaskCreate(
-    core0Task,        // Function
-    "Core0Task",      // Name
-    4096,             // Stack size (bytes)
-    NULL,             // Parameters
-    3,                // Priority (higher = more priority)
-    NULL              // Task handle
-  );
-  
-  xTaskCreate(
-    core1Task,
-    "Core1Task",
-    8192,
-    NULL,
-    2,                // Lower priority than Core0
-    NULL
-  );
 
-  xTaskCreate(
-    wifiTask,
-    "WiFiTask",
-    8192,
-    NULL,
-    1,
-    NULL
-  );
-  
-  // FreeRTOS scheduler starts automatically
+
 }
 
 void loop() {
-  // Arduino loop() becomes idle when tasks are running
-  vTaskDelay(pdMS_TO_TICKS(1000));
+  const uint32_t now = millis();
+  if (now - lastLoopStart < kLoopPeriodMs) {
+    delay(1);
+    return;
+  }
+  lastLoopStart = now;
+
+  // Handle incoming UART commands
+  process_uart_commands();
+
+  // Poll sonar (rear then front with crosstalk delay)
+  if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
+    int32_t rear = sonarR.ping_cm();
+    if (rear > 0 && rear < kMaxSonarRangecm) {
+      sonarDistanceRear = rear;
+    }
+    lastSonarRearPoll = now;
+  }
+
+  if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
+    delay(min_sonar_delayMs);
+    int32_t front = sonarF.ping_cm();
+    if (front > 0 && front < kMaxSonarRangecm) {
+      sonarDistanceFront = front;
+    }
+    lastSonarFrontPoll = now;
+  }
+
+  // Read IMU and cliffs
+  sensors_event_t accel = {}, gyro = {}, temp = {};
+  if (mpuAvailable) {
+    mpu.getEvent(&accel, &gyro, &temp);
+  }
+  frontCliff.read();
+  rearCliff.read();
+
+  // Update sensor struct
+  currentSensors.accelX = accel.acceleration.x;
+  currentSensors.accelY = accel.acceleration.y;
+  currentSensors.accelZ = accel.acceleration.z;
+  currentSensors.gyroX = gyro.gyro.x;
+  currentSensors.gyroY = gyro.gyro.y;
+  currentSensors.gyroZ = gyro.gyro.z;
+  currentSensors.temp = temp.temperature;
+  currentSensors.speedFL = motorDriver.getRPM(MOTOR_FL) * MOTOR_RPM_TO_CMPS;
+  currentSensors.speedFR = motorDriver.getRPM(MOTOR_FR) * MOTOR_RPM_TO_CMPS;
+  currentSensors.speedRL = motorDriver.getRPM(MOTOR_RL) * MOTOR_RPM_TO_CMPS;
+  currentSensors.speedRR = motorDriver.getRPM(MOTOR_RR) * MOTOR_RPM_TO_CMPS;
+  currentSensors.sonarFrontcm = sonarDistanceFront;
+  currentSensors.sonarRearcm = sonarDistanceRear;
+  currentSensors.cliffFront = frontCliff.getLastState();
+  currentSensors.cliffRear = rearCliff.getLastState();
+  currentSensors.timestamp = now;
+
+  // Pick motor command (latestMotorCmd set by UART commands)
+  MotorCommand cmdFinal = latestMotorCmd;
+
+  // Safety check
+  if (!robotEnabled || motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
+    motorDriver.setMotor(MOTOR_FR, 0.0f);
+    motorDriver.setMotor(MOTOR_FL, 0.0f);
+    motorDriver.setMotor(MOTOR_RR, 0.0f);
+    motorDriver.setMotor(MOTOR_RL, 0.0f);
+  } else {
+    motorDriver.setMotor(MOTOR_FR, cmdFinal.tqFR);
+    motorDriver.setMotor(MOTOR_FL, cmdFinal.tqFL);
+    motorDriver.setMotor(MOTOR_RR, cmdFinal.tqRR);
+    motorDriver.setMotor(MOTOR_RL, cmdFinal.tqRL);
+    lastMotorCommandTime = now;
+  }
+
+  // Telemetry
+  sendTelemetry(currentSensors);
+
+  // Feed watchdog
+  watchdog_update();
 }
 
 // Telemetry output function
@@ -551,9 +390,45 @@ void sendTelemetry(const SensorBuffer &sensors) {
 }
 
 void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL) {
-  if (motorCmdQueue == NULL) {
-    return;
+  latestMotorCmd = {tqFR, tqFL, tqRR, tqRL, millis()};
+}
+
+// Simple UART command parser
+// Commands: forward, backward, left, right, stop
+// Or: cmd <tqFR> <tqFL> <tqRR> <tqRL>
+void process_uart_commands() {
+  if (!Serial1.available()) return;
+  String line = Serial1.readStringUntil('\n');
+  line.trim();
+  DEBUG_UART_PRINTLN("[UART] Received: " + line);
+  if (line.length() == 0) return;
+
+  if (line.equalsIgnoreCase("forward")) {
+    queue_motor_command(0.5f, 0.5f, 0.5f, 0.5f);
+  } else if (line.equalsIgnoreCase("backward")) {
+    queue_motor_command(-0.5f, -0.5f, -0.5f, -0.5f);
+  } else if (line.equalsIgnoreCase("left")) {
+    queue_motor_command(-0.3f, 0.3f, -0.3f, 0.3f);
+  } else if (line.equalsIgnoreCase("right")) {
+    queue_motor_command(0.3f, -0.3f, 0.3f, -0.3f);
+  } else if (line.equalsIgnoreCase("stop")) {
+    queue_motor_command(0.0f, 0.0f, 0.0f, 0.0f);
+  } else if (line.equalsIgnoreCase("enable")) {
+    robotEnabled = true;
+    DEBUG_UART_PRINTLN("[UART] Robot ENABLED");
+  } else if (line.equalsIgnoreCase("disable")) {
+    robotEnabled = false;
+    queue_motor_command(0.0f, 0.0f, 0.0f, 0.0f);
+    DEBUG_UART_PRINTLN("[UART] Robot DISABLED");
+  } else if (line.startsWith("cmd")) {
+    float fr, fl, rr, rl;
+    if (sscanf(line.c_str(), "cmd %f %f %f %f", &fr, &fl, &rr, &rl) == 4) {
+      queue_motor_command(fr, fl, rr, rl);
+    } else {
+      DEBUG_UART_PRINTLN("[UART] cmd parse error. Use: cmd fr fl rr rl");
+    }
+  } else {
+    DEBUG_UART_PRINT("[UART] Unknown command ");
   }
-  MotorCommand cmd = {tqFR, tqFL, tqRR, tqRL, millis()};
-  xQueueSend(motorCmdQueue, &cmd, 0);
+
 }

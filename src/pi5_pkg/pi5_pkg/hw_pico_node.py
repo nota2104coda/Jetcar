@@ -24,10 +24,12 @@ class PicoSensorsNode(Node):
         self.get_logger().info("Pico Sensors Node has started.")
 
         # --- Parameters ---
-        self.declare_parameter('serial_port', '/dev/ttyACM0')
+        # Use UART device (not USB serial). On Jetson Orin Nano, this is usually /dev/ttyTHS1 or /dev/ttyTHS2
+        # See Jetson hardware docs for correct UART port. Default below is typical for Jetson Orin Nano UART1.
+        self.declare_parameter('serial_port', '/dev/ttyTHS1')
         self.declare_parameter('baud_rate', 115200)
         self.declare_parameter('wheel_base', 0.15) # meters, distance between left and right wheels
-        self.declare_parameter('wheel_radius', 0.035) # meters
+        self.declare_parameter('wheel_radius', 0.03) # meters
         self.declare_parameter('odom_frame_id', 'odom')
         self.declare_parameter('base_frame_id', 'base_link')
 
@@ -53,13 +55,50 @@ class PicoSensorsNode(Node):
         # --- TF Broadcaster ---
         self.tf_broadcaster = TransformBroadcaster(self)
 
-        # --- Serial Connection ---
+        # --- UART Connection (Jetson Orin Nano) ---
         try:
             self.pico_serial = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
-            self.get_logger().info(f"Successfully connected to Pico on {self.serial_port}")
+            self.get_logger().info(f"Successfully connected to Pico via UART on {self.serial_port} (Jetson Orin Nano)")
+            # Send handshake message to Pico
+            try:
+                self.pico_serial.write(b"CMD,stop\n")
+                self.get_logger().info("Sent handshake: CMD,stop")
+            except Exception as e:
+                self.get_logger().warn(f"Failed to send handshake: {e}")
+            # Wait for Pico to send a valid line (handshake)
+            self.get_logger().info("Waiting for Pico to send UART message...")
+            handshake_timeout = 5.0  # seconds
+            start_time = time.time()
+            got_pico = False
+            while time.time() - start_time < handshake_timeout:
+                if self.pico_serial.in_waiting > 0:
+                    line = self.pico_serial.readline().decode('utf-8').strip()
+                    if line:
+                        self.get_logger().info(f"Received handshake from Pico: {line}")
+                        got_pico = True
+                        break
+                time.sleep(0.05)
+            if not got_pico:
+                self.get_logger().error(f"No UART message from Pico after {handshake_timeout} seconds. Declaring Pico dead, will keep retrying.")
+                self.pico_alive = False
+            else:
+                self.pico_alive = True
         except serial.SerialException as e:
-            self.get_logger().error(f"Failed to connect to Pico on {serial_port}: {e}")
+            self.get_logger().error(f"Failed to connect to Pico on {self.serial_port}: {e}")
             rclpy.shutdown()
+            return
+    def read_and_publish(self):
+        """
+        Read a line from UART, parse it according to UART schema, and publish data to respective topics.
+        If Pico is not alive, keep trying to reconnect.
+        """
+        if hasattr(self, 'pico_alive') and not self.pico_alive:
+            # Try to reconnect/handshake
+            if self.pico_serial.in_waiting > 0:
+                line = self.pico_serial.readline().decode('utf-8').strip()
+                if line:
+                    self.get_logger().info(f"Pico reconnected: {line}")
+                    self.pico_alive = True
             return
 
         # --- State Variables ---
@@ -72,10 +111,12 @@ class PicoSensorsNode(Node):
         # The timer will attempt to read and process data. The actual rate
         # will depend on how fast the Pico sends data.
         self.timer = self.create_timer(0.02, self.read_and_publish) # 50 Hz loop
+        # Example: send a command to Pico (uncomment to use)
+        # self.send_command("forward")
 
     def read_and_publish(self):
         """
-        Read a line from serial, parse it, and publish data to respective topics.
+        Read a line from UART, parse it according to UART schema, and publish data to respective topics.
         """
         if not self.pico_serial.in_waiting > 0:
             return
@@ -84,35 +125,68 @@ class PicoSensorsNode(Node):
             line = self.pico_serial.readline().decode('utf-8').strip()
             if not line:
                 return
-            
-            data = json.loads(line)
-            
-            # Process and publish each piece of data
-            if 'wl' in data:
-                # Assuming data['wl'] = [front_left, front_right, rear_left, rear_right]
-                # For a differential drive, we average front and rear wheels
-                left_rad_s = (data['wl'][0] + data['wl'][2]) / 2.0
-                right_rad_s = (data['wl'][1] + data['wl'][3]) / 2.0
+            if line.startswith("TEL,"):
+                # Parse telemetry line
+                fields = line.split(',')
+                if len(fields) != 17:
+                    self.get_logger().warn(f"Malformed TEL line: {line}")
+                    return
+                # Unpack fields
+                ts_ms = int(fields[1])
+                ax, ay, az = float(fields[2]), float(fields[3]), float(fields[4])
+                gx, gy, gz = float(fields[5]), float(fields[6]), float(fields[7])
+                temp_c = float(fields[8])
+                sonar_f_cm = int(fields[9])
+                sonar_r_cm = int(fields[10])
+                cliff_f = bool(fields[11])
+                cliff_r = bool(fields[12])
+                spdFL = float(fields[13])
+                spdFR = float(fields[14])
+                spdRL = float(fields[15])
+                spdRR = float(fields[16])
+
+                # Publish odometry using wheel speeds (FL, FR, RL, RR)
+                left_rad_s = (spdFL + spdRL) / 2.0
+                right_rad_s = (spdFR + spdRR) / 2.0
                 self.update_odometry(left_rad_s, right_rad_s)
 
-            if 'sonar' in data:
-                self.publish_range('sonar/rear', self.rear_sonar_publisher, data['sonar'])
+                # Publish sonar (front and rear)
+                self.publish_range('sonar/rear', self.rear_sonar_publisher, sonar_r_cm / 100.0)
+                # Optionally publish front sonar if needed
+                # self.publish_range('sonar/front', self.front_sonar_publisher, sonar_f_cm / 100.0)
 
-            if 'cliff' in data:
-                # Assuming 0=clear, 1=cliff. We can publish a max_range for clear.
-                self.publish_range('cliff/front', self.cliff_front_publisher, 0.2 if data['cliff'][0] else 0.0)
-                self.publish_range('cliff/rear', self.cliff_rear_publisher, 0.2 if data['cliff'][1] else 0.0)
-
-            # Add handlers for 'tof' and 'lidar' data here
-
-        except json.JSONDecodeError:
-            self.get_logger().warn(f"Received malformed JSON: {line}")
+                # Publish cliff sensors
+                self.publish_range('cliff/front', self.cliff_front_publisher, 0.2 if cliff_f == 0 else 0.0)
+                self.publish_range('cliff/rear', self.cliff_rear_publisher, 0.2 if cliff_r == 0 else 0.0)
+                # You can add more publishers for IMU, temp, etc. as needed
+            elif line.startswith("CMD,"):
+                # Ignore incoming CMD lines (should not happen, but for completeness)
+                pass
+            else:
+                # Ignore lines with unexpected prefix
+                return
         except Exception as e:
             self.get_logger().error(f"An error occurred: {e}")
         except serial.SerialException:
             self.get_logger().error("Serial connection lost. Attempting to reconnect...")
             while not self.try_reconnect():
                 time.sleep(1)
+    def send_command(self, verb_or_set, *args):
+        """
+        Send a command to Pico as per UART schema.
+        Usage:
+            send_command("forward")
+            send_command("set", tqFR, tqFL, tqRR, tqRL)
+        """
+        if verb_or_set == "set" and len(args) == 4:
+            cmd = f"CMD,set,{args[0]},{args[1]},{args[2]},{args[3]}\n"
+        else:
+            cmd = f"CMD,{verb_or_set}\n"
+        try:
+            self.pico_serial.write(cmd.encode('utf-8'))
+            self.get_logger().info(f"Sent command: {cmd.strip()}")
+        except Exception as e:
+            self.get_logger().error(f"Failed to send command: {e}")
 
     def try_reconnect(self):
         serial_port = self.get_parameter('serial_port').get_parameter_value().string_value
