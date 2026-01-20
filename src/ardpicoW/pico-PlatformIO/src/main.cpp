@@ -397,7 +397,10 @@ void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL) {
 // Commands: forward, backward, left, right, stop
 // Or: cmd <tqFR> <tqFL> <tqRR> <tqRL>
 void process_uart_commands() {
-  if (!Serial1.available()) return;
+  if (!Serial1.available()) {
+    DEBUG_UART_PRINTLN("[UART] No Serial1 data available");
+    return;
+  }
   String line = Serial1.readStringUntil('\n');
   line.trim();
   DEBUG_UART_PRINTLN("[UART] Received: " + line);
