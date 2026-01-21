@@ -11,7 +11,7 @@
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
 #define LOOP_DEBUG_A 0
 #define LOOP_DEBUG_B 0
-#define LOOP_DEBUG_UART 1
+#define LOOP_DEBUG_I2C 1
 
 #if LOOP_DEBUG_A
   #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
@@ -28,19 +28,19 @@
   #define DEBUG_B_PRINTLN(...) ((void)0)
 #endif
 
-#if LOOP_DEBUG_UART
-  #define DEBUG_UART_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
-  #define DEBUG_UART_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#if LOOP_DEBUG_I2C
+  #define DEBUG_I2C_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_I2C_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
 #else
-  #define DEBUG_UART_PRINT(...) ((void)0)
-  #define DEBUG_UART_PRINTLN(...) ((void)0)
+  #define DEBUG_I2C_PRINT(...) ((void)0)
+  #define DEBUG_I2C_PRINTLN(...) ((void)0)
 #endif
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MPU6050.h>
 #include <Arduino.h>
 
-//follow metric system everywhere. all distances in m, speeds m/s, acceleration m/s^2, angles in rad, angular velocity in rad/s
+//follow metric system everywhere except for distance/speed/acceleration are in cm. angles in rad, angular velocity in rad/s
 
 // System constants
 static constexpr float kGearRatio = 46.0;
@@ -63,18 +63,11 @@ static constexpr float WHEEL_RAD =  3;  //6 cm dia wheels
 static constexpr float RADPS2MPS = 0.03; //same as wheel radius, since v = r*w
 static constexpr float MOTOR_RPM_TO_CMPS = RPM2RADPS * WHEEL_RAD / kGearRatio;
 
-// System state machine
-enum class SystemState : uint8_t {
-  INIT = 0,
-  RUNNING = 1,
-  DEGRADED = 2,  // Running without IMU
-  ERROR = 3
-};
-
 #include "/home/jeevan/PicoWCar/libs/arduino/CarConfigurations.h"
 #include "/home/jeevan/PicoWCar/libs/arduino/RobotCarPinDefinitionsAndMore.h"
 #include "/home/jeevan/PicoWCar/src/ardpicoW/pico-PlatformIO/src/CliffSensor.h"
 #include "/home/jeevan/PicoWCar/src/ardpicoW/pico-PlatformIO/src/PCA9685_AWDDriver.h"
+#include "/home/jeevan/PicoWCar/src/ardpicoW/pico-PlatformIO/src/stateMachines.h"
 
 CliffSensor frontCliff(PIN_FRONT_CLIFF);
 CliffSensor rearCliff(PIN_REAR_CLIFF);
@@ -398,12 +391,12 @@ void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL) {
 // Or: cmd <tqFR> <tqFL> <tqRR> <tqRL>
 void process_uart_commands() {
   if (!Serial1.available()) {
-    DEBUG_UART_PRINTLN("[UART] No Serial1 data available");
+    DEBUG_I2C_PRINTLN("[UART] No Serial1 data available");
     return;
   }
   String line = Serial1.readStringUntil('\n');
   line.trim();
-  DEBUG_UART_PRINTLN("[UART] Received: " + line);
+  DEBUG_I2C_PRINTLN("[UART] Received: " + line);
   if (line.length() == 0) return;
 
   if (line.equalsIgnoreCase("forward")) {
@@ -418,20 +411,20 @@ void process_uart_commands() {
     queue_motor_command(0.0f, 0.0f, 0.0f, 0.0f);
   } else if (line.equalsIgnoreCase("enable")) {
     robotEnabled = true;
-    DEBUG_UART_PRINTLN("[UART] Robot ENABLED");
+    DEBUG_I2C_PRINTLN("[UART] Robot ENABLED");
   } else if (line.equalsIgnoreCase("disable")) {
     robotEnabled = false;
     queue_motor_command(0.0f, 0.0f, 0.0f, 0.0f);
-    DEBUG_UART_PRINTLN("[UART] Robot DISABLED");
+    DEBUG_I2C_PRINTLN("[UART] Robot DISABLED");
   } else if (line.startsWith("cmd")) {
     float fr, fl, rr, rl;
     if (sscanf(line.c_str(), "cmd %f %f %f %f", &fr, &fl, &rr, &rl) == 4) {
       queue_motor_command(fr, fl, rr, rl);
     } else {
-      DEBUG_UART_PRINTLN("[UART] cmd parse error. Use: cmd fr fl rr rl");
+      DEBUG_I2C_PRINTLN("[UART] cmd parse error. Use: cmd fr fl rr rl");
     }
   } else {
-    DEBUG_UART_PRINT("[UART] Unknown command ");
+    DEBUG_I2C_PRINT("[UART] Unknown command ");
   }
 
 }
