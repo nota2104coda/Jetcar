@@ -118,26 +118,22 @@
   #endif
 
   #if defined(CAR_HAS_I2C)
-    #define ESP32_I2C0_SDA 1
-    #define ESP32_I2C0_SCL 2
-    #define ESP32_JETSON_I2C1_SDA 42
-    #define ESP32_JETSON_I2C1_SCL 41
-    #define MASTER_PICOW_ADDR 0x08
+    #define MCU_I2C0_SDA 1
+    #define MCU_I2C0_SCL 2
+    #define MCU_JETSON_I2C1_SDA 42
+    #define MCU_JETSON_I2C1_SCL 41
+    #define MASTER_MCU_ADDR 0x08
     #define LIDAR_LD06_ADDR  0x29
     #define RADAR_LD2450_ADDR 0x62
     #define IMU_MPU6050_ADDR 0x68
-    #define PICOW_I2C0_SDA ESP32_I2C0_SDA
-    #define PICOW_I2C0_SCL ESP32_I2C0_SCL
-    #define PICOW_JETSON_I2C1_RX ESP32_JETSON_I2C1_SDA
-    #define PICOW_JETSON_I2C1_TX ESP32_JETSON_I2C1_SCL
     #define MOTOR_DRV_ADDR 0x40
   #endif
 
   #if defined(CAR_HAS_UART)
-    #define PICOW_LD2450RADAR_UART0_RX 9
-    #define PICOW_LD2450RADAR_UART0_TX 18
-    #define JETSON_LD06_UART0_RX 47
-    #define JETSON_LD06_UART0_TX 48
+    #define MCU_LD2450RADAR_UART0_RX 9
+    #define MCU_LD2450RADAR_UART0_TX 18
+    #define JETSON_LD06_UART0_RX 10
+    #define JETSON_LD06_UART0_TX 8
   #endif
 
 #elif defined(MCU_PICOW_RP2040)
@@ -179,26 +175,25 @@
 		#define CS0 9
 	#endif
 	#if defined(CAR_HAS_I2C)
-		#define MASTER_PICOW_ADDR 0x08
+		#define MASTER_MCU_ADDR 0x08
 		// #define SLAVE_ARDNANO_ADDR 0x09 
 		// #define SERVO_CTRL_ADDR 0xA
 		#define LIDAR_LD06_ADDR	0x29
 		#define RADAR_LD2450_ADDR 0x62
 		#define IMU_MPU6050_ADDR 0x68
-		#define PICOW_I2C0_SDA 20	//also used for PCA9685
-		#define PICOW_I2C0_SCL 21	//also used for PCA9685
-    #define PICOW_JETSON_I2C1_RX 2 
-		#define PICOW_JETSON_I2C1_TX 3 
+		#define MCU_I2C0_SDA 20	//also used for PCA9685
+		#define MCU_I2C0_SCL 21	//also used for PCA9685
+    #define MCU_JETSON_I2C1_SDA 2 
+		#define MCU_JETSON_I2C1_SCL 3 
 		#define MOTOR_DRV_ADDR 0x40 //PCA9685 address for Waveshare motor driver
 		// #define ARD_I2C_SDA A4
 		// #define ARD_I2C_SCL A5
 	#endif
 	#if defined(CAR_HAS_UART)
-		#define PICOW_LD2450RADAR_UART0_RX 0 
-		#define PICOW_LD2450RADAR_UART0_TX 1
+		#define MCU_LD2450RADAR_UART0_RX 0 
+		#define MCU_LD2450RADAR_UART0_TX 1
     #define JETSON_LD06_UART0_RX 10 
-		#define JETSON_LD06_UART0_TX 8
-		
+		#define JETSON_LD06_UART0_TX 8	
 	#endif
 #endif
 #ifndef ROBOTCAR_PLATFORM_CONSTANTS_DEFINED

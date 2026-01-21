@@ -6,12 +6,10 @@
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <NewPing.h>
-#include <hardware/watchdog.h>
+// #include <hardware/watchdog.h>
 
-
-
-#define MCU_PICOW_RP2040
-//#define MCU_ESP32S3_40PIN 
+// #define MCU_PICOW_RP2040
+#define MCU_ESP32S3_40PIN 
 #define NONSTEER_4WD_RUBBERWHL_2XSONAR_2xCLIFF
 
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
@@ -51,9 +49,10 @@
 
 #include "/home/jeevan/PicoWCar/src/mcu/include/CarConfigurations.h"
 #include "/home/jeevan/PicoWCar/src/mcu/include/RobotCarPinDefinitionsAndMore.h"
-#include "/home/jeevan/PicoWCar/src/mcu/pico-PlatformIO/src/CliffSensor.h"
-#include "/home/jeevan/PicoWCar/src/mcu/pico-PlatformIO/src/PCA9685_AWDDriver.h"
-#include "/home/jeevan/PicoWCar/src/mcu/pico-PlatformIO/src/stateMachines.h"
+#include "/home/jeevan/PicoWCar/src/mcu/include/CliffSensor.h"
+#include "/home/jeevan/PicoWCar/src/mcu/include/PCA9685_AWDDriver.h"
+#include "/home/jeevan/PicoWCar/src/mcu/include/stateMachines.h"
+
 CliffSensor frontCliff(PIN_FRONT_CLIFF);
 CliffSensor rearCliff(PIN_REAR_CLIFF);
 
@@ -117,6 +116,11 @@ static void publishSonars(const SensorBuffer &sensors);
 static void publishInfraredSensors(const SensorBuffer &sensors);
 static void publishEscTelemetry(const SensorBuffer &sensors);
 void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL);
+static void initI2Cgeneric(TwoWire &bus,
+                           int sdaPin,
+                           int sclPin,
+                           int slaveAddress = -1,
+                           uint32_t frequencyHz = 400000U);
 
 // Forward declaration for telemetry function
 void sendTelemetry(const SensorBuffer &sensors);
@@ -133,7 +137,7 @@ void setup() {
   Serial.println(bootCounter);
 
   // Concept 5: Enable hardware watchdog (2 second timeout). 
-  watchdog_enable(kWatchdogTimeoutMs, true);
+  // watchdog_enable(kWatchdogTimeoutMs, true);
 
   // Concept 1: Timeout on USB Serial (for debug/monitoring)
   Serial.begin(115200);
@@ -141,7 +145,7 @@ void setup() {
   const uint32_t serialStart = millis();
   while ((!Serial) && ((millis() - serialStart) < kSerialWaitMs)) {
     delay(10);
-    watchdog_update();
+    // watchdog_update();
   }
 
   Serial.println();
@@ -159,10 +163,7 @@ void setup() {
 
   Serial.println("[INIT] I2C0 bus and motor driver...");
   // End any previous I2C transmission and re-initialize with proper pins
-  picomasteri2c->end();  // Reset the I2C bus if it was already initialized
-  picomasteri2c->setSDA(PICOW_I2C0_SDA);
-  picomasteri2c->setSCL(PICOW_I2C0_SCL);
-  picomasteri2c->begin();
+  initI2Cgeneric(*picomasteri2c, MCU_I2C0_SDA, MCU_I2C0_SCL);
   delay(100);  // Allow I2C to stabilize
   
   // Scan I2C bus to see what devices are present
@@ -292,7 +293,7 @@ void loop() {
   sendTelemetry(mcuSensors);
 
   // Feed watchdog
-  watchdog_update();
+  // watchdog_update();
 }
 
 // Telemetry output function
@@ -378,9 +379,9 @@ static void publishHighresImu(const SensorBuffer &sensors) {
   imu.time_usec = static_cast<uint64_t>(sensors.timestamp) * 1000ULL;
   imu.xacc = sensors.accelX;
   imu.yacc = sensors.accelY;
-  imu.zacc = sensors.accelZ;
-  imu.xgyro = sensors.gyroX;
-  imu.ygyro = sensors.gyroY;
+  imu.zacc = 0.0f;
+  imu.xgyro = 0.0f;
+  imu.ygyro = 0.0f;
   imu.zgyro = sensors.gyroZ;
   const float nanValue = std::numeric_limits<float>::quiet_NaN();
   imu.xmag = nanValue;
@@ -508,9 +509,7 @@ static void ensureJetsonI2CReady(uint32_t now) {
     if ((lastI2CInitAttempt == 0U) || (sinceAttempt >= kI2CReconnectIntervalMs)) {
       lastI2CInitAttempt = now;
       jetsonI2c->end();
-      jetsonI2c->setSDA(PICOW_JETSON_I2C1_RX);
-      jetsonI2c->setSCL(PICOW_JETSON_I2C1_TX);
-      jetsonI2c->begin(kJetsonI2CAddress);
+      initI2Cgeneric(*jetsonI2c, MCU_JETSON_I2C1_SDA, MCU_JETSON_I2C1_SCL,kJetsonI2CAddress,400000);
       jetsonI2c->onRequest(jetsonI2COnRequest);
       jetsonI2c->onReceive(jetsonI2COnReceive);
       lastJetsonActivityMs = now;
@@ -518,4 +517,30 @@ static void ensureJetsonI2CReady(uint32_t now) {
       DEBUG_I2C_PRINTLN("[I2C1] Jetson telemetry ready");
     }
   }
+}
+
+static void initI2Cgeneric(TwoWire &bus,
+                           int sdaPin,
+                           int sclPin,
+                           int slaveAddress,
+                           uint32_t frequencyHz) {
+#if defined(MCU_PICOW_RP2040)
+  bus.end();
+  bus.setSDA(sdaPin);
+  bus.setSCL(sclPin);
+  if (slaveAddress >= 0) {
+    bus.begin(slaveAddress);
+  } else {
+    bus.begin();
+  }
+#elif defined(MCU_ESP32S3_40PIN)
+  bus.end();
+  if (slaveAddress >= 0) {
+    bus.begin(static_cast<uint8_t>(slaveAddress), sdaPin, sclPin, frequencyHz);
+  } else {
+    bus.begin(sdaPin, sclPin, frequencyHz);
+  }
+#else
+  #error "Unsupported MCU for I2C init"
+#endif
 }
