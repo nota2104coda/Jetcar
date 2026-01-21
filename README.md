@@ -30,6 +30,11 @@ when the user asks to navigate to the red football, it scans the room by spinnin
 See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.
 See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format).
 
+## Specifications
+**Pico**
+I2C1 comms Pico to Jetson :
+In loop, if I2C1 connection is not established, try establishing it as a slave. The bus is I2C1 and pins are PICOW_JETSON_I2C1_RX and  PICOW_JETSON_I2C1_TX . If connection is established, there should be interrupt to call a function and record the incoming data whenever received, and then send outgoing data read from all sensors. If connection is not established, then use substitute value of 0 for motor commands.
+use MAVlink to send messages to jetson and receive them.Map the sensors in struct SensorBuffer to mavlink messages. for e.g. map wheel speeds into 4 motor rpms that might be available. map 2 SONAR distances into DISTANCE_SENSOR type messages. map IMU to HIGHRES_IMU. map IR prximity sensor to PROXIMITY.
 ## Next Steps
 **Pico W**
 - Vehicle control class - arbitrate between commands and safe distance from sensors. Use input from I2C1 coming from Jetson
