@@ -15,7 +15,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*launch.[pxy][yma]*')),
         (os.path.join('share', package_name, 'urdf'), glob('urdf/**/*', recursive=True)),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'pyserial'],
     zip_safe=True,
     maintainer='nota2104coda',
     maintainer_email='jeevanghadge@gmail.com',
@@ -26,7 +26,8 @@ setup(
         'console_scripts': [
             "camera_node = pi5_pkg.camera_node:main",
             'pico_sensors_node = pi5_pkg.pico_sensors_node:main',
-            'hmi_node = pi5_pkg.hmi_node:main'
+            'hmi_node = pi5_pkg.hmi_node:main',
+            'hw_pico_node = pi5_pkg.hw_pico_node:main'
         ],
     },
 )

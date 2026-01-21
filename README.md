@@ -18,29 +18,30 @@ when the user asks to navigate to the red football, it scans the room by spinnin
 
 ## Quick Start
 1. **Clone the repo**
-2. **Develop ROS2 nodes in `src/pi5_pkg/`**
-4. **Develop Pi Pico W code in `src/ardpicoW/pico-PlatformIO/`**
+2. **Develop ROS2 nodes in** `src/pi5_pkg/`
+4. **Develop Pi Pico W code in** `src/ardpicoW/pico-PlatformIO/`
 5. Define custom messages in `src/robot_msgs/msg/` and build with `colcon`
-6. **Access web interface at `http://localhost:8080`**
+6. **Access web interface at** `http://localhost:8080`
 7. **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
 8. **Define robot urdf** in `src/pi5_pkg/urdf`
+9. **Access foxglove visualisation** `ws://192.168.50.176:8765`
 
 ## Diagrams
 See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.
 See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format).
 
 ## Next Steps
-Pico W
+**Pico W**
+- Vehicle control class - arbitrate between commands and safe distance from sensors. Use input from I2C1 coming from Jetson
 - Implement FreeRTOS as per software architecture diagram
   STATUS: Two-core design works .
-- Web service to get commands from webpage to Pico W. this should be using pico_cyw43_arch , arduino  Websockets or mongoose and ArduinoJSON
-- Vehicle control class - arbitrate between commands and safe distance from sensors
-- UART commands reading on Pico for motion
-- UART sensor data piping to Jetson
-Jetson
-- Implement sensor fusion and navigation logic in ROS2 nodes
-- Integrate UART communication with Pico W
+- I2C sensor data piping to Jetson
+
+**Jetson**
+- Integrate I2C communication with Pico W - use as a remote control use hmi_node and pico_node for this.
 - Expand web interface for visualization
+- Implement sensor fusion and navigation logic in ROS2 nodes
+
 
 ## Memory budget
 Can your robot run all of this at once?

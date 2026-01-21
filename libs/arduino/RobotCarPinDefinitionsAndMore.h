@@ -95,8 +95,8 @@
 		
 	#endif
 	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) 
-		#define PIN_FRONT_CLIFF 3	//yellow at Pico, white at cliff sensor
-		#define PIN_REAR_CLIFF 2	//green at Pico, white at cliff sensor
+		#define PIN_FRONT_CLIFF 5	//yellow at Pico, white at cliff sensor
+		#define PIN_REAR_CLIFF 4	//green at Pico, white at cliff sensor
 	#endif
 	#if defined(CAR_HAS_SPI_DISPLAY)
 	//SPI TX means MOSI
@@ -114,17 +114,41 @@
 		#define IMU_MPU6050_ADDR 0x68
 		#define PICOW_I2C0_SDA 20	//also used for PCA9685
 		#define PICOW_I2C0_SCL 21	//also used for PCA9685
+    #define PICOW_JETSON_I2C1_RX 2 
+		#define PICOW_JETSON_I2C1_TX 3 
 		#define MOTOR_DRV_ADDR 0x40 //PCA9685 address for Waveshare motor driver
 		// #define ARD_I2C_SDA A4
 		// #define ARD_I2C_SCL A5
 	#endif
 	#if defined(CAR_HAS_UART)
-		#define PICOW_RADAR_UART_RX 0 
-		#define PICOW_RADAR_UART_TX 1 
-		#define PICOW_JETSON_UART_RX 4 
-		#define PICOW_JETSON_UART_TX 5 
+		#define PICOW_LD2450RADAR_UART0_RX 0 
+		#define PICOW_LD2450RADAR_UART0_TX 1
+    #define JETSON_LD06_UART0_RX 10 
+		#define JETSON_LD06_UART0_TX 8
+		
 	#endif
 #endif
+//system constants
+static constexpr float kGearRatio = 46.0;
+static constexpr uint32_t kLoopPeriodMs = 100;
+static constexpr uint32_t kSerialBaud = 115200;
+static constexpr uint32_t kSerialWaitMs = 500; // Wait up to 500ms for Serial to start
+static constexpr uint32_t kPwmFreqHz = 1600;
+static constexpr uint32_t kSonarPollIntervalMs = 50;
+static constexpr uint32_t kSonarMaxWaitMs = 50; // Max wait per sonar reading. if its beyond, it should default to kMaxSonarRangecm
+static constexpr uint32_t kWatchdogTimeoutMs = 2000; // 2 second watchdog timeout
+static constexpr uint32_t kMotorSafetyTimeoutMs = 1000; // 1 second motor command timeout
+static constexpr float kMaxSaneRpm = 200.0; // Max sane RPM for encoders
+static constexpr int32_t kMaxSonarRangecm = 400; // Max range for sonar in m
+static constexpr int32_t conv_M_TO_CM = 100; // Conversion factor from meters to centimeters
+static constexpr int32_t min_sonar_delayMs = 25; //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
+static constexpr int32_t PULSE_PER_REV = 12;    //for encoders 
+static constexpr float RPM2RADPS =  0.10472;
+static constexpr float GRAVITY = 	9.81; //m per sec2
+static constexpr float WHEEL_RAD =  3;  //6 cm dia wheels
+static constexpr float RADPS2MPS = 0.03; //same as wheel radius, since v = r*w
+static constexpr float MOTOR_RPM_TO_CMPS = RPM2RADPS * WHEEL_RAD / kGearRatio;
+
 /* class to define control of all 4 motors of an AWD car. It inherits from Adafruit's classfor PCA9685 driver. 
 It adds a method to check for I2C ACK. It adds Encoder to read the individual speeds and store them. 
 Also adds diagnostic states */

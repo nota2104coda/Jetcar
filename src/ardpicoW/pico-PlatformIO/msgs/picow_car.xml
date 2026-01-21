@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<mavlink xmlns="http://qgroundcontrol.org/mavlink">
+  <version>2.0</version>
+
+  <dialect name="picow_car">
+    <description>Pico W Car custom message set</description>
+
+    <!-- Telemetry from Pico to Jetson -->
+    <message id="200" name="PICOW_TELEMETRY">
+      <description>Periodic telemetry from Pico (timestamp + wheel speeds + proximity + IMU summary)</description>
+      <field type="uint32_t" name="timestamp_ms">Timestamp (ms)</field>
+      <field type="float" name="speedFL">Front-left speed (cm/s)</field>
+      <field type="float" name="speedFR">Front-right speed (cm/s)</field>
+      <field type="float" name="speedRL">Rear-left speed (cm/s)</field>
+      <field type="float" name="speedRR">Rear-right speed (cm/s)</field>
+      <field type="int16_t" name="sonarFrontcm">Front sonar (cm)</field>
+      <field type="int16_t" name="sonarRearcm">Rear sonar (cm)</field>
+      <field type="uint8_t" name="cliffFront">Front cliff (boolean as uint8)</field>
+      <field type="uint8_t" name="cliffRear">Rear cliff (boolean as uint8)</field>
+      <field type="float" name="accelX">Accel X (m/s^2)</field>
+      <field type="float" name="accelY">Accel Y (m/s^2)</field>
+      <field type="float" name="gyroZ">Gyro Z (rad/s)</field>
+      <field type="float" name="tempC">Temperature (C)</field>
+    </message>
+
+    <!-- Motor command: 4 torques -->
+    <message id="201" name="PICOW_MOTOR_CMD">
+      <description>Motor torque command: FR, FL, RR, RL</description>
+      <field type="float" name="tqFR">Torque FR</field>
+      <field type="float" name="tqFL">Torque FL</field>
+      <field type="float" name="tqRR">Torque RR</field>
+      <field type="float" name="tqRL">Torque RL</field>
+    </message>
+
+  </dialect>
+</mavlink>

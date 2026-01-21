@@ -7,102 +7,67 @@
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
-from pywebio.platform.flask import webio_view
-from pywebio import start_server, pin
-from pywebio.output import put_scope, put_buttons, put_text, put_row, use_scope
-from pywebio.session import set_env, run_js
-from pywebio.pin import put_checkbox, put_input
+from std_msgs.msg import Bool
 import threading
 import time
+import subprocess
+from robot_msgs.msg import ButtonStates  # Update with your actual message import
+from geometry_msgs.msg import Twist
 
-class WebserverNode(Node):
+class HMINode(Node):
     """
-    A ROS2 node that hosts a web server for controlling a robot.
+    ROS2 node for aggregating button states and publishing them for hw_pico_node.
     """
     def __init__(self):
-        super().__init__("hmi_node")
-        self.publisher_ = self.create_publisher(String, "robot_commands", 10)
-        self.get_logger().info("hmi_node has been started and is publishing to 'robot_commands'")
+        super().__init__('hmi_node')
+        # Start Foxglove bridge
+        self.foxglove_process = subprocess.Popen(["ros2", "launch", "foxglove_bridge", "foxglove_bridge_launch.xml"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.get_logger().info("Foxglove bridge launched.")
+        self.button_states = ButtonStates()
+        self.create_subscription(Twist, '/cmd_vel', self.twist_callback, 10)
+        self.create_subscription(Bool, '/stop_button', self.stop_callback, 10)
+        self.create_subscription(Bool, '/auto_mode_button', self.auto_mode_callback, 10)
+        self.publisher_ = self.create_publisher(ButtonStates, '/hmi/button_states', 10)
+        self.timer = self.create_timer(0.05, self.publish_states)
+        self.last_twist_time = self.get_clock().now()
+        self.get_logger().info("hmi_node started, publishing button states.")
 
-    def publish_command(self, command: str):
-        """Publishes a command to the 'robot_commands' topic."""
-        msg = String()
-        msg.data = command
-        self.publisher_.publish(msg)
-        self.get_logger().info(f'Publishing: "{msg.data}"')
+    def twist_callback(self, msg):
+        self.last_twist_time = self.get_clock().now()
+        self.button_states.forward = msg.linear.x > 0.1
+        self.button_states.backward = msg.linear.x < -0.1
+        self.button_states.left_turn = msg.angular.z > 0.1
+        self.button_states.right_turn = msg.angular.z < -0.1
+        self.button_states.stop = abs(msg.linear.x) < 0.1 and abs(msg.linear.y) < 0.1 and abs(msg.angular.z) < 0.1
 
-def pywebio_app(node: WebserverNode):
-    """
-    The main application logic for the PyWebIO web interface.
-    """
-    set_env(title="PicoWCar Controller",auto_scroll_bottom=True)
+    def stop_callback(self, msg):
+        self.button_states.stop = msg.data
 
-    put_scope('main_scope')
+    def auto_mode_callback(self, msg):
+        self.button_states.auto_mode = msg.data
 
-    def send_command(command: str):
-        """Callback to publish a command."""
-        node.publish_command(command)
-        with use_scope('log', clear=False):
-             put_text(f"{time.strftime('%H:%M:%S')}: Sent command '{command}'")
-        run_js('$("#log").scrollTop($("#log")[0].scrollHeight)')
+    def publish_states(self):
+        # Check if no twist message received recently (e.g., 0.5 seconds), assume released
+        time_since_last = self.get_clock().now() - self.last_twist_time
+        if time_since_last.nanoseconds > 500000000:  # 0.5 seconds
+            self.button_states.forward = False
+            self.button_states.backward = False
+            self.button_states.left_turn = False
+            self.button_states.right_turn = False
+            self.button_states.stop = True
+        self.publisher_.publish(self.button_states)
 
-    def command_input_handler(command_text: str):
-        """Handles text input commands."""
-        if command_text:
-            send_command(command_text)
-
-    def toggle_view(command_mode):
-        """Switches between command input and button controls."""
-        if command_mode:
-            with use_scope('control_view', clear=True):
-                put_row([
-                    put_input('command_text', placeholder='Enter command...'),
-                    put_buttons([{'label': 'Enter Command', 'value': 'enter'}],
-                                onclick=lambda _: command_input_handler(pin.command_text))
-                ])
-        else:
-            with use_scope('control_view', clear=True):
-                put_buttons([
-                    {'label': '⬆️ Forward', 'value': 'forward'},
-                    {'label': '⬇️ Backward', 'value': 'backward'},
-                    {'label': '🔄 Clockwise', 'value': 'clockwise'},
-                    {'label': '🔄 Anticlockwise', 'value': 'anticlockwise'},
-                ], onclick=send_command, group=True)
-
-    with use_scope('main_scope'):
-        put_row([
-            put_checkbox('mode_toggle', options=[{'label': 'Command Mode', 'value': 'cmd', 'selected': False}],
-                         onchange=lambda val: toggle_view('cmd' in val)),
-            None, # Spacer
-            put_buttons([{'label': 'POWER ON', 'value': 'power_on', 'color': 'success'},
-                         {'label': 'POWER OFF', 'value': 'power_off', 'color': 'danger'}],
-                        onclick=send_command)
-        ], size='1fr 1fr 1fr')
-        put_scope('control_view')
-        put_scope('log').style('max-height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 5px;')
-
-    # Initial view
-    toggle_view(False)
-
-def ros_thread(node):
-    """Function to run the ROS2 node."""
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
 
 def main(args=None):
     rclpy.init(args=args)
-    hmi_node = WebserverNode()
-
-    # Run rclpy.spin in a separate thread
-    ros_spin_thread = threading.Thread(target=ros_thread, args=(hmi_node,))
-    ros_spin_thread.daemon = True
-    ros_spin_thread.start()
-
-    # Start the PyWebIO server
-    # Use 0.0.0.0 to make it accessible on your local network
-    start_server(lambda: pywebio_app(hmi_node), port=8081, host='0.0.0.0', debug=False)
+    node = HMINode()
+    rclpy.spin(node)
+    node.destroy_node()
+    # Terminate Foxglove bridge if still running
+    if hasattr(node, 'foxglove_process') and node.foxglove_process.poll() is None:
+        node.foxglove_process.terminate()
+        node.foxglove_process.wait()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

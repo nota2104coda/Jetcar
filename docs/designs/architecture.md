@@ -2,15 +2,15 @@
 
 ```mermaid
 graph TD
-    PC[PC Ubuntu 22.04] -- WiFi for Gazebo sim--> Jetson[Jetson Orin Nano]
-    Jetson -- UART2 to USB#2 for Gazebo Sim--> PC[PC Ubuntu 22.04]
-    Jetson -- UART1 --> PicoW[Pico W]
+    PC[PC Ubuntu 22.04] <-- WiFi for Gazebo sim--> Jetson[Jetson Orin Nano]
+    Jetson -- I2C1(I2C0 of jetson) --> PicoW[Pico W]
     Realsense[Realsense D435 binocular camera] -- USB#1 --> Jetson
     PicoW -- I2C0: 4x wheel torque --> PCA9685_AWDDriver[4 Wheels]
     PCA9685_AWDDriver[4 Wheels] -- Hall Encoder Pins --> PicoW
     Jetson -- Foxglove Bridge Server --> Web[Foxglove in Web Browser]
-    Web[Foxglove in Web Browser] --User commands--> PicoW
+    Web[Foxglove in Web Browser] --User commands--> Jetson
     Radar[LD2450 Radar] -- UART0 --> PicoW
+    Lidar2D[LD06] -- UART0 --> Jetson
     Lidar[VL53L5X front 8x8 Lidar] -- I2C0 --> PicoW 
     IMU[IMU-MPU6050]-- I2C0 --> PicoW
     USensors[HC SR04 Ultrasonic Sensors] -- voltage level shifter --> PicoW  
