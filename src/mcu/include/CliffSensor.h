@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <Queue.h>
 
 class CliffSensor {
 private:
@@ -9,51 +10,64 @@ private:
 
   uint8_t pin;
   bool lastState;
-  bool window[kWindowSize]{};                    // circular buffer of recent readings
+  Queue<bool, kWindowSize> window;                          // circular buffer of recent readings
   uint8_t windowIndex = 0;
-  uint8_t windowCount = 0;                       // how many slots are filled (up to kWindowSize)
-  uint8_t trueCount = 0;                         // running count of "cliff detected" in window
+  uint8_t thisCount = 0;                         // running count of "cliff detected" in window
   
 public:
   explicit CliffSensor(uint8_t sensorPin) : pin(sensorPin), lastState(false) {}
-  
+
   void init() {
     pinMode(pin, INPUT);
+    for (uint8_t i = 0; i < kWindowSize; ++i) {
+      window.enqueue(true);
+    }
+    //default tell that cliff is present at start.
+    lastState = true;
+    //and for this, the count would have reached kTriggerCount
+    thisCount = kTriggerCount;  
   }
-  
   bool isCliffDetected() const {
     // IR cliff sensors typically output LOW when cliff is detected
     // (no reflection = no ground detected)
     return digitalRead(pin) == LOW;
   }
-  
   bool read() {
+    // IR cliff sensors typically output LOW when cliff is detected
+    // (no reflection = no ground detected)
     const bool cliffraw = isCliffDetected();
-
-    // Remove the value leaving the window from the running count when full
-    if (windowCount == kWindowSize) {
-      if (window[windowIndex]) {
-        trueCount--;
-      }
-    } else {
-      windowCount++;
+    // Add new sample to the back of the queue
+    window.enqueue(cliffraw);
+    thisCount = 0;
+    for(uint8_t i=0; i<kTriggerCount; i++) {
+      thisCount += window.at(i);
     }
-
-    // Store new sample and update count
-    window[windowIndex] = cliffraw;
-    if (cliffraw) {
-      trueCount++;
+    switch(lastState){
+      case false:
+        if(thisCount == kTriggerCount) {
+          lastState = true;
+        }
+        break;
+      case true:
+        if(thisCount == 0) {
+          lastState = false;
+        }
+        break;
     }
-
-    // advance ring index
-    windowIndex = static_cast<uint8_t>((windowIndex + 1U) % kWindowSize);
-
-    // majority/threshold decision
-    lastState = (trueCount >= kTriggerCount);
+    
     return lastState;
   }
   
   bool getLastState() const {
     return lastState;
+  }
+
+  void printFullWindow() {
+    Serial.print("Window: ");
+    for (uint8_t i = 0; i < kWindowSize; ++i) {
+      bool val = window.at(i);
+      Serial.print(val ? "1 " : "0 ");
+    }
+    Serial.println();
   }
 };

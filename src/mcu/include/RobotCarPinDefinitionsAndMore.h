@@ -102,8 +102,8 @@
   #endif
 
   #if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR)
-    #define PIN_FRONT_CLIFF 41        // GPIO40
-    #define PIN_REAR_CLIFF 42         // GPIO39
+    #define PIN_FRONT_CLIFF 42        // GPIO40
+    #define PIN_REAR_CLIFF 41         // GPIO39
   #endif
 
   #if defined(CAR_HAS_SPI_DISPLAY)

@@ -80,7 +80,8 @@ void setup() {
 void loop() {
 
   delay(1000);
+  frontCliff.printFullWindow();
   frontCliff.read();
-  Serial.print("Front Cliff: ");
+  Serial.println("Front Cliff lastState: ");
   Serial.print(frontCliff.getLastState());
 }
