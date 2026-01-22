@@ -1,0 +1,24 @@
+--- a/src/drivers/hardware_specific/esp32/esp32_driver_mcpwm.cpp
++++ b/src/drivers/hardware_specific/esp32/esp32_driver_mcpwm.cpp
+@@ -90,7 +90,8 @@
+-#include "../../hardware_api.h"
++#include "../../hardware_api.h"
++#include "esp_idf_version.h"
+@@ -282,7 +283,9 @@ void* _configure6PWMPinsMCPWM(long pwm_frequency, int mcpwm_group, int timer_no,
+   pwm_config.count_mode = MCPWM_TIMER_COUNT_MODE_UP_DOWN;    
+   pwm_config.intr_priority = 0;              
+   pwm_config.period_ticks = _calcPWMPeriod(pwm_frequency);
+-  pwm_config.flags.allow_pd = 0;
++#if ESP_IDF_VERSION_MAJOR < 5
++  pwm_config.flags.allow_pd = 0;
++#endif
+@@ -411,7 +414,9 @@ void* _configurePinsMCPWM(long pwm_frequency, int mcpwm_group, int timer_no, int
+	pwm_config.clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT;
+	pwm_config.resolution_hz = _PWM_TIMEBASE_RESOLUTION_HZ;
+	pwm_config.count_mode = MCPWM_TIMER_COUNT_MODE_UP_DOWN;    
+	pwm_config.intr_priority = 0;              
+	pwm_config.period_ticks = _calcPWMPeriod(pwm_frequency);
+-    pwm_config.flags.allow_pd = 0;
++#if ESP_IDF_VERSION_MAJOR < 5
++    pwm_config.flags.allow_pd = 0;
++#endif

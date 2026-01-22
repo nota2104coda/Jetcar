@@ -84,26 +84,26 @@
   #define MOTOR_RL 3
 
   #if defined(CAR_HAS_4_MOTORENCODERS)
-    #define PIN_ENC_FRONT_RIGHT_Y 5   // GPIO5
-    #define PIN_ENC_FRONT_RIGHT_G 6   // GPIO6
-    #define PIN_ENC_FRONT_LEFT_G 7    // GPIO7
-    #define PIN_ENC_FRONT_LEFT_Y 15   // GPIO15
-    #define PIN_ENC_REAR_RIGHT_Y 16   // GPIO16
-    #define PIN_ENC_REAR_RIGHT_G 17   // GPIO17
-    #define PIN_ENC_REAR_LEFT_G 18    // GPIO18
-    #define PIN_ENC_REAR_LEFT_Y 8     // GPIO8
+    #define PIN_ENC_FRONT_RIGHT_Y 13   // GPIO5
+    #define PIN_ENC_FRONT_RIGHT_G 14   // GPIO6
+    #define PIN_ENC_FRONT_LEFT_G 9    // GPIO7
+    #define PIN_ENC_FRONT_LEFT_Y 10   // GPIO15
+    #define PIN_ENC_REAR_RIGHT_Y 11   // GPIO16
+    #define PIN_ENC_REAR_RIGHT_G 12   // GPIO17
+    #define PIN_ENC_REAR_LEFT_G 17    // GPIO18
+    #define PIN_ENC_REAR_LEFT_Y 18     // GPIO8
   #endif
 
   #if defined(CAR_HAS_FRT_RR_SONAR)
-    #define PIN_TRIG_SONAR_FRONT 11   // GPIO11
-    #define PIN_ECHO_SONAR_FRONT 12   // GPIO12
-    #define PIN_TRIG_SONAR_REAR 13    // GPIO13
-    #define PIN_ECHO_SONAR_REAR 14    // GPIO14
+    #define PIN_TRIG_SONAR_FRONT 38   // GPIO11
+    #define PIN_ECHO_SONAR_FRONT 39   // GPIO12
+    #define PIN_TRIG_SONAR_REAR 8    // GPIO13
+    #define PIN_ECHO_SONAR_REAR 7    // GPIO14
   #endif
 
   #if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR)
-    #define PIN_FRONT_CLIFF 40        // GPIO40
-    #define PIN_REAR_CLIFF 39         // GPIO39
+    #define PIN_FRONT_CLIFF 41        // GPIO40
+    #define PIN_REAR_CLIFF 42         // GPIO39
   #endif
 
   #if defined(CAR_HAS_SPI_DISPLAY)
@@ -118,10 +118,10 @@
   #endif
 
   #if defined(CAR_HAS_I2C)
-    #define MCU_I2C0_SDA 1
-    #define MCU_I2C0_SCL 2
-    #define MCU_JETSON_I2C1_SDA 42
-    #define MCU_JETSON_I2C1_SCL 41
+    #define MCU_I2C0_SDA 15
+    #define MCU_I2C0_SCL 16
+    #define MCU_JETSON_I2C1_SDA 1
+    #define MCU_JETSON_I2C1_SCL 2
     #define MASTER_MCU_ADDR 0x08
     #define LIDAR_LD06_ADDR  0x29
     #define RADAR_LD2450_ADDR 0x62
@@ -176,8 +176,6 @@
 	#endif
 	#if defined(CAR_HAS_I2C)
 		#define MASTER_MCU_ADDR 0x08
-		// #define SLAVE_ARDNANO_ADDR 0x09 
-		// #define SERVO_CTRL_ADDR 0xA
 		#define LIDAR_LD06_ADDR	0x29
 		#define RADAR_LD2450_ADDR 0x62
 		#define IMU_MPU6050_ADDR 0x68
@@ -361,4 +359,32 @@ Command ingest: adjust process_uart_commands to:
 Read a line
 If it starts with CMD,set, parse four floats
 Else map the verb to the preset torques or enable/disable
+Physical Pin,Pico GP Label,ESP32-S3 GPIO,Primary Function (Default)
+1,GP0,43,UART0 TX
+2,GP1,44,UART0 RX
+4,GP2,1,ADC1_CH0
+5,GP3,2,ADC1_CH1
+6,GP4,42,I2C SDA (Default)
+7,GP5,41,I2C SCL (Default)
+9,GP6,3,ADC1_CH2
+10,GP7,4,ADC1_CH3
+11,GP8,5,ADC1_CH4
+12,GP9,6,ADC1_CH5
+14,GP10,7,ADC1_CH6
+15,GP11,8,ADC1_CH7
+16,GP12,9,ADC1_CH8
+17,GP13,10,ADC1_CH9
+19,GP14,17,UART1 TX
+20,GP15,18,UART1 RX
+21,GP16,11,SPI MISO
+22,GP17,12,SPI CS
+24,GP18,13,SPI CLK (Your previous query)
+25,GP19,14,SPI MOSI
+26,GP20,15,ADC2_CH4
+27,GP21,16,ADC2_CH5
+29,GP22,21,General IO
+31,GP26,38,ADC Input / A0
+32,GP27,39,ADC Input / A1
+34,GP28,40,ADC Input / A2
+Onboard,LED,21,Built-in RGB/LED (Shared with GP22)
 */
