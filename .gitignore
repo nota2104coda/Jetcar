@@ -5,7 +5,7 @@
 /src/build/
 /src/install/
 /src/log/
-*/.pio/*
+
 .ros/
 .vscode/
 
