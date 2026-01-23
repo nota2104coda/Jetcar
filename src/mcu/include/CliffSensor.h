@@ -28,9 +28,9 @@ public:
     thisCount = kTriggerCount;  
   }
   bool isCliffDetected() const {
-    // IR cliff sensors typically output LOW when cliff is detected
+    // IR cliff sensors typically output LOW when cliff is detected. This one indicates high instead
     // (no reflection = no ground detected)
-    return (digitalRead(pin) == LOW);
+    return (digitalRead(pin) == HIGH);
   }
   bool read() {
     // IR cliff sensors typically output LOW when cliff is detected
@@ -42,7 +42,7 @@ public:
     window.dequeue();
     window.enqueue(cliffraw);
     thisCount = 0;
-    for(uint8_t i=0; i<kTriggerCount; i++) {
+    for(uint8_t i= (kWindowSize - kTriggerCount)-1; i<kWindowSize; i++) {
       thisCount += window.at(i);
     }
     switch(lastState){

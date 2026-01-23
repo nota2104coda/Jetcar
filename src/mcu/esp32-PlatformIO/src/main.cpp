@@ -53,9 +53,10 @@
 #include "/home/jeevan/PicoWCar/src/mcu/include/stateMachines.h"
 
 CliffSensor frontCliff(PIN_FRONT_CLIFF);
-// CliffSensor rearCliff(PIN_REAR_CLIFF);
+CliffSensor rearCliff(PIN_REAR_CLIFF);
 
 NewPing sonarF(PIN_TRIG_SONAR_FRONT, PIN_ECHO_SONAR_FRONT, kMaxSonarRangecm); //the lib needs cm as max range
+NewPing sonarR(PIN_TRIG_SONAR_REAR, PIN_ECHO_SONAR_REAR, kMaxSonarRangecm); //the lib needs cm as max range
 
 void setup() {
   Serial.begin(115200);
@@ -73,6 +74,7 @@ void setup() {
 
   Serial.println("[INIT] Initializing cliff sensors...");
   frontCliff.init();
+  rearCliff.init();
   Serial.println("[INIT] Cliff sensors initialized.");
 
 }
@@ -80,8 +82,20 @@ void setup() {
 void loop() {
 
   delay(1000);
+  Serial.println("FRONT: ");
   frontCliff.printFullWindow();
   frontCliff.read();
   Serial.print("Front Cliff lastState: ");
   Serial.println(frontCliff.getLastState());
+  Serial.println("");
+  Serial.println("REAR: ");
+  rearCliff.printFullWindow();
+  rearCliff.read();
+  Serial.print("Rear Cliff lastState: ");
+  Serial.println(rearCliff.getLastState());
+  // Serial.print("Front Sonar Distance (cm): ");
+  // Serial.println(sonarF.ping_cm());
+  // delay(100);
+  // Serial.print("Rear Sonar Distance (cm): ");
+  // Serial.println(sonarR.ping_cm());
 }

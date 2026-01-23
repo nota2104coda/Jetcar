@@ -88,22 +88,22 @@
     #define PIN_ENC_FRONT_RIGHT_G 2   // GPIO6
     #define PIN_ENC_FRONT_LEFT_G 37    // GPIO7
     #define PIN_ENC_FRONT_LEFT_Y 38   // GPIO15
-    #define PIN_ENC_REAR_RIGHT_Y 11   // GPIO16
-    #define PIN_ENC_REAR_RIGHT_G 12   // GPIO17
-    #define PIN_ENC_REAR_LEFT_G 17    // GPIO18
-    #define PIN_ENC_REAR_LEFT_Y 18     // GPIO8
+    #define PIN_ENC_REAR_RIGHT_Y 42   // GPIO16
+    #define PIN_ENC_REAR_RIGHT_G 41   // GPIO17
+    #define PIN_ENC_REAR_LEFT_G 39    // GPIO18
+    #define PIN_ENC_REAR_LEFT_Y 40     // GPIO8
   #endif
 
   #if defined(CAR_HAS_FRT_RR_SONAR)
-    #define PIN_TRIG_SONAR_FRONT 38   // GPIO11
-    #define PIN_ECHO_SONAR_FRONT 39   // GPIO12
-    #define PIN_TRIG_SONAR_REAR 8    // GPIO13
-    #define PIN_ECHO_SONAR_REAR 7    // GPIO14
+    #define PIN_TRIG_SONAR_FRONT 7   // GPIO11
+    #define PIN_ECHO_SONAR_FRONT 8   // GPIO12
+    #define PIN_TRIG_SONAR_REAR 36    // GPIO13
+    #define PIN_ECHO_SONAR_REAR 35    // GPIO14
   #endif
 
   #if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR)
-    #define PIN_FRONT_CLIFF 16        // GPIO40
-    #define PIN_REAR_CLIFF 15         // GPIO39
+    #define PIN_FRONT_CLIFF 15        // GPIO40
+    #define PIN_REAR_CLIFF 16         // GPIO39
   #endif
 
   #if defined(CAR_HAS_SPI_DISPLAY)
@@ -118,10 +118,10 @@
   #endif
 
   #if defined(CAR_HAS_I2C)
-    #define MCU_I2C0_SDA 15
-    #define MCU_I2C0_SCL 16
-    #define MCU_JETSON_I2C1_SDA 1
-    #define MCU_JETSON_I2C1_SCL 2
+    #define MCU_I2C0_SDA 4
+    #define MCU_I2C0_SCL 5
+    #define MCU_JETSON_I2C1_SDA 13
+    #define MCU_JETSON_I2C1_SCL 14
     #define MASTER_MCU_ADDR 0x08
     #define LIDAR_LD06_ADDR  0x29
     #define RADAR_LD2450_ADDR 0x62
@@ -130,8 +130,8 @@
   #endif
 
   #if defined(CAR_HAS_UART)
-    #define MCU_LD2450RADAR_UART0_RX 9
-    #define MCU_LD2450RADAR_UART0_TX 18
+    #define MCU_LD2450RADAR_UART0_RX 11
+    #define MCU_LD2450RADAR_UART0_TX 12
     #define JETSON_LD06_UART0_RX 10
     #define JETSON_LD06_UART0_TX 8
   #endif
@@ -166,8 +166,8 @@
 		
 	#endif
 	#if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR) 
-		#define PIN_FRONT_CLIFF 5	//yellow at Pico, white at cliff sensor
-		#define PIN_REAR_CLIFF 4	//green at Pico, white at cliff sensor
+		#define PIN_FRONT_CLIFF 4	//yellow at Pico, white at cliff sensor
+		#define PIN_REAR_CLIFF 5	//green at Pico, white at cliff sensor
 	#endif
 	#if defined(CAR_HAS_SPI_DISPLAY)
 	//SPI TX means MOSI
@@ -177,17 +177,15 @@
 		#define CS0 9
 	#endif
 	#if defined(CAR_HAS_I2C)
-		#define MASTER_MCU_ADDR 0x08
-		#define LIDAR_LD06_ADDR	0x29
-		#define RADAR_LD2450_ADDR 0x62
-		#define IMU_MPU6050_ADDR 0x68
 		#define MCU_I2C0_SDA 20	//also used for PCA9685
 		#define MCU_I2C0_SCL 21	//also used for PCA9685
     #define MCU_JETSON_I2C1_SDA 2 
 		#define MCU_JETSON_I2C1_SCL 3 
+    #define MASTER_MCU_ADDR 0x08
+		#define LIDAR_LD06_ADDR	0x29
+		#define RADAR_LD2450_ADDR 0x62
+		#define IMU_MPU6050_ADDR 0x68
 		#define MOTOR_DRV_ADDR 0x40 //PCA9685 address for Waveshare motor driver
-		// #define ARD_I2C_SDA A4
-		// #define ARD_I2C_SCL A5
 	#endif
 	#if defined(CAR_HAS_UART)
 		#define MCU_LD2450RADAR_UART0_RX 0 
