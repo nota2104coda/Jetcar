@@ -30,13 +30,16 @@ public:
   bool isCliffDetected() const {
     // IR cliff sensors typically output LOW when cliff is detected
     // (no reflection = no ground detected)
-    return digitalRead(pin) == LOW;
+    return (digitalRead(pin) == LOW);
   }
   bool read() {
     // IR cliff sensors typically output LOW when cliff is detected
     // (no reflection = no ground detected)
-    const bool cliffraw = isCliffDetected();
+    bool cliffraw = isCliffDetected();
+    Serial.print("Raw cliff reading: ");
+    Serial.println(cliffraw ? "DETECTED" : "NOT DETECTED");
     // Add new sample to the back of the queue
+    window.dequeue();
     window.enqueue(cliffraw);
     thisCount = 0;
     for(uint8_t i=0; i<kTriggerCount; i++) {
@@ -44,12 +47,12 @@ public:
     }
     switch(lastState){
       case false:
-        if(thisCount == kTriggerCount) {
+        if(thisCount >= kTriggerCount) {
           lastState = true;
         }
         break;
       case true:
-        if(thisCount == 0) {
+        if(thisCount < 1) {
           lastState = false;
         }
         break;

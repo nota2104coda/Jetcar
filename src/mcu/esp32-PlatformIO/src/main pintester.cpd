@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#define PINNUM 16
+#define PINNUM 40
 void setup() {
     pinMode(PINNUM, OUTPUT);
     digitalWrite(PINNUM, HIGH);

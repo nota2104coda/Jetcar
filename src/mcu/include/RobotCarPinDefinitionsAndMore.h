@@ -84,10 +84,10 @@
   #define MOTOR_RL 3
 
   #if defined(CAR_HAS_4_MOTORENCODERS)
-    #define PIN_ENC_FRONT_RIGHT_Y 13   // GPIO5
-    #define PIN_ENC_FRONT_RIGHT_G 14   // GPIO6
-    #define PIN_ENC_FRONT_LEFT_G 9    // GPIO7
-    #define PIN_ENC_FRONT_LEFT_Y 10   // GPIO15
+    #define PIN_ENC_FRONT_RIGHT_Y 1   // GPIO5
+    #define PIN_ENC_FRONT_RIGHT_G 2   // GPIO6
+    #define PIN_ENC_FRONT_LEFT_G 37    // GPIO7
+    #define PIN_ENC_FRONT_LEFT_Y 38   // GPIO15
     #define PIN_ENC_REAR_RIGHT_Y 11   // GPIO16
     #define PIN_ENC_REAR_RIGHT_G 12   // GPIO17
     #define PIN_ENC_REAR_LEFT_G 17    // GPIO18
@@ -102,8 +102,8 @@
   #endif
 
   #if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR)
-    #define PIN_FRONT_CLIFF 42        // GPIO40
-    #define PIN_REAR_CLIFF 41         // GPIO39
+    #define PIN_FRONT_CLIFF 16        // GPIO40
+    #define PIN_REAR_CLIFF 15         // GPIO39
   #endif
 
   #if defined(CAR_HAS_SPI_DISPLAY)
@@ -137,14 +137,16 @@
   #endif
 
 #elif defined(MCU_PICOW_RP2040)
-	#if defined(CAR_HAS_4_DCMOTORS_WAVESHARE)
-	//DC motors driven by Waveshare 4 motor driver with PCA9685 and TB6612FNG
 	//PCA9685 is on pins SDA 26, SCL 27 of Pico W
-		#define MOTOR_FR 0 /*white A1, red A2*/
-		#define MOTOR_RR 1 /*red B1 white B2*/
-		#define MOTOR_FL 2  /*red C1 white C2*/
-		#define MOTOR_RL 3	/*white D1 red D2*/
-	#endif
+  #if defined(CAR_HAS_4_DCMOTORS_WAVESHARE)
+    #define CAR_HAS_4_DCMOTORS_WAVESHARE
+  #endif
+	//DC motors driven by Waveshare 4 motor driver with PCA9685 and TB6612FNG
+  #define MOTOR_FR 0 /*white A1, red A2*/
+  #define MOTOR_RR 1 /*red B1 white B2*/
+  #define MOTOR_FL 2  /*red C1 white C2*/
+  #define MOTOR_RL 3	/*white D1 red D2*/
+	
 	#if defined(CAR_HAS_4_MOTORENCODERS)
 	//motor encoders read on Pico
 		#define PIN_ENC_FRONT_RIGHT_Y 18
