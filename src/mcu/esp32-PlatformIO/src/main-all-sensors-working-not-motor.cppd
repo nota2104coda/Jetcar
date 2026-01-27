@@ -13,7 +13,7 @@
 #define NONSTEER_4WD_RUBBERWHL_2XSONAR_2xCLIFF
 
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
-#define LOOP_DEBUG_A 0
+#define LOOP_DEBUG_A 1
 #define LOOP_DEBUG_B 0
 #define LOOP_DEBUG_I2C 1
 
@@ -84,7 +84,7 @@ static PCA9685_AWDDriver motorDriver(
 
 // Simple shared state (single core)
 static SensorBuffer mcuSensors = {0};
-static MotorCommand latestMotorCmd = {0, 0, 0, 0, 0};
+static MotorCommand latestMotorCmd = {0.1, 0.1, 0.1, 0.1, 0};
 static bool robotEnabled = true;
 
 // MAVLink + Jetson I2C bridge state
@@ -302,13 +302,7 @@ void sendTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINTLN(sensors.accelX, 2);
   DEBUG_PRINT(">accel_y:");
   DEBUG_PRINTLN(sensors.accelY, 2);
-  DEBUG_PRINT(">accel_z:");
-  DEBUG_PRINTLN(sensors.accelZ, 2);
 
-  DEBUG_PRINT(">gyro_x:");
-  DEBUG_PRINTLN(sensors.gyroX, 2);
-  DEBUG_PRINT(">gyro_y:");
-  DEBUG_PRINTLN(sensors.gyroY, 2);
   DEBUG_PRINT(">gyro_z:");
   DEBUG_PRINTLN(sensors.gyroZ, 2);
 

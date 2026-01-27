@@ -36,13 +36,13 @@ public:
     // IR cliff sensors typically output LOW when cliff is detected
     // (no reflection = no ground detected)
     bool cliffraw = isCliffDetected();
-    Serial.print("Raw cliff reading: ");
-    Serial.println(cliffraw ? "DETECTED" : "NOT DETECTED");
+    // DEBUG_PRINT("Raw cliff reading: ");
+    // DEBUG_PRINTLN(cliffraw ? "DETECTED" : "NOT DETECTED");
     // Add new sample to the back of the queue
     window.dequeue();
     window.enqueue(cliffraw);
     thisCount = 0;
-    for(uint8_t i= (kWindowSize - kTriggerCount)-1; i<kWindowSize; i++) {
+    for(uint8_t i= (kWindowSize - kTriggerCount); i<kWindowSize; i++) {
       thisCount += window.at(i);
     }
     switch(lastState){

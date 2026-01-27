@@ -4,7 +4,7 @@
   <link name="base_link">
     <visual>
       <geometry>
-        <box size="0.25 0.13 0.005"/>
+        <box size="0.25 0.13 0.004"/>
       </geometry>
       <origin xyz="0 0 0.06"/>
       <material name="gray">
@@ -68,28 +68,40 @@
   <joint name="joint_wheel_fl" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_fl"/>
-    <origin xyz="0.11 0.09 0.035" rpy="0 0 0"/>
+    <origin xyz="0.06 0.09 0.035" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
   </joint>
   <joint name="joint_wheel_fr" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_fr"/>
-    <origin xyz="0.11 -0.09 0.035" rpy="0 0 0"/>
+    <origin xyz="0.06 -0.09 0.035" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
   </joint>
   <joint name="joint_wheel_rl" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_rl"/>
-    <origin xyz="-0.11 0.09 0.035" rpy="0 0 0"/>
+    <origin xyz="-0.06 0.09 0.035" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
   </joint>
   <joint name="joint_wheel_rr" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_rr"/>
-    <origin xyz="-0.11 -0.09 0.035" rpy="0 0 0"/>
+    <origin xyz="-0.06 -0.09 0.035" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
   </joint>
 
+  <!-- SR04 Sonar (frt) -->
+  <link name="sr04_frt">
+    <visual>
+      <geometry>
+        <box size="0.03 0.07 0.03"/>
+      </geometry>
+      <origin xyz="-0.0 0 0.06"/>
+      <material name="blue">
+        <color rgba="0.2 0.2 0.8 1"/>
+      </material>
+    </visual>
+  </link>
   <!-- SR04 Sonar (rear) -->
   <link name="sr04_rear">
     <visual>
@@ -102,12 +114,16 @@
       </material>
     </visual>
   </link>
+  <joint name="joint_sr04_front" type="fixed">
+    <parent link="base_link"/>
+    <child link="sr04_frt"/>
+    <origin xyz="0.13 0 0.04"/>
+  </joint>
   <joint name="joint_sr04_rear" type="fixed">
     <parent link="base_link"/>
     <child link="sr04_rear"/>
     <origin xyz="-0.13 0 0.04"/>
   </joint>
-
   <!-- Cliff sensors (front/rear) -->
   <link name="cliff_front">
     <visual>
@@ -141,10 +157,10 @@
   </joint>
 
   <!-- Camera (front) -->
-  <link name="camera_front">
+  <link name="camera_binoc">
     <visual>
       <geometry>
-        <box size="0.03 0.03 0.03"/>
+        <box size="0.025 0.10 0.02"/>
       </geometry>
       <origin xyz="0.0 0 0.06"/>
       <material name="green">
@@ -152,17 +168,17 @@
       </material>
     </visual>
   </link>
-  <joint name="joint_camera_front" type="fixed">
+  <joint name="joint_camera_binoc" type="fixed">
     <parent link="base_link"/>
-    <child link="camera_front"/>
-    <origin xyz="0.15 0 0.1"/>
+    <child link="camera_binoc"/>
+    <origin xyz="0.06 -0.01 0.13"/>
   </joint>
 
   <!-- VL53L5X (front ToF array) -->
   <link name="vl53l5x_front">
     <visual>
       <geometry>
-        <box size="0.02 0.02 0.01"/>
+        <box size="0.01 0.02 0.01"/>
       </geometry>
       <origin xyz="0 0 0.06"/>
       <material name="yellow">
@@ -173,7 +189,7 @@
   <joint name="joint_vl53l5x_front" type="fixed">
     <parent link="base_link"/>
     <child link="vl53l5x_front"/>
-    <origin xyz="0.13 0 0.12"/>
+    <origin xyz="0.13 0 0.045"/>
   </joint>
 
   <!-- LD2450 (front radar) -->
@@ -191,6 +207,23 @@
   <joint name="joint_ld2450_front" type="fixed">
     <parent link="base_link"/>
     <child link="ld2450_front"/>
-    <origin xyz="0.13 0 0.05"/>
+    <origin xyz="0.1 0.03 0.05"/>
+  </joint>
+   <!-- LD2450 (front radar) -->
+  <link name="ld06_lidar">
+    <visual>
+      <geometry>
+        <cylinder length="0.015" radius="0.02"/>
+      </geometry>
+      <origin xyz="-0.0 0.0 -0.0" rpy="0 0 -1.570"/>
+      <material name="purple">
+        <color rgba="0.6 0.2 0.8 1"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="joint_ld06" type="fixed">
+    <parent link="base_link"/>
+    <child link="ld06_lidar"/>
+    <origin xyz="0.02 0.0 0.18"/>
   </joint>
 </robot>

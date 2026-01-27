@@ -213,8 +213,8 @@
   static constexpr int32_t PULSE_PER_REV = 12;    //for encoders 
   static constexpr float RPM2RADPS =  0.10472;
   static constexpr float GRAVITY = 	9.81; //m per sec2
-  static constexpr float WHEEL_RAD =  3;  //6 cm dia wheels
-  static constexpr float RADPS2MPS = 0.03; //same as wheel radius, since v = r*w
+  static constexpr float WHEEL_RAD =  3.5;  //7 cm dia wheels
+  static constexpr float RADPS2CMPS = 0.035; //same as wheel radius, since v = r*w
   static constexpr float MOTOR_RPM_TO_CMPS = RPM2RADPS * WHEEL_RAD / kGearRatio;
 #endif
 
