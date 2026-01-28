@@ -94,7 +94,12 @@ static constexpr uint8_t kJetsonI2CAddress = 0x42; // 7-bit slave address polled
 static constexpr uint32_t kI2CReconnectIntervalMs = 1000;
 static constexpr uint32_t kI2CInactivityTimeoutMs = 5000;
 static constexpr size_t kMavlinkFifoSize = 768;
+// MAVLink frames are variable length, so we enqueue raw bytes and let the Jetson drain
+// them in master-driven reads. Each request grabs at most kI2CMaxChunk bytes (32 today),
+// and the Jetson issues however many sequential reads are needed for its parser to
+// reconstruct the MAVLink packets.
 static constexpr size_t kI2CMaxChunk = 32;
+static constexpr size_t kJetsonRxFifoSize = 256;
 // MISRA: Named constant for ESC count (Rule 14.3 - no magic numbers in loops)
 static constexpr size_t kEscTelemetryCount = 4U;
 
@@ -105,6 +110,11 @@ static volatile uint32_t lastJetsonActivityMs = 0;
 static std::array<uint8_t, kMavlinkFifoSize> mavlinkTxFifo{};
 static volatile size_t mavlinkTxHead = 0;
 static volatile size_t mavlinkTxTail = 0;
+static std::array<uint8_t, kJetsonRxFifoSize> jetsonRxFifo{};
+static volatile size_t jetsonRxHead = 0;
+static volatile size_t jetsonRxTail = 0;
+static mavlink_message_t jetsonRxMessage{};
+static mavlink_status_t jetsonRxStatus{};
 static uint16_t escTelemetrySequence = 0;
 
 // Forward declarations
@@ -123,6 +133,11 @@ static void initI2Cgeneric(TwoWire &bus,
                            int sclPin,
                            int slaveAddress = -1,
                            uint32_t frequencyHz = 400000U);
+static void processJetsonCommandStream();
+static void handleJetsonCommand(const mavlink_message_t &message);
+static void handleManualControlCommand(const mavlink_manual_control_t &manual);
+static void pushJetsonRxByte(uint8_t value);
+static bool popJetsonRxByte(uint8_t &value);
 
 // Forward declaration for telemetry function
 void sendTelemetry(const SensorBuffer &sensors);
@@ -233,6 +248,7 @@ void loop() {
 
   // Keep Jetson I2C telemetry online without blocking the control loop
   ensureJetsonI2CReady(now);
+  processJetsonCommandStream();
 
   // Poll sonar (rear then front with crosstalk delay)
   if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
@@ -297,6 +313,10 @@ void loop() {
   }
 
   // Telemetry
+  /*its job is to print to serial and also to queue data to mavlink queue
+   the que is filled every time we go through loop. 
+  the draining of queue happens eitehr when jetson requests data over i2c, 
+   or when we want to add data and queue is full, we drop oldest data. */
   sendTelemetry(mcuSensors);
 
   // Feed watchdog
@@ -363,6 +383,8 @@ static void enqueueBytes(const uint8_t *data, size_t len) {
     if (next == mavlinkTxTail) {
       mavlinkTxTail = (mavlinkTxTail + 1U) % kMavlinkFifoSize;
     }
+    // The FIFO treats the MAVLink stream as a flat byte queue. I2C chunk boundaries are
+    // irrelevant here; the master decides how many bytes to fetch each time it polls us.
     mavlinkTxFifo[mavlinkTxHead] = data[i];
     mavlinkTxHead = next;
   }
@@ -373,6 +395,58 @@ static void enqueueMavlinkMessage(const mavlink_message_t &message) {
   uint8_t frame[MAVLINK_MAX_PACKET_LEN];
   const uint16_t frameLen = mavlink_msg_to_send_buffer(frame, &message);
   enqueueBytes(frame, frameLen);
+}
+
+static void pushJetsonRxByte(uint8_t value) {
+  const size_t next = (jetsonRxHead + 1U) % kJetsonRxFifoSize;
+  if (next == jetsonRxTail) {
+    jetsonRxTail = (jetsonRxTail + 1U) % kJetsonRxFifoSize;
+  }
+  jetsonRxFifo[jetsonRxHead] = value;
+  jetsonRxHead = next;
+}
+
+static bool popJetsonRxByte(uint8_t &value) {
+  noInterrupts();
+  const bool empty = (jetsonRxTail == jetsonRxHead);
+  if (empty) {
+    interrupts();
+    return false;
+  }
+  value = jetsonRxFifo[jetsonRxTail];
+  jetsonRxTail = (jetsonRxTail + 1U) % kJetsonRxFifoSize;
+  interrupts();
+  return true;
+}
+
+static void processJetsonCommandStream() {
+  uint8_t byte = 0U;
+  while (popJetsonRxByte(byte)) {
+    if (mavlink_parse_char(MAVLINK_COMM_1, byte, &jetsonRxMessage, &jetsonRxStatus) != 0) {
+      handleJetsonCommand(jetsonRxMessage);
+    }
+  }
+}
+
+static void handleJetsonCommand(const mavlink_message_t &message) {
+  switch (message.msgid) {
+    case MAVLINK_MSG_ID_MANUAL_CONTROL: {
+      mavlink_manual_control_t manual = {};
+      mavlink_msg_manual_control_decode(&message, &manual);
+      handleManualControlCommand(manual);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+static void handleManualControlCommand(const mavlink_manual_control_t &manual) {
+  const float forward = constrain(static_cast<float>(manual.x) / 1000.0f, -1.0f, 1.0f);
+  const float yaw = constrain(static_cast<float>(manual.r) / 1000.0f, -1.0f, 1.0f);
+  const float left = constrain(forward - yaw, -1.0f, 1.0f);
+  const float right = constrain(forward + yaw, -1.0f, 1.0f);
+  queue_motor_command(right, left, right, left);
 }
 
 static void publishHighresImu(const SensorBuffer &sensors) {
@@ -518,6 +592,9 @@ static void publishEscTelemetry(const SensorBuffer &sensors) {
 static void jetsonI2COnRequest() {
   uint8_t chunk[kI2CMaxChunk];
   size_t count = 0;
+  // Jetson (master) clocks the bus and we simply stream out as many bytes as it asks
+  // for this transaction, up to the chunk size. MAVLink tolerates packet boundaries
+  // being split across multiple reads because framing markers let the parser re-sync.
   while ((count < kI2CMaxChunk) && (mavlinkTxTail != mavlinkTxHead)) {
     chunk[count++] = mavlinkTxFifo[mavlinkTxTail];
     mavlinkTxTail = (mavlinkTxTail + 1U) % kMavlinkFifoSize;
@@ -531,7 +608,8 @@ static void jetsonI2COnRequest() {
 
 static void jetsonI2COnReceive(int numBytes) {
   while (numBytes-- > 0) {
-    (void)jetsonI2c->read();
+    const uint8_t value = static_cast<uint8_t>(jetsonI2c->read());
+    pushJetsonRxByte(value);
   }
   lastJetsonActivityMs = millis();
 }
