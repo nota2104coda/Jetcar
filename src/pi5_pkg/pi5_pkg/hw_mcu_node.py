@@ -52,7 +52,7 @@ class HwMcuNode(Node):
         self.declare_parameter('base_frame_id', 'base_link')
         self.declare_parameter('imu_frame_id', 'imu_link')
         self.declare_parameter('command_topic', 'cmd_vel')
-        self.declare_parameter('command_mode', 'manual_control')
+        self.declare_parameter('command_mode', 'set_actuator_control_target')
         self.declare_parameter('command_target_system', 42)
         self.declare_parameter('command_target_component', mavlink2.MAV_COMP_ID_AUTOPILOT1)
         self.declare_parameter('command_source_system', 1)
@@ -89,12 +89,12 @@ class HwMcuNode(Node):
             1e-3, self.get_parameter('manual_yaw_rate_max').get_parameter_value().double_value
         )
 
-        if self.command_mode not in {'manual_control', 'set_position_target_local_ned'}:
+        if self.command_mode not in {'set_actuator_control_target', 'set_position_target_local_ned'}:
             self.get_logger().warn(
-                'command_mode must be either "manual_control" or '
-                '"set_position_target_local_ned"; defaulting to manual_control.'
+                'command_mode must be either "set_actuator_control_target" or '
+                '"set_position_target_local_ned"; defaulting to set_actuator_control_target.'
             )
-            self.command_mode = 'manual_control'
+            self.command_mode = 'set_actuator_control_target'
 
         # Derived wheel conversion: meters per second per RPM (uses kinematics in firmware)
         rpm_to_rad_per_sec = (2.0 * math.pi) / 60.0
@@ -117,19 +117,21 @@ class HwMcuNode(Node):
         # --- ROS interfaces ---
         qos_profile = QoSProfile(depth=10)
         self.tf_broadcaster = TransformBroadcaster(self)
-        self.odometry_publisher = self.create_publisher(Odometry, 'odom', qos_profile)
-        self.imu_publisher = self.create_publisher(Imu, 'imu/data_raw', qos_profile)
-        self.temp_publisher = self.create_publisher(Temperature, 'imu/temperature', qos_profile)
-        self.sonar_front_publisher = self.create_publisher(Range, 'sonar/front', qos_profile)
-        self.sonar_rear_publisher = self.create_publisher(Range, 'sonar/rear', qos_profile)
-        self.cliff_front_publisher = self.create_publisher(Range, 'cliff/front', qos_profile)
-        self.cliff_rear_publisher = self.create_publisher(Range, 'cliff/rear', qos_profile)
+
+        from std_msgs.msg import Float32MultiArray
+        self.odometry_publisher = self.create_publisher(Odometry, '/odom', qos_profile)
+        self.imu_publisher = self.create_publisher(Imu, '/mcu/imu', qos_profile)
+        self.esc_publisher = self.create_publisher(Float32MultiArray, '/esc_telemetry', qos_profile)
+        self.range_front_publisher = self.create_publisher(Range, '/mcu/range/front', qos_profile)
+        self.range_rear_publisher = self.create_publisher(Range, '/mcu/range/rear', qos_profile)
+        self.cliff_front_publisher = self.create_publisher(Range, '/mcu/cliff/front', qos_profile)
+        self.cliff_rear_publisher = self.create_publisher(Range, '/mcu/cliff/rear', qos_profile)
 
         self.range_publishers = {
-            1: ('sonar/front', self.sonar_front_publisher, Range.ULTRASOUND),
-            2: ('sonar/rear', self.sonar_rear_publisher, Range.ULTRASOUND),
-            3: ('cliff/front', self.cliff_front_publisher, Range.INFRARED),
-            4: ('cliff/rear', self.cliff_rear_publisher, Range.INFRARED),
+            1: ('/mcu/range/front', self.range_front_publisher, Range.ULTRASOUND),
+            2: ('/mcu/range/rear', self.range_rear_publisher, Range.ULTRASOUND),
+            3: ('/mcu/cliff/front', self.cliff_front_publisher, Range.INFRARED),
+            4: ('/mcu/cliff/rear', self.cliff_rear_publisher, Range.INFRARED),
         }
 
         self._open_i2c()
@@ -209,8 +211,8 @@ class HwMcuNode(Node):
             if self.bus is None:
                 return
 
-        if self.command_mode == 'manual_control':
-            message = self._build_manual_control_message(twist)
+        if self.command_mode == 'set_actuator_control_target':
+            message = self._build_actuator_control_message(twist)
         else:
             message = self._build_velocity_setpoint_message(twist)
 
@@ -218,6 +220,34 @@ class HwMcuNode(Node):
             return
 
         self._write_mavlink_message(message)
+
+    def _build_actuator_control_message(self, twist: Twist):
+        # Map Twist to actuator controls (4 wheels: FR, FL, RR, RL)
+        # For a diff-drive, map linear.x to both, angular.z to left/right diff
+        # Here, we assume 4 actuators, values in [-1, 1]
+        actuators = [0.0] * 8
+        # Simple diff-drive mapping for 4 wheels
+        v = max(min(twist.linear.x, 1.0), -1.0)
+        w = max(min(twist.angular.z, 1.0), -1.0)
+        left = v - w
+        right = v + w
+        # actuators[0] = right  # FR
+        # actuators[1] = left   # FL
+        # actuators[2] = right  # RR
+        # actuators[3] = left   # RL
+        actuators[0] = 0.3 + 0.1*random()  # FR
+        actuators[1] = -0.3 + 0.1*random()  # FL
+        actuators[2] = 0.5 + 0.1*random()  # RR
+        actuators[3] = -0.5 + 0.1*random()  # RL
+        # Remaining actuators (4-7) left at 0.0
+        return self.mav_tx.set_actuator_control_target_encode(
+            0,  # time_boot_ms
+            self.command_target_system,
+            self.command_target_component,
+            0,  # group_mlx (0 = default)
+            actuators,
+            0  # flags
+        )
 
     def _build_manual_control_message(self, twist: Twist):
         scale = 1000.0
@@ -329,6 +359,11 @@ class HwMcuNode(Node):
 
     def _publish_esc_telemetry(self, msg) -> None:
         rpm = [float(value) for value in msg.rpm]
+        # Publish as Float32MultiArray for /esc_telemetry
+        from std_msgs.msg import Float32MultiArray
+        esc_msg = Float32MultiArray()
+        esc_msg.data = rpm
+        self.esc_publisher.publish(esc_msg)
         # sendTelemetry() encodes absolute wheel RPM; until the firmware exports
         # motor direction we only integrate magnitudes for odometry.
         right_linear = self._rpm_to_linear((rpm[0] + rpm[2]) * 0.5)

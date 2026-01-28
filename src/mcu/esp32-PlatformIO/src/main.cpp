@@ -355,9 +355,15 @@ void sendTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINT(">cliff_rear:");
   DEBUG_PRINTLN(sensors.cliffRear ? 1 : 0);
 
+  // HIGHRES_IMU -> /pico/imu (sensor_msgs/Imu)
   publishHighresImu(sensors);
+  // DISTANCE_SENSOR id=1 -> /pico/range/front (sensor_msgs/Range, ultrasound)
+  // DISTANCE_SENSOR id=2 -> /pico/range/rear (sensor_msgs/Range, ultrasound)
   publishSonars(sensors);
+  // DISTANCE_SENSOR id=3 -> /pico/cliff/front (sensor_msgs/Range, infrared)
+  // DISTANCE_SENSOR id=4 -> /pico/cliff/rear (sensor_msgs/Range, infrared)
   publishInfraredSensors(sensors);
+  // ESC_TELEMETRY_1_TO_4 -> /esc_telemetry (std_msgs/Float32MultiArray, [FR, FL, RR, RL] RPM)
   publishEscTelemetry(sensors);
 }
 
@@ -434,6 +440,22 @@ static void handleJetsonCommand(const mavlink_message_t &message) {
       mavlink_manual_control_t manual = {};
       mavlink_msg_manual_control_decode(&message, &manual);
       handleManualControlCommand(manual);
+      break;
+    }
+    case MAVLINK_MSG_ID_SET_ACTUATOR_CONTROL_TARGET: {
+      mavlink_set_actuator_control_target_t act = {};
+      mavlink_msg_set_actuator_control_target_decode(&message, &act);
+      // Map actuators[0-3] to FR, FL, RR, RL
+      float tqFR = constrain(act.controls[0], -1.0f, 1.0f);
+      float tqFL = constrain(act.controls[1], -1.0f, 1.0f);
+      float tqRR = constrain(act.controls[2], -1.0f, 1.0f);
+      float tqRL = constrain(act.controls[3], -1.0f, 1.0f);
+      DEBUG_I2C_PRINTLN(">tqFR: " + String(tqFR, 2));
+      DEBUG_I2C_PRINTLN(">tqFL: " + String(tqFL, 2));
+      DEBUG_I2C_PRINTLN(">tqRR: " + String(tqRR, 2));
+      DEBUG_I2C_PRINTLN(">tqRL: " + String(tqRL, 2));
+      
+      // queue_motor_command(tqFR, tqFL, tqRR, tqRL);
       break;
     }
     default:
@@ -526,6 +548,7 @@ static void publishSonars(const SensorBuffer &sensors) {
   const uint16_t front = clampDistanceCm(sensors.sonarFrontcm);
   const uint16_t rear = clampDistanceCm(sensors.sonarRearcm);
   
+  // id=1: front sonar, id=2: rear sonar (matches /pico/range/front and /pico/range/rear)
   publishDistanceReading(1, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_NONE,
                          front, kSonarMinRangecm, kSonarMaxRangecm, kSonarQuality, sensors.timestamp);
   publishDistanceReading(2, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_YAW_180,
@@ -555,10 +578,9 @@ static void publishInfraredSensors(const SensorBuffer &sensors) {
   const uint8_t frontQuality = sensors.cliffFront ? kCliffQualityDanger : kCliffQualitySafe;
   const uint8_t rearQuality = sensors.cliffRear ? kCliffQualityDanger : kCliffQualitySafe;
 
-  // Sensor ID 3: Front cliff detector (downward-facing infrared)
+  // id=3: front cliff IR, id=4: rear cliff IR (matches /pico/cliff/front and /pico/cliff/rear)
   publishDistanceReading(3, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
                          frontHeight, kCliffMinRangecm, kCliffMaxRangecm, frontQuality, sensors.timestamp);
-  // Sensor ID 4: Rear cliff detector (downward-facing infrared)
   publishDistanceReading(4, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
                          rearHeight, kCliffMinRangecm, kCliffMaxRangecm, rearQuality, sensors.timestamp);
 }
