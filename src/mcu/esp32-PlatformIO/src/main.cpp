@@ -450,10 +450,15 @@ static void handleJetsonCommand(const mavlink_message_t &message) {
       float tqFL = constrain(act.controls[1], -1.0f, 1.0f);
       float tqRR = constrain(act.controls[2], -1.0f, 1.0f);
       float tqRL = constrain(act.controls[3], -1.0f, 1.0f);
-      DEBUG_I2C_PRINTLN(">tqFR: " + String(tqFR, 2));
-      DEBUG_I2C_PRINTLN(">tqFL: " + String(tqFL, 2));
-      DEBUG_I2C_PRINTLN(">tqRR: " + String(tqRR, 2));
-      DEBUG_I2C_PRINTLN(">tqRL: " + String(tqRL, 2));
+      DEBUG_I2C_PRINT(">tqFR: ");
+      DEBUG_I2C_PRINTLN(tqFR,2);
+      DEBUG_I2C_PRINT(">tqFL: ");
+      DEBUG_I2C_PRINTLN(tqFL,2);
+      DEBUG_I2C_PRINT(">tqRR: ");
+      DEBUG_I2C_PRINTLN(tqRR,2);
+      DEBUG_I2C_PRINT(">tqRL: ");
+      DEBUG_I2C_PRINTLN(tqRL,2);
+    
       
       // queue_motor_command(tqFR, tqFL, tqRR, tqRL);
       break;
