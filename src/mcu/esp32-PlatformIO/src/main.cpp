@@ -13,7 +13,7 @@
 #define NONSTEER_4WD_RUBBERWHL_2XSONAR_2xCLIFF
 
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
-#define LOOP_DEBUG_A 1
+#define LOOP_DEBUG_A 0
 #define LOOP_DEBUG_B 0
 #define LOOP_DEBUG_I2C 1
 
@@ -71,11 +71,14 @@ static constexpr uint8_t kMavComponentId = MAV_COMP_ID_ONBOARD_COMPUTER;
 static constexpr uint32_t kI2CReconnectIntervalMs = 1000;
 static constexpr uint32_t kI2CInactivityTimeoutMs = 5000;
 static constexpr size_t kMavlinkFifoSize = 768; // outgoing data buffer size
+static std::array<uint8_t, kMavlinkFifoSize> mavlinkTxFifo{}; // outgoing data buffer
+static volatile size_t mavlinkTxHead = 0;
+static volatile size_t mavlinkTxTail = 0;
 /* MAVLink frames are variable length, so we enqueue raw bytes and let the Jetson drain
 them in master-driven reads. Each request grabs at most kI2CMaxChunk bytes (32 today),
 and the Jetson issues however many sequential reads are needed for its parser to
 reconstruct the MAVLink packets. */
-static constexpr size_t kI2CMaxChunk = 32;
+static constexpr size_t kI2CMaxChunk = 64;
 static constexpr size_t kJetsonRxFifoSize = 256;// incoming commands buffer size
 // MISRA: Named constant for ESC count (Rule 14.3 - no magic numbers in loops)
 static constexpr size_t kEscTelemetryCount = 4U;
@@ -84,9 +87,6 @@ static TwoWire *jetsonI2c = &Wire1;
 static bool jetsonI2CInitialized = false;
 static uint32_t lastI2CInitAttempt = 0;
 static volatile uint32_t lastJetsonActivityMs = 0;
-static std::array<uint8_t, kMavlinkFifoSize> mavlinkTxFifo{}; // outgoing data buffer
-static volatile size_t mavlinkTxHead = 0;
-static volatile size_t mavlinkTxTail = 0;
 static std::array<uint8_t, kJetsonRxFifoSize> jetsonRxFifo{}; // incoming data buffer
 static volatile size_t jetsonRxHead = 0;
 static volatile size_t jetsonRxTail = 0;
@@ -262,10 +262,11 @@ void loop() {
   // mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL) * MOTOR_RPM_TO_CMPS;
   // mcuSensors.speedRR = motorDriver.getRPM(MOTOR_RR) * MOTOR_RPM_TO_CMPS;
   //temporary override to test I2C
-  mcuSensors.speedFL = 1;
-  mcuSensors.speedFR = 2;
-  mcuSensors.speedRL = 3;
-  mcuSensors.speedRR = 4;
+  mcuSensors.speedFR = 1;
+  mcuSensors.speedRR = 2;
+  mcuSensors.speedFL = 3;
+  mcuSensors.speedRL = 4;
+  
 
   mcuSensors.sonarFrontcm = sonarDistanceFront;
   mcuSensors.sonarRearcm = sonarDistanceRear;
@@ -333,13 +334,13 @@ void sendTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINTLN(sensors.cliffRear ? 1 : 0);
 
   // HIGHRES_IMU -> /mcu/imu (sensor_msgs/Imu)
-  pushHighresImu(sensors);
+  // pushHighresImu(sensors);
   // DISTANCE_SENSOR id=1 -> /mcu/range/front (sensor_msgs/Range, ultrasound)
   // DISTANCE_SENSOR id=2 -> /mcu/range/rear (sensor_msgs/Range, ultrasound)
-  pushSonars(sensors);
+  // pushSonars(sensors);
   // DISTANCE_SENSOR id=3 -> /mcu/cliff/front (sensor_msgs/Range, infrared)
   // DISTANCE_SENSOR id=4 -> /mcu/cliff/rear (sensor_msgs/Range, infrared)
-  pushIRSensors(sensors);
+  // pushIRSensors(sensors);
   // ESC_TELEMETRY_1_TO_4 -> /esc_telemetry (std_msgs/Float32MultiArray, [FR, FL, RR, RL] RPM)
   pushEscTelemetry(sensors);
 }
@@ -410,8 +411,15 @@ static bool popJetsonRxByte(uint8_t &value) {
 static void processJetsonCommandStream() {
   uint8_t byte = 0U;
   while (popJetsonRxByte(byte)) {
-    if (mavlink_parse_char(MAVLINK_COMM_1, byte, &jetsonRxMessage, &jetsonRxStatus) != 0) {
+    int parse_result = mavlink_parse_char(MAVLINK_COMM_1, byte, &jetsonRxMessage, &jetsonRxStatus);
+    if (parse_result != 0) {
+      DEBUG_I2C_PRINT("[MAVLINK] Parsed message: ");
+      DEBUG_I2C_PRINTLN(jetsonRxMessage.msgid);
       handleJetsonCommand(jetsonRxMessage);
+    } else {
+      DEBUG_I2C_PRINT("[MAVLINK] Byte ");
+      DEBUG_I2C_PRINT(byte);
+      DEBUG_I2C_PRINTLN(": No message parsed yet.");
     }
   }
 }
@@ -571,11 +579,13 @@ static void pushEscTelemetry(const SensorBuffer &sensors) {
   const uint8_t temperature = static_cast<uint8_t>(constrain(sensors.temp, 0.0f, 255.0f));
   // MISRA: Named constant kEscTelemetryCount instead of magic number (Rule 14.3)
   for (size_t i = 0; i < kEscTelemetryCount; ++i) {
-    esc.temperature[i] = temperature;
+    // esc.temperature[i] = temperature;
+    esc.temperature[i] = 0;
     esc.voltage[i] = 0;
     esc.current[i] = 0;
     esc.totalcurrent[i] = 0;
-    esc.count[i] = escTelemetrySequence;
+    // esc.count[i] = escTelemetrySequence;
+    esc.count[i] = 0;
   }
 
   mavlink_message_t message;
