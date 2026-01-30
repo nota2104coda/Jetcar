@@ -32,6 +32,7 @@ from smbus2 import SMBus, i2c_msg
 from pymavlink.dialects.v20 import ardupilotmega as mavlink2
 
 
+
 class HwMcuNode(Node):
     """Bridge MAVLink telemetry from the MCU into ROS 2 topics."""
 
@@ -222,7 +223,7 @@ class HwMcuNode(Node):
         self._write_mavlink_message(message)
 
     def _build_actuator_control_message(self, twist: Twist):
-        # Map Twist to actuator controls (4 wheels: FR, FL, RR, RL)
+        # Map Twist to actuator controls (4 wheels: FR, RR, FL, RL)
         # For a diff-drive, map linear.x to both, angular.z to left/right diff
         # Here, we assume 4 actuators, values in [-1, 1]
         actuators = [0.0] * 8
@@ -232,12 +233,12 @@ class HwMcuNode(Node):
         left = v - w
         right = v + w
         # actuators[0] = right  # FR
-        # actuators[1] = left   # FL
-        # actuators[2] = right  # RR
+        # actuators[1] = right   # RR
+        # actuators[2] = left  # FL
         # actuators[3] = left   # RL
         actuators[0] = 0.3 + 0.1*random()  # FR
-        actuators[1] = -0.3 + 0.1*random()  # FL
-        actuators[2] = 0.5 + 0.1*random()  # RR
+        actuators[1] = -0.3 + 0.1*random()  # RR
+        actuators[2] = 0.5 + 0.1*random()  # FL
         actuators[3] = -0.5 + 0.1*random()  # RL
         # Remaining actuators (4-7) left at 0.0
         return self.mav_tx.set_actuator_control_target_encode(
@@ -247,27 +248,6 @@ class HwMcuNode(Node):
             0,  # group_mlx (0 = default)
             actuators,
             0  # flags
-        )
-
-    def _build_manual_control_message(self, twist: Twist):
-        scale = 1000.0
-
-        def axis(value: float, maximum: float) -> int:
-            normalized = self._clamp(value / maximum, -1.0, 1.0)
-            return int(self._clamp(normalized * scale, -scale, scale))
-
-        x = axis(twist.linear.x, self.manual_linear_max)
-        y = axis(twist.linear.y, self.manual_linear_max)
-        z_norm = self._clamp(twist.linear.z / self.manual_linear_max, -1.0, 1.0)
-        z = int(self._clamp((z_norm + 1.0) * 500.0, 0.0, 1000.0))
-        r = axis(twist.angular.z, self.manual_yaw_rate_max)
-        return self.mav_tx.manual_control_encode(
-            self.command_target_system,
-            x,
-            y,
-            z,
-            r,
-            0,
         )
 
     def _build_velocity_setpoint_message(self, twist: Twist):
@@ -366,8 +346,8 @@ class HwMcuNode(Node):
         self.esc_publisher.publish(esc_msg)
         # sendTelemetry() encodes absolute wheel RPM; until the firmware exports
         # motor direction we only integrate magnitudes for odometry.
-        right_linear = self._rpm_to_linear((rpm[0] + rpm[2]) * 0.5)
-        left_linear = self._rpm_to_linear((rpm[1] + rpm[3]) * 0.5)
+        right_linear = self._rpm_to_linear((rpm[0] + rpm[1]) * 0.5)
+        left_linear = self._rpm_to_linear((rpm[2] + rpm[3]) * 0.5)
         self.update_odometry(left_linear, right_linear)
 
     def _rpm_to_linear(self, rpm_value: float) -> float:

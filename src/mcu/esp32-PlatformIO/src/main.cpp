@@ -17,28 +17,6 @@
 #define LOOP_DEBUG_B 0
 #define LOOP_DEBUG_I2C 1
 
-#if LOOP_DEBUG_A
-  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
-  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
-#else
-  #define DEBUG_PRINT(...) ((void)0)
-  #define DEBUG_PRINTLN(...) ((void)0)
-#endif
-#if LOOP_DEBUG_B
-  #define DEBUG_B_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
-  #define DEBUG_B_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
-#else
-  #define DEBUG_B_PRINT(...) ((void)0)
-  #define DEBUG_B_PRINTLN(...) ((void)0)
-#endif
-
-#if LOOP_DEBUG_I2C
-  #define DEBUG_I2C_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
-  #define DEBUG_I2C_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
-#else
-  #define DEBUG_I2C_PRINT(...) ((void)0)
-  #define DEBUG_I2C_PRINTLN(...) ((void)0)
-#endif
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_MPU6050.h>
@@ -88,18 +66,17 @@ static MotorCommand latestMotorCmd = {0.1, 0.1, 0.1, 0.1, 0};
 static bool robotEnabled = true;
 
 // MAVLink + Jetson I2C bridge state
-static constexpr uint8_t kMavSystemId = 42;
+static constexpr uint8_t kMavSystemId = 200;
 static constexpr uint8_t kMavComponentId = MAV_COMP_ID_ONBOARD_COMPUTER;
-static constexpr uint8_t kJetsonI2CAddress = 0x42; // 7-bit slave address polled by the Jetson master
 static constexpr uint32_t kI2CReconnectIntervalMs = 1000;
 static constexpr uint32_t kI2CInactivityTimeoutMs = 5000;
-static constexpr size_t kMavlinkFifoSize = 768;
-// MAVLink frames are variable length, so we enqueue raw bytes and let the Jetson drain
-// them in master-driven reads. Each request grabs at most kI2CMaxChunk bytes (32 today),
-// and the Jetson issues however many sequential reads are needed for its parser to
-// reconstruct the MAVLink packets.
+static constexpr size_t kMavlinkFifoSize = 768; // outgoing data buffer size
+/* MAVLink frames are variable length, so we enqueue raw bytes and let the Jetson drain
+them in master-driven reads. Each request grabs at most kI2CMaxChunk bytes (32 today),
+and the Jetson issues however many sequential reads are needed for its parser to
+reconstruct the MAVLink packets. */
 static constexpr size_t kI2CMaxChunk = 32;
-static constexpr size_t kJetsonRxFifoSize = 256;
+static constexpr size_t kJetsonRxFifoSize = 256;// incoming commands buffer size
 // MISRA: Named constant for ESC count (Rule 14.3 - no magic numbers in loops)
 static constexpr size_t kEscTelemetryCount = 4U;
 
@@ -107,10 +84,10 @@ static TwoWire *jetsonI2c = &Wire1;
 static bool jetsonI2CInitialized = false;
 static uint32_t lastI2CInitAttempt = 0;
 static volatile uint32_t lastJetsonActivityMs = 0;
-static std::array<uint8_t, kMavlinkFifoSize> mavlinkTxFifo{};
+static std::array<uint8_t, kMavlinkFifoSize> mavlinkTxFifo{}; // outgoing data buffer
 static volatile size_t mavlinkTxHead = 0;
 static volatile size_t mavlinkTxTail = 0;
-static std::array<uint8_t, kJetsonRxFifoSize> jetsonRxFifo{};
+static std::array<uint8_t, kJetsonRxFifoSize> jetsonRxFifo{}; // incoming data buffer
 static volatile size_t jetsonRxHead = 0;
 static volatile size_t jetsonRxTail = 0;
 static mavlink_message_t jetsonRxMessage{};
@@ -123,10 +100,10 @@ static void jetsonI2COnReceive(int numBytes);
 static void ensureJetsonI2CReady(uint32_t now);
 static void enqueueBytes(const uint8_t *data, size_t len);
 static void enqueueMavlinkMessage(const mavlink_message_t &message);
-static void publishHighresImu(const SensorBuffer &sensors);
-static void publishSonars(const SensorBuffer &sensors);
-static void publishInfraredSensors(const SensorBuffer &sensors);
-static void publishEscTelemetry(const SensorBuffer &sensors);
+static void pushHighresImu(const SensorBuffer &sensors);
+static void pushSonars(const SensorBuffer &sensors);
+static void pushIRSensors(const SensorBuffer &sensors);
+static void pushEscTelemetry(const SensorBuffer &sensors);
 void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL);
 static void initI2Cgeneric(TwoWire &bus,
                            int sdaPin,
@@ -135,7 +112,6 @@ static void initI2Cgeneric(TwoWire &bus,
                            uint32_t frequencyHz = 400000U);
 static void processJetsonCommandStream();
 static void handleJetsonCommand(const mavlink_message_t &message);
-static void handleManualControlCommand(const mavlink_manual_control_t &manual);
 static void pushJetsonRxByte(uint8_t value);
 static bool popJetsonRxByte(uint8_t &value);
 
@@ -285,6 +261,7 @@ void loop() {
   // mcuSensors.speedFR = motorDriver.getRPM(MOTOR_FR) * MOTOR_RPM_TO_CMPS;
   // mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL) * MOTOR_RPM_TO_CMPS;
   // mcuSensors.speedRR = motorDriver.getRPM(MOTOR_RR) * MOTOR_RPM_TO_CMPS;
+  //temporary override to test I2C
   mcuSensors.speedFL = 1;
   mcuSensors.speedFR = 2;
   mcuSensors.speedRL = 3;
@@ -355,25 +332,30 @@ void sendTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINT(">cliff_rear:");
   DEBUG_PRINTLN(sensors.cliffRear ? 1 : 0);
 
-  // HIGHRES_IMU -> /pico/imu (sensor_msgs/Imu)
-  publishHighresImu(sensors);
-  // DISTANCE_SENSOR id=1 -> /pico/range/front (sensor_msgs/Range, ultrasound)
-  // DISTANCE_SENSOR id=2 -> /pico/range/rear (sensor_msgs/Range, ultrasound)
-  publishSonars(sensors);
-  // DISTANCE_SENSOR id=3 -> /pico/cliff/front (sensor_msgs/Range, infrared)
-  // DISTANCE_SENSOR id=4 -> /pico/cliff/rear (sensor_msgs/Range, infrared)
-  publishInfraredSensors(sensors);
+  // HIGHRES_IMU -> /mcu/imu (sensor_msgs/Imu)
+  pushHighresImu(sensors);
+  // DISTANCE_SENSOR id=1 -> /mcu/range/front (sensor_msgs/Range, ultrasound)
+  // DISTANCE_SENSOR id=2 -> /mcu/range/rear (sensor_msgs/Range, ultrasound)
+  pushSonars(sensors);
+  // DISTANCE_SENSOR id=3 -> /mcu/cliff/front (sensor_msgs/Range, infrared)
+  // DISTANCE_SENSOR id=4 -> /mcu/cliff/rear (sensor_msgs/Range, infrared)
+  pushIRSensors(sensors);
   // ESC_TELEMETRY_1_TO_4 -> /esc_telemetry (std_msgs/Float32MultiArray, [FR, FL, RR, RL] RPM)
-  publishEscTelemetry(sensors);
+  pushEscTelemetry(sensors);
 }
 
-void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL) {
-  latestMotorCmd = {tqFR, tqFL, tqRR, tqRL, millis()};
+void queue_motor_command(float tqFR, float tqRR, float tqFL, float tqRL) {
+  latestMotorCmd = {tqFR, tqRR, tqFL, tqRL, millis()};
 }
 
 static inline uint16_t cmpsToRpm(float cmps) {
   const float rpm = fabsf(cmps / MOTOR_RPM_TO_CMPS);
-  const float bounded = constrain(rpm, 0.0f, 60000.0f);
+  const float bounded = constrain(rpm, 0.0f, 60000.0f); 
+  /*constrain(x,a,b) is interesting in that you can pass float, which could be a function pointer. 
+  And this will cause completely incorrect results. This can't be caught by the compiler.
+  Hence docs say never pass a function. Store the value returned by a function and pass to constrain(). 
+  This is where functions need strong typing to avoid incorrect uses. 
+  Other standard arduino functions like fabsf will have the same issue */
   return static_cast<uint16_t>(bounded);
 }
 
@@ -436,31 +418,25 @@ static void processJetsonCommandStream() {
 
 static void handleJetsonCommand(const mavlink_message_t &message) {
   switch (message.msgid) {
-    case MAVLINK_MSG_ID_MANUAL_CONTROL: {
-      mavlink_manual_control_t manual = {};
-      mavlink_msg_manual_control_decode(&message, &manual);
-      handleManualControlCommand(manual);
-      break;
-    }
     case MAVLINK_MSG_ID_SET_ACTUATOR_CONTROL_TARGET: {
       mavlink_set_actuator_control_target_t act = {};
       mavlink_msg_set_actuator_control_target_decode(&message, &act);
       // Map actuators[0-3] to FR, FL, RR, RL
       float tqFR = constrain(act.controls[0], -1.0f, 1.0f);
-      float tqFL = constrain(act.controls[1], -1.0f, 1.0f);
-      float tqRR = constrain(act.controls[2], -1.0f, 1.0f);
+      float tqRR = constrain(act.controls[1], -1.0f, 1.0f);
+      float tqFL = constrain(act.controls[2], -1.0f, 1.0f);
       float tqRL = constrain(act.controls[3], -1.0f, 1.0f);
       DEBUG_I2C_PRINT(">tqFR: ");
       DEBUG_I2C_PRINTLN(tqFR,2);
-      DEBUG_I2C_PRINT(">tqFL: ");
-      DEBUG_I2C_PRINTLN(tqFL,2);
       DEBUG_I2C_PRINT(">tqRR: ");
       DEBUG_I2C_PRINTLN(tqRR,2);
+      DEBUG_I2C_PRINT(">tqFL: ");
+      DEBUG_I2C_PRINTLN(tqFL,2);
       DEBUG_I2C_PRINT(">tqRL: ");
       DEBUG_I2C_PRINTLN(tqRL,2);
     
       
-      // queue_motor_command(tqFR, tqFL, tqRR, tqRL);
+      // queue_motor_command(tqFR, tqRR, tqFL, tqRL);
       break;
     }
     default:
@@ -468,15 +444,8 @@ static void handleJetsonCommand(const mavlink_message_t &message) {
   }
 }
 
-static void handleManualControlCommand(const mavlink_manual_control_t &manual) {
-  const float forward = constrain(static_cast<float>(manual.x) / 1000.0f, -1.0f, 1.0f);
-  const float yaw = constrain(static_cast<float>(manual.r) / 1000.0f, -1.0f, 1.0f);
-  const float left = constrain(forward - yaw, -1.0f, 1.0f);
-  const float right = constrain(forward + yaw, -1.0f, 1.0f);
-  queue_motor_command(right, left, right, left);
-}
 
-static void publishHighresImu(const SensorBuffer &sensors) {
+static void pushHighresImu(const SensorBuffer &sensors) {
   // MISRA: Static buffer eliminates stack allocation per call (Rule 8.9 - minimize scope)
   // Thread-safe in single-core architecture
   static uint8_t frame[MAVLINK_MAX_PACKET_LEN];
@@ -510,7 +479,7 @@ static void publishHighresImu(const SensorBuffer &sensors) {
   enqueueBytes(frame, frameLen);  // Already doing this
 }
 
-static void publishDistanceReading(uint8_t id,
+static void pushDistanceReading(uint8_t id,
                                    uint8_t type,
                                    uint8_t orientation,
                                    uint16_t currentDistance,
@@ -543,10 +512,10 @@ static void publishDistanceReading(uint8_t id,
   enqueueBytes(frame, frameLen);
 }
 
-static void publishSonars(const SensorBuffer &sensors) {
+static void pushSonars(const SensorBuffer &sensors) {
   // MISRA: Function-scope constants eliminate magic numbers (Rule 2.5)
   // and reduce runtime recalculation overhead
-  static constexpr uint16_t kSonarMinRangecm = 2U;
+  static constexpr uint16_t kSonarMinRangecm = 10U;
   static constexpr uint16_t kSonarMaxRangecm = static_cast<uint16_t>(kMaxSonarRangecm);
   static constexpr uint8_t kSonarQuality = 100U;
   
@@ -554,9 +523,9 @@ static void publishSonars(const SensorBuffer &sensors) {
   const uint16_t rear = clampDistanceCm(sensors.sonarRearcm);
   
   // id=1: front sonar, id=2: rear sonar (matches /pico/range/front and /pico/range/rear)
-  publishDistanceReading(1, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_NONE,
+  pushDistanceReading(1, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_NONE,
                          front, kSonarMinRangecm, kSonarMaxRangecm, kSonarQuality, sensors.timestamp);
-  publishDistanceReading(2, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_YAW_180,
+  pushDistanceReading(2, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_YAW_180,
                          rear, kSonarMinRangecm, kSonarMaxRangecm, kSonarQuality, sensors.timestamp);
 }
 
@@ -568,7 +537,7 @@ static void publishSonars(const SensorBuffer &sensors) {
 //   current_distance = max_distance -> No floor detected (cliff present)
 //   current_distance = min_distance -> Floor detected (no cliff, safe)
 //   signal_quality:  Low (25%) when cliff detected, High (100%) when floor present
-static void publishInfraredSensors(const SensorBuffer &sensors) {
+static void pushIRSensors(const SensorBuffer &sensors) {
   // MISRA: Named constants eliminate magic numbers (Rule 2.5)
   // MISRA: Function-scope static const avoids repeated runtime initialization (Rule 8.9)
   static constexpr uint16_t kCliffMinRangecm = 7U;     // Floor directly below sensor
@@ -584,19 +553,19 @@ static void publishInfraredSensors(const SensorBuffer &sensors) {
   const uint8_t rearQuality = sensors.cliffRear ? kCliffQualityDanger : kCliffQualitySafe;
 
   // id=3: front cliff IR, id=4: rear cliff IR (matches /pico/cliff/front and /pico/cliff/rear)
-  publishDistanceReading(3, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
+  pushDistanceReading(3, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
                          frontHeight, kCliffMinRangecm, kCliffMaxRangecm, frontQuality, sensors.timestamp);
-  publishDistanceReading(4, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
+  pushDistanceReading(4, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
                          rearHeight, kCliffMinRangecm, kCliffMaxRangecm, rearQuality, sensors.timestamp);
 }
 
-static void publishEscTelemetry(const SensorBuffer &sensors) {
+static void pushEscTelemetry(const SensorBuffer &sensors) {
   // MISRA: Static buffer eliminates repeated stack allocation (Rule 8.9)
   static uint8_t frame[MAVLINK_MAX_PACKET_LEN];
   mavlink_esc_telemetry_1_to_4_t esc{};
   esc.rpm[0] = cmpsToRpm(sensors.speedFR);
-  esc.rpm[1] = cmpsToRpm(sensors.speedFL);
-  esc.rpm[2] = cmpsToRpm(sensors.speedRR);
+  esc.rpm[1] = cmpsToRpm(sensors.speedRR);
+  esc.rpm[2] = cmpsToRpm(sensors.speedFL);
   esc.rpm[3] = cmpsToRpm(sensors.speedRL);
 
   const uint8_t temperature = static_cast<uint8_t>(constrain(sensors.temp, 0.0f, 255.0f));
@@ -656,7 +625,7 @@ static void ensureJetsonI2CReady(uint32_t now) {
     if ((lastI2CInitAttempt == 0U) || (sinceAttempt >= kI2CReconnectIntervalMs)) {
       lastI2CInitAttempt = now;
       jetsonI2c->end();
-      initI2Cgeneric(*jetsonI2c, MCU_JETSON_I2C1_SDA, MCU_JETSON_I2C1_SCL,kJetsonI2CAddress,400000);
+      initI2Cgeneric(*jetsonI2c, MCU_JETSON_I2C1_SDA, MCU_JETSON_I2C1_SCL,I2C_SLAVE_MCU_ADDR,400000);
       jetsonI2c->onRequest(jetsonI2COnRequest);
       jetsonI2c->onReceive(jetsonI2COnReceive);
       lastJetsonActivityMs = now;

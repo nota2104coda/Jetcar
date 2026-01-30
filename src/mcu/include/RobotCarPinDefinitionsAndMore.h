@@ -121,12 +121,7 @@
     #define MCU_I2C0_SDA 4
     #define MCU_I2C0_SCL 5
     #define MCU_JETSON_I2C1_SDA 13
-    #define MCU_JETSON_I2C1_SCL 14
-    #define MASTER_MCU_ADDR 0x08
-    #define LIDAR_LD06_ADDR  0x29
-    #define RADAR_LD2450_ADDR 0x62
-    #define IMU_MPU6050_ADDR 0x68
-    #define MOTOR_DRV_ADDR 0x40
+    #define MCU_JETSON_I2C1_SCL 14    
   #endif
 
   #if defined(CAR_HAS_UART)
@@ -181,11 +176,7 @@
 		#define MCU_I2C0_SCL 21	//also used for PCA9685
     #define MCU_JETSON_I2C1_SDA 2 
 		#define MCU_JETSON_I2C1_SCL 3 
-    #define MASTER_MCU_ADDR 0x08
-		#define LIDAR_LD06_ADDR	0x29
-		#define RADAR_LD2450_ADDR 0x62
-		#define IMU_MPU6050_ADDR 0x68
-		#define MOTOR_DRV_ADDR 0x40 //PCA9685 address for Waveshare motor driver
+    
 	#endif
 	#if defined(CAR_HAS_UART)
 		#define MCU_LD2450RADAR_UART0_RX 0 
@@ -218,123 +209,38 @@
   static constexpr float MOTOR_RPM_TO_CMPS = RPM2RADPS * WHEEL_RAD / kGearRatio;
 #endif
 
-/* class to define control of all 4 motors of an AWD car. It inherits from Adafruit's classfor PCA9685 driver. 
-It adds a method to check for I2C ACK. It adds Encoder to read the individual speeds and store them. 
-Also adds diagnostic states */
-/*class PCA9685_AWDDriver {
-private:
-  Adafruit_PWMServoDriver pwm;
-  Encoder encFR, encFL, encRR, encRL;
-  uint32_t lastMotorCommandTime;
-  
-public:
-  PCA9685_AWDDriver(uint8_t addr, TwoWire *theWire,
-                     uint8_t frA, uint8_t frB,
-                     uint8_t flA, uint8_t flB,
-                     uint8_t rrA, uint8_t rrB,
-                     uint8_t rlA, uint8_t rlB)
-    : pwm(addr, theWire),
-      encFR(frA, frB, PULSE_PER_REV),
-      encFL(flA, flB, PULSE_PER_REV),
-      encRR(rrA, rrB, PULSE_PER_REV),
-      encRL(rlA, rlB, PULSE_PER_REV),
-      lastMotorCommandTime(0) {}
-  
-  bool begin(uint16_t freqHz) {
-    // PCA9685 init with ACK check...
-  }
-  
-  void initEncoders() {
-    encFR.init();
-    encFL.init();
-    encRR.init();
-    encRL.init();
-  }
-  
-  void enableEncoderInterrupts(void (*frA)(), void (*frB)(),
-                               void (*flA)(), void (*flB)(),
-                               void (*rrA)(), void (*rrB)(),
-                               void (*rlA)(), void (*rlB)()) {
-    encFR.enableInterrupts(frA, frB);
-    encFL.enableInterrupts(flA, flB);
-    encRR.enableInterrupts(rrA, rrB);
-    encRL.enableInterrupts(rlA, rlB);
-  }
-  
-  float getRPM(uint8_t motorNum) {
-    switch(motorNum) {
-      case 0: return encFR.getRPM();
-      case 1: return encFL.getRPM();
-      case 2: return encRR.getRPM();
-      case 3: return encRL.getRPM();
-      default: return 0.0F;
-    }
-  }
-  
-  bool isRPMSane(float rpm) {
-    return (fabsf(rpm) <= kMaxSaneRpm);
-  }
-  
-  void setMotor(uint8_t motorNum, float torqueCmd) {
-    // Motor control logic...
-    lastMotorCommandTime = millis();
-  }
-  
-  uint32_t getLastCommandTime() {
-    return lastMotorCommandTime;
-  }
-}; */
-/*VL53L5X is 3.3V
-MPU6050 is 
-LD2450 needs 5V supply but 3.3V logic for I2C*/
-//define the I2C broadcast format
-struct __attribute__((packed)) SonarIRclass {
-  short int frontDistance;
-  bool frontSonarQF; //0 = poor, 1 = ok for all QFs
-  short int rearDistance;
-  bool rearSonarQF;
-  bool frontCliffStatus;
-  bool frontCliffQF;
-  bool rearCliffStatus;
-  bool rearCliffQF;
-  uint8_t crc;
-};
+#if defined(CAR_HAS_I2C)
+  #define I2C_MASTER_MCU_ADDR 0x08
+  #define I2C_MASTER_JETSON_ADDR 0x09
+  #define I2C_SLAVE_MCU_ADDR 0x42
+  #define LIDAR_LD06_ADDR	0x29
+  #define RADAR_LD2450_ADDR 0x62
+  #define IMU_MPU6050_ADDR 0x68
+  #define MOTOR_DRV_ADDR 0x40 //PCA9685 address for Waveshare motor driver
+#endif
 
-class vehstate {
-  public:
-    float vxActual = 0; 
-    float vyActual = 0; //filtered velocity in x(front) and y(sideways) directions , cm/s
-    float wFrontR = 0;
-    float wFrontL = 0;
-    float vRearR = 0;
-    float vRearL = 0; //individual wheel speeds , rad/s
-    float ax = 0;
-    float ay = 0; //acceleration after all filtering etc, cm/s^2
-    float wZ = 0;  //angular velocity in Z direction, rad/s
-    float frontObsDist = 30;
-    float rearObsDist = 30;  //front and rear obstacle distances
-    bool frontcliff = false;
-    bool rearcliff = false; //TRUE means cliff detected, FALSE means not detected
+#if LOOP_DEBUG_A
+  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_PRINT(...) ((void)0)
+  #define DEBUG_PRINTLN(...) ((void)0)
+#endif
+#if LOOP_DEBUG_B
+  #define DEBUG_B_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_B_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_B_PRINT(...) ((void)0)
+  #define DEBUG_B_PRINTLN(...) ((void)0)
+#endif
 
-    void readUSdist();
-    void readCliffsens();
-    void readvXActual();
-	void readvYActual();
-	void readWhlAngSpdFR();
-	void readWhlAngSpdFL();
-	void readWhlAngSpdRR();
-	void readWhlAngSpdRL();
-};
-
-class vehdemandclass {
-  public:
-    float vxReq = 0;
-    float vyReq = 0;
-    float frontObsDistReq = 30;
-    float rearObsDistReq = 30;  //front and rear obstacle distances requested
-    void motionReq ();  //to calculate demanded speed for vehicle, using vehstate struct values as input
-    void motionExec();//to execute demands
-};
+#if LOOP_DEBUG_I2C
+  #define DEBUG_I2C_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_I2C_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_I2C_PRINT(...) ((void)0)
+  #define DEBUG_I2C_PRINTLN(...) ((void)0)
+#endif
 
 //UART SCHEMA
 /*Line protocol (ASCII, newline-delimited)
