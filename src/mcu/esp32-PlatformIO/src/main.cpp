@@ -625,7 +625,7 @@ static void ensureJetsonI2CReady(uint32_t now) {
     if ((lastI2CInitAttempt == 0U) || (sinceAttempt >= kI2CReconnectIntervalMs)) {
       lastI2CInitAttempt = now;
       jetsonI2c->end();
-      initI2Cgeneric(*jetsonI2c, MCU_JETSON_I2C1_SDA, MCU_JETSON_I2C1_SCL,I2C_SLAVE_MCU_ADDR,400000);
+      initI2Cgeneric(*jetsonI2c, MCU_JETSON_I2C1_SDA, MCU_JETSON_I2C1_SCL,I2C_SLAVE_MCU_ADDR,100000);
       jetsonI2c->onRequest(jetsonI2COnRequest);
       jetsonI2c->onReceive(jetsonI2COnReceive);
       lastJetsonActivityMs = now;
