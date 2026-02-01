@@ -39,15 +39,15 @@ class HwMcuNode(Node):
 
     def __init__(self) -> None:
         super().__init__('hw_mcu_node')
-        self.get_logger().info('Hardware MCU node starting (I2C + MAVLink).')
+        self.get_logger().info('old Hardware MCU node starting (I2C + MAVLink).')
         self._mavlink_buffer = bytearray()
 
         # --- Parameters ---
-        self.declare_parameter('i2c_bus', 7)
+        self.declare_parameter('i2c_bus', 1)
         self.declare_parameter('i2c_address', 0x42)
-        self.declare_parameter('i2c_chunk_size', 64)
+        self.declare_parameter('i2c_chunk_size', 32)
         self.declare_parameter('i2c_retry_seconds', 2.0)
-        self.declare_parameter('poll_period', 0.001)  # 50 Hz polling ideally but start with 1hz
+        self.declare_parameter('poll_period', 1)  # 50 Hz polling ideally but start with 1hz
         self.declare_parameter('wheel_base', 0.12)
         self.declare_parameter('wheel_radius', 0.035)
         self.declare_parameter('gear_ratio', 46.0)
@@ -58,8 +58,8 @@ class HwMcuNode(Node):
         self.declare_parameter('command_mode', 'set_actuator_control_target')
         self.declare_parameter('command_target_system', 42)
         self.declare_parameter('command_target_component', mavlink2.MAV_COMP_ID_AUTOPILOT1)
-        self.declare_parameter('command_source_system', 1)
-        self.declare_parameter('command_source_component', mavlink2.MAV_COMP_ID_OBSTACLE_AVOIDANCE)
+        self.declare_parameter('command_source_system', 200)
+        self.declare_parameter('command_source_component', 191)
         self.declare_parameter('manual_linear_max', 1.0)
         self.declare_parameter('manual_yaw_rate_max', 1.0)
 
@@ -189,14 +189,14 @@ class HwMcuNode(Node):
             self._close_i2c()
             return
 
-        self.get_logger().debug(f'I2C read returned {len(raw_bytes)} bytes: {list(raw_bytes)}')
+        self.get_logger().debug(f'I2C read returned {len(raw_bytes)} bytes: {[f"{b:02X}" for b in raw_bytes]}')
         self._mavlink_buffer.extend(raw_bytes)
         # Parse as many messages as possible from the buffer
         i = 0
         while i < len(self._mavlink_buffer):
             msg = self.mav_parser.parse_char(bytes([self._mavlink_buffer[i]]))
             if msg is not None:
-                self.get_logger().info(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
+                # self.get_logger().info(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
                 self._handle_mavlink_message(msg)
                 # Remove bytes up to and including this message from buffer
                 # pymavlink does not expose consumed length, so we conservatively clear up to i
@@ -208,11 +208,12 @@ class HwMcuNode(Node):
     def _read_chunk(self) -> bytearray:
         assert self.bus is not None
         self.get_logger().debug(f'Reading {self.i2c_chunk} bytes from I2C address 0x{self.i2c_address:02X}')
+        write_msg = i2c_msg.write(self.i2c_address, [0x00])  # Dummy write to trigger read
         read_msg = i2c_msg.read(self.i2c_address, self.i2c_chunk)
-        self.bus.i2c_rdwr(read_msg)
+        self.bus.i2c_rdwr(write_msg,read_msg)
         data = bytearray(read_msg)
-        self.get_logger().debug(f'Raw I2C data: {list(data)}')
-        return data
+        self.get_logger().debug(f'Raw I2C data: {[f"{b:02X}" for b in read_msg]}')
+        return read_msg
 
     def _handle_mavlink_message(self, message) -> None:
         msg_id = message.get_msgId()
