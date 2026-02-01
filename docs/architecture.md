@@ -3,7 +3,7 @@
 ```mermaid
 graph TD
     PC[PC Ubuntu 22.04] <-- WiFi for Gazebo sim--> Jetson[Jetson Orin Nano]
-    Jetson -- I2C1(I2C0 of jetson master) --> PicoW[Pico W]
+    Jetson -- USB-UART(USB-UART-USB2) --> PicoW[Pico W]
     Realsense[Realsense D435 binocular camera] -- USB#1 --> Jetson
     PicoW -- I2C0: 4x wheel torque --> PCA9685_AWDDriver[4 Wheels]
     PCA9685_AWDDriver[4 Wheels] -- Hall Encoder Pins --> PicoW
@@ -70,7 +70,7 @@ graph LR
     HMI[hmi_node]
     robot_motion_node[robot_motion_node]
     MCUNode[hw_mcu_node]
-    MCU_I2C[I2C bus]
+    MCU_UART[USB-UART]
 
     topic_cmd_vel_manual(["/cmd_vel/manual::geometry_msgs/Twist"])
     topic_stop_button(["/stop_button::std_msgs/Bool"])
@@ -96,10 +96,10 @@ graph LR
     robot_motion_node --> topic_cmd_wrench
     topic_cmd_wrench --> MCUNode
 
-    MCUNode -- SET_ACTUATOR_CONTROL_TARGET (mavlink) --> MCU_I2C
-    MCU_I2C -- HIGHRES_IMU (mavlink) --> MCUNode
-    MCU_I2C -- DISTANCE_SENSOR (mavlink) --> MCUNode
-    MCU_I2C -- ESC_TELEMETRY_1_TO_4 (mavlink) --> MCUNode
+    MCUNode -- SET_ACTUATOR_CONTROL_TARGET (mavlink) --> MCU_UART
+    MCU_UART -- HIGHRES_IMU (mavlink) --> MCUNode
+    MCU_UART -- DISTANCE_SENSOR (mavlink) --> MCUNode
+    MCU_UART -- ESC_TELEMETRY_1_TO_4 (mavlink) --> MCUNode
 
     MCUNode --> topic_imu
     topic_imu --> robot_motion_node

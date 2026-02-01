@@ -1,14 +1,12 @@
 #!$HOME/PicoWCar/.venv python3
 # Hardware MCU interface node.
 #
-# I2C + MAVLink schema summary
-# ----------------------------
-# * Jetson (this node) is I2C master on /dev/i2c-{bus}, polling the MCU slave at
-#   address 0x42 (kJetsonI2CAddress in the firmware).
-# * Every master read asks for up to 32 bytes. The MCU drains its MAVLink FIFO
-#   (fed by sendTelemetry()) and replies with the next contiguous bytes. When
-#   the FIFO is empty the MCU returns a single 0x00 byte, so the host must keep
-#   reading until entire MAVLink frames are reconstructed.
+# USB serial + MAVLink schema summary
+# -----------------------------------
+# * Jetson (this node) connects to the MCU over USB CDC (e.g., /dev/ttyUSB0)
+#   and continuously drains its MAVLink byte stream.
+# * The MCU keeps sending MAVLink frames back-to-back; pymavlink resynchronizes
+#   even if reads split frames across chunk boundaries.
 # * Telemetry messages currently streamed by sendTelemetry():
 #     - MAVLINK_MSG_ID_HIGHRES_IMU (linear acceleration, gyro Z, temperature)
 #     - MAVLINK_MSG_ID_DISTANCE_SENSOR (IDs 1-4 for front/rear sonar + cliff IR)
@@ -29,7 +27,8 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, Range, Temperature
 from tf2_ros import TransformBroadcaster
 
-from smbus2 import SMBus, i2c_msg
+import serial
+from serial import SerialException
 from pymavlink.dialects.v20 import ardupilotmega as mavlink2
 
 
@@ -39,15 +38,16 @@ class HwMcuNode(Node):
 
     def __init__(self) -> None:
         super().__init__('hw_mcu_node')
-        self.get_logger().info('old Hardware MCU node starting (I2C + MAVLink).')
+        self.get_logger().info('Hardware MCU node starting (USB serial + MAVLink).')
         self._mavlink_buffer = bytearray()
 
         # --- Parameters ---
-        self.declare_parameter('i2c_bus', 1)
-        self.declare_parameter('i2c_address', 0x42)
-        self.declare_parameter('i2c_chunk_size', 32)
-        self.declare_parameter('i2c_retry_seconds', 2.0)
-        self.declare_parameter('poll_period', 1)  # 50 Hz polling ideally but start with 1hz
+        self.declare_parameter('serial_port', '/dev/ttyUSB0')
+        self.declare_parameter('serial_baud_rate', 921600)
+        self.declare_parameter('serial_timeout', 0.01)
+        self.declare_parameter('serial_chunk_size', 256)
+        self.declare_parameter('serial_retry_seconds', 2.0)
+        self.declare_parameter('poll_period', 0.01)
         self.declare_parameter('wheel_base', 0.12)
         self.declare_parameter('wheel_radius', 0.035)
         self.declare_parameter('gear_ratio', 46.0)
@@ -64,10 +64,19 @@ class HwMcuNode(Node):
         self.declare_parameter('manual_yaw_rate_max', 1.0)
 
         # --- Resolve parameters ---
-        self.i2c_bus_num = self.get_parameter('i2c_bus').get_parameter_value().integer_value
-        self.i2c_address = self.get_parameter('i2c_address').get_parameter_value().integer_value
-        self.i2c_chunk = max(1, self.get_parameter('i2c_chunk_size').get_parameter_value().integer_value)
-        self.i2c_retry_seconds = self.get_parameter('i2c_retry_seconds').get_parameter_value().double_value
+        self.serial_port = (
+            self.get_parameter('serial_port').get_parameter_value().string_value or '/dev/ttyUSB0'
+        )
+        self.serial_baud_rate = self.get_parameter('serial_baud_rate').get_parameter_value().integer_value
+        self.serial_timeout = max(
+            0.0, self.get_parameter('serial_timeout').get_parameter_value().double_value
+        )
+        self.serial_chunk = max(
+            1, self.get_parameter('serial_chunk_size').get_parameter_value().integer_value
+        )
+        self.serial_retry_seconds = (
+            self.get_parameter('serial_retry_seconds').get_parameter_value().double_value
+        )
         self.poll_period = self.get_parameter('poll_period').get_parameter_value().double_value
         self.wheel_base = self.get_parameter('wheel_base').get_parameter_value().double_value
         self.wheel_radius = self.get_parameter('wheel_radius').get_parameter_value().double_value
@@ -114,8 +123,8 @@ class HwMcuNode(Node):
         self.mav_tx.robust_parsing = True
         self.mav_tx.srcSystem = self.command_source_system
         self.mav_tx.srcComponent = self.command_source_component
-        self.bus: Optional[SMBus] = None
-        self.last_i2c_error_log = 0.0
+        self.serial: Optional[serial.Serial] = None
+        self.last_serial_error_log = 0.0
 
         # --- ROS interfaces ---
         qos_profile = QoSProfile(depth=10)
@@ -137,59 +146,68 @@ class HwMcuNode(Node):
             4: ('/mcu/cliff/rear', self.cliff_rear_publisher, Range.INFRARED),
         }
 
-        self._open_i2c()
+        self._open_serial()
         self.timer = self.create_timer(self.poll_period, self.poll_mcu)
         self.command_subscription = self.create_subscription(
             Twist, self.command_topic, self._command_callback, qos_profile
         )
 
-    def _open_i2c(self) -> None:
-        """Attempt to open the configured I2C bus."""
-        self._close_i2c()
+    def _open_serial(self) -> None:
+        """Open the configured MCU serial port if possible."""
+        self._close_serial()
         try:
-            self.bus = SMBus(self.i2c_bus_num)
+            self.serial = serial.Serial(
+                self.serial_port,
+                baudrate=self.serial_baud_rate,
+                timeout=self.serial_timeout,
+            )
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
             self.get_logger().info(
-                f'Opened /dev/i2c-{self.i2c_bus_num} -> 0x{self.i2c_address:02X} (chunk {self.i2c_chunk}B).'
+                f'Opened {self.serial_port} @ {self.serial_baud_rate} baud '
+                f'(chunk {self.serial_chunk}B).'
             )
-            self.last_i2c_error_log = 0.0
-        except FileNotFoundError:
-            self._throttled_i2c_error(
-                f'/dev/i2c-{self.i2c_bus_num} not available. Will keep retrying every {self.poll_period}s.'
+            self.last_serial_error_log = 0.0
+        except (SerialException, OSError) as exc:
+            self._throttled_serial_error(
+                f'Failed to open serial port {self.serial_port}: {exc}. Retrying next loop.'
             )
-            self.bus = None
-        except OSError as exc:
-            self._throttled_i2c_error(f'Failed to open I2C bus: {exc}. Retrying next loop.')
-            self.bus = None
+            self.serial = None
 
-    def _close_i2c(self) -> None:
-        if self.bus is not None:
+    def _close_serial(self) -> None:
+        if self.serial is not None:
             try:
-                self.bus.close()
-            except OSError:
+                self.serial.close()
+            except SerialException:
                 pass
-        self.bus = None
+        self.serial = None
 
-    def _throttled_i2c_error(self, message: str) -> None:
+    def _throttled_serial_error(self, message: str) -> None:
         now = self.get_clock().now().nanoseconds / 1e9
-        if (now - self.last_i2c_error_log) >= max(self.i2c_retry_seconds, 0.5):
+        if (now - self.last_serial_error_log) >= max(self.serial_retry_seconds, 0.5):
             self.get_logger().error(message)
-            self.last_i2c_error_log = now
+            self.last_serial_error_log = now
 
     def poll_mcu(self) -> None:
-        if self.bus is None:
-            self._open_i2c()
-            if self.bus is None:
+        if self.serial is None:
+            self._open_serial()
+            if self.serial is None:
                 return
 
-        self.get_logger().debug('Polling MCU via I2C...')
+        self.get_logger().debug('Polling MCU via serial...')
         try:
-            raw_bytes = self._read_chunk()
-        except OSError as exc:
-            self.get_logger().warn(f'I2C read failed ({exc}). Closing bus; retrying next loop.')
-            self._close_i2c()
+            raw_bytes = self._read_serial_chunk()
+        except SerialException as exc:
+            self.get_logger().warn(f'Serial read failed ({exc}). Closing port; retrying next loop.')
+            self._close_serial()
             return
 
-        self.get_logger().debug(f'I2C read returned {len(raw_bytes)} bytes: {[f"{b:02X}" for b in raw_bytes]}')
+        if not raw_bytes:
+            return
+
+        self.get_logger().debug(
+            f'Serial read returned {len(raw_bytes)} bytes: {[f"{b:02X}" for b in raw_bytes]}'
+        )
         self._mavlink_buffer.extend(raw_bytes)
         # Parse as many messages as possible from the buffer
         i = 0
@@ -205,15 +223,12 @@ class HwMcuNode(Node):
             else:
                 i += 1
 
-    def _read_chunk(self) -> bytearray:
-        assert self.bus is not None
-        self.get_logger().debug(f'Reading {self.i2c_chunk} bytes from I2C address 0x{self.i2c_address:02X}')
-        write_msg = i2c_msg.write(self.i2c_address, [0x00])  # Dummy write to trigger read
-        read_msg = i2c_msg.read(self.i2c_address, self.i2c_chunk)
-        self.bus.i2c_rdwr(write_msg,read_msg)
-        data = bytearray(read_msg)
-        self.get_logger().debug(f'Raw I2C data: {[f"{b:02X}" for b in read_msg]}')
-        return read_msg
+    def _read_serial_chunk(self) -> bytearray:
+        assert self.serial is not None
+        available = self.serial.in_waiting if hasattr(self.serial, 'in_waiting') else 0
+        to_read = available if available > 0 else self.serial_chunk
+        data = self.serial.read(to_read)
+        return bytearray(data)
 
     def _handle_mavlink_message(self, message) -> None:
         msg_id = message.get_msgId()
@@ -225,9 +240,9 @@ class HwMcuNode(Node):
             self._publish_esc_telemetry(message)
 
     def _command_callback(self, twist: Twist) -> None:
-        if self.bus is None:
-            self._open_i2c()
-            if self.bus is None:
+        if self.serial is None:
+            self._open_serial()
+            if self.serial is None:
                 return
 
         if self.command_mode == 'set_actuator_control_target':
@@ -302,18 +317,18 @@ class HwMcuNode(Node):
         )
 
     def _write_mavlink_message(self, message) -> None:
-        if self.bus is None:
-            self._open_i2c()
-            if self.bus is None:
+        if self.serial is None:
+            self._open_serial()
+            if self.serial is None:
                 return
 
         frame = message.pack(self.mav_tx)
-        write_msg = i2c_msg.write(self.i2c_address, frame)
         try:
-            self.bus.i2c_rdwr(write_msg)
-        except OSError as exc:
+            self.serial.write(frame)
+            self.serial.flush()
+        except SerialException as exc:
             self.get_logger().warn(f'Failed to send MAVLink command: {exc}')
-            self._close_i2c()
+            self._close_serial()
 
     @staticmethod
     def _clamp(value: float, minimum: float, maximum: float) -> float:

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <SimpleFOC.h>
 #include <Wire.h>
+#include <HardwareSerial.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <NewPing.h>
 // #include <hardware/watchdog.h>
@@ -65,27 +66,24 @@ static SensorBuffer mcuSensors = {0};
 static MotorCommand latestMotorCmd = {0.1, 0.1, 0.1, 0.1, 0};
 static bool robotEnabled = true;
 
-// MAVLink + Jetson I2C bridge state
+// MAVLink + Jetson serial bridge state
 static constexpr uint8_t kMavSystemId = 200;
 static constexpr uint8_t kMavComponentId = MAV_COMP_ID_ONBOARD_COMPUTER;
-static constexpr uint32_t kI2CReconnectIntervalMs = 1000;
-static constexpr uint32_t kI2CInactivityTimeoutMs = 5000;
+static constexpr uint32_t kJetsonSerialBaud = 921600;
+static constexpr uint32_t kJetsonSerialReconnectIntervalMs = 1000;
 static constexpr size_t kMavlinkFifoSize = 768; // outgoing data buffer size
 static std::array<uint8_t, kMavlinkFifoSize> mavlinkTxFifo{}; // outgoing data buffer
 static volatile size_t mavlinkTxHead = 0;
 static volatile size_t mavlinkTxTail = 0;
 /* MAVLink frames are variable length, so we enqueue raw bytes and let the Jetson drain
-them in master-driven reads. Each request grabs at most kI2CMaxChunk bytes (32 today),
-and the Jetson issues however many sequential reads are needed for its parser to
-reconstruct the MAVLink packets. */
-static constexpr size_t kI2CMaxChunk = 4;
+them via UART whenever bandwidth is available. */
 static constexpr size_t kJetsonRxFifoSize = 256;// incoming commands buffer size
 // MISRA: Named constant for ESC count (Rule 14.3 - no magic numbers in loops)
 static constexpr size_t kEscTelemetryCount = 4U;
 
-static TwoWire *jetsonI2c = &Wire1;
-static bool jetsonI2CInitialized = false;
-static uint32_t lastI2CInitAttempt = 0;
+static HardwareSerial jetsonSerial(1);
+static bool jetsonSerialReady = false;
+static uint32_t lastSerialInitAttempt = 0;
 static volatile uint32_t lastJetsonActivityMs = 0;
 static std::array<uint8_t, kJetsonRxFifoSize> jetsonRxFifo{}; // incoming data buffer
 static volatile size_t jetsonRxHead = 0;
@@ -93,13 +91,11 @@ static volatile size_t jetsonRxTail = 0;
 static mavlink_message_t jetsonRxMessage{};
 static mavlink_status_t jetsonRxStatus{};
 static uint16_t escTelemetrySequence = 0;
-uint8_t chunk[kI2CMaxChunk];
-size_t count = 0;
 
 // Forward declarations
-static void jetsonI2COnRequest();
-static void jetsonI2COnReceive(int numBytes);
-static void ensureJetsonI2CReady(uint32_t now);
+static void ensureJetsonSerialReady(uint32_t now);
+static void pumpJetsonSerialRx();
+static void flushJetsonSerialTx();
 static void enqueueBytes(const uint8_t *data, size_t len);
 static void enqueueMavlinkMessage(const mavlink_message_t &message);
 static void pushHighresImu(const SensorBuffer &sensors);
@@ -205,8 +201,8 @@ void setup() {
     systemState = SystemState::RUNNING;
   }
   
-  Serial.println("[INIT] Configuring Jetson I2C1 telemetry bridge...");
-  ensureJetsonI2CReady(millis());
+  Serial.println("[INIT] Configuring Jetson UART telemetry bridge...");
+  ensureJetsonSerialReady(millis());
 
   // Ensure motors are in a known safe state before entering the main loop. This was AI generated, not really required because init of PCA9685 takes care.
   queue_motor_command(0.0f, 0.0f, 0.0f, 0.0f);
@@ -227,9 +223,11 @@ void loop() {
   }
   lastLoopStart = now;
 
-  // Keep Jetson I2C telemetry online without blocking the control loop
-  ensureJetsonI2CReady(now);
+  // Keep Jetson UART telemetry online without blocking the control loop
+  ensureJetsonSerialReady(now);
+  pumpJetsonSerialRx();
   processJetsonCommandStream();
+  flushJetsonSerialTx();
 
   // // Poll sonar (rear then front with crosstalk delay)
   // if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
@@ -620,78 +618,52 @@ static void pushEscTelemetry(const SensorBuffer &sensors) {
   escTelemetrySequence++;
 }
 
-static void jetsonI2COnRequest() {
-  count = 0;
-
-  
-  // Jetson (master) clocks the bus and we simply stream out as many bytes as it asks
-  // for this transaction, up to the chunk size. MAVLink tolerates packet boundaries
-  // being split across multiple reads because framing markers let the parser re-sync.
-  
-  while ((count < kI2CMaxChunk) && (mavlinkTxTail != mavlinkTxHead)) {
-    chunk[count++] = mavlinkTxFifo[mavlinkTxTail];
-    mavlinkTxTail = (mavlinkTxTail + 1U) % kMavlinkFifoSize;
-    
+static void pumpJetsonSerialRx() {
+  if (!jetsonSerialReady) {
+    return;
   }
-  if (count == 0) {
-    chunk[count++] = 0;
-  }
-  // Print the chunk being sent for debug
-  // Serial.println();
-  // Serial.print("[I2C sent chunk]: ");
-  // for (int i = 0; i < count; i++) {
-  //   Serial.print(chunk[i], HEX);
-  //   Serial.print(" ");
-  //   chunk[i] = 0;
-  // }
-  // Serial.println();
-  // jetsonI2c->write(chunk, count);
-  jetsonI2c->write(uint8_t(0xc8c8c8c8));
-  lastJetsonActivityMs = millis();
-  
-}
 
-static void jetsonI2COnReceive(int numBytes) {
-  while (numBytes-- > 0) {
-    const uint8_t value = static_cast<uint8_t>(jetsonI2c->read());
+  while (jetsonSerial.available() > 0) {
+    const uint8_t value = static_cast<uint8_t>(jetsonSerial.read());
     pushJetsonRxByte(value);
+    lastJetsonActivityMs = millis();
   }
-  lastJetsonActivityMs = millis();
 }
 
-static void ensureJetsonI2CReady(uint32_t now) {
-  // if (jetsonI2CInitialized) {
-  //   const uint32_t idle = now - lastJetsonActivityMs;
-  //   if (idle > kI2CInactivityTimeoutMs) {
-  //     DEBUG_I2C_PRINTLN("[I2C1] Activity timeout, resetting Jetson link");
-  //     jetsonI2c->end();
-  //     jetsonI2CInitialized = false;
-  //   }
-  // }
+static void flushJetsonSerialTx() {
+  if (!jetsonSerialReady) {
+    return;
+  }
 
-  if (!jetsonI2CInitialized) {
-    const uint32_t sinceAttempt = now - lastI2CInitAttempt;
-    if ((lastI2CInitAttempt == 0U) || (sinceAttempt >= kI2CReconnectIntervalMs)) {
-      lastI2CInitAttempt = now;
-      jetsonI2c->end();
-      initI2Cgeneric(*jetsonI2c, MCU_JETSON_I2C1_SDA, MCU_JETSON_I2C1_SCL,I2C_SLAVE_MCU_ADDR,116000);
-      delay(10); // Add a short delay after re-init to allow bus to stabilize
-      jetsonI2c->onRequest(jetsonI2COnRequest);
-      jetsonI2c->onReceive(jetsonI2COnReceive);
-      lastJetsonActivityMs = now;
-      jetsonI2CInitialized = true;
-      Serial.println("[I2C1] Jetson telemetry ready");
+  static uint8_t chunk[64];
+  while ((mavlinkTxTail != mavlinkTxHead) && (jetsonSerial.availableForWrite() > 0)) {
+    size_t bytesToSend = 0;
+    while ((bytesToSend < sizeof(chunk)) && (mavlinkTxTail != mavlinkTxHead)) {
+      chunk[bytesToSend++] = mavlinkTxFifo[mavlinkTxTail];
+      mavlinkTxTail = (mavlinkTxTail + 1U) % kMavlinkFifoSize;
+    }
+
+    if (bytesToSend > 0) {
+      jetsonSerial.write(chunk, bytesToSend);
+      lastJetsonActivityMs = millis();
     }
   }
-  noInterrupts();
-  Serial.print("[I2C sent chunk]: ");
-  for (int i = 0; i < count; i++) {
-    Serial.print(chunk[i], HEX);
-    chunk[i] = 0;
-    Serial.print(" ");
+}
+
+static void ensureJetsonSerialReady(uint32_t now) {
+  if (jetsonSerialReady) {
+    return;
   }
-  Serial.println();
-  interrupts();
+
+  const uint32_t sinceAttempt = now - lastSerialInitAttempt;
+  if ((lastSerialInitAttempt == 0U) || (sinceAttempt >= kJetsonSerialReconnectIntervalMs)) {
+    lastSerialInitAttempt = now;
+    jetsonSerial.end();
+    jetsonSerial.begin(kJetsonSerialBaud, SERIAL_8N1, MCU_JETSON_UART1_RX, MCU_JETSON_UART1_TX);
+    jetsonSerialReady = true;
+    lastJetsonActivityMs = now;
+    Serial.println("[UART] Jetson telemetry ready");
+  }
 }
 
 static void initI2Cgeneric(TwoWire &bus,

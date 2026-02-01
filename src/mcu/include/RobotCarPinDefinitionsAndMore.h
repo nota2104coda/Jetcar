@@ -129,6 +129,8 @@
     #define MCU_LD2450RADAR_UART0_TX 12
     #define JETSON_LD06_UART0_RX 10
     #define JETSON_LD06_UART0_TX 8
+    #define MCU_JETSON_UART1_RX 44
+    #define MCU_JETSON_UART1_TX 43
   #endif
 
 #elif defined(MCU_PICOW_RP2040)
@@ -183,6 +185,10 @@
 		#define MCU_LD2450RADAR_UART0_TX 1
     #define JETSON_LD06_UART0_RX 10 
 		#define JETSON_LD06_UART0_TX 8	
+    #define MCU_JETSON_UART1_RX 1
+    #define MCU_JETSON_UART1_TX 0
+//     1,GP0,43,UART0 TX
+// 2,GP1,44,UART0 RX
 	#endif
 #endif
 #ifndef ROBOTCAR_PLATFORM_CONSTANTS_DEFINED
