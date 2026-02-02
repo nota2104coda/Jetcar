@@ -28,7 +28,8 @@ setup(
             'hmi_node = pi5_pkg.hmi_node:main',
             'hw_mcu_node = pi5_pkg.hw_mcu_node:main',
             'ld06_lidar_node = pi5_pkg.ld06_lidar_node:main',
-            'hw_real_sense_node = pi5_pkg.hw_real_sense_node:main'
+            # 'ldlidar_node = pi5_pkg.ldlidar_node:main',
+            'hw_realsense_node = pi5_pkg.hw_realsense_node:main'
         ],
     },
 )

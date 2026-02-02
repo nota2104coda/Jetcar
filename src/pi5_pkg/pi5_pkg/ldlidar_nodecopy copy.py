@@ -17,8 +17,8 @@ POINTS_PER_FRAME = 12
 # ---------------------------------------------------------------------------
 # Scan-grid constants  (uniform 0.5 ° bins covering 0 … 359.5 °)
 # ---------------------------------------------------------------------------
-NUM_BINS        = 360                          # 360 / 1.0
-BIN_SIZE_DEG    = 360.0 / NUM_BINS             # 1.0 °
+NUM_BINS        = 720                          # 360 / 0.5
+BIN_SIZE_DEG    = 360.0 / NUM_BINS             # 0.5 °
 DEG2RAD         = math.pi / 180.0
 
 # ROS LaserScan output: -π … +π  (bin 0 = 0 ° → mapped to 0 rad,
