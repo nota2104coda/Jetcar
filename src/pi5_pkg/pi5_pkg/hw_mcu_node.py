@@ -38,6 +38,7 @@ class HwMcuNode(Node):
 
     def __init__(self) -> None:
         super().__init__('hw_mcu_node')
+        self.get_logger().set_level(rclpy.logging.LoggingSeverity.DEBUG)
         self.get_logger().info('Hardware MCU node starting (USB serial + MAVLink).')
         self._mavlink_buffer = bytearray()
 
@@ -193,6 +194,10 @@ class HwMcuNode(Node):
             self._open_serial()
             if self.serial is None:
                 return
+        # Publish actuator_control_message on UART after reading serial data
+        actuator_msg = self._build_actuator_control_message(Twist())
+        if actuator_msg is not None:
+            self._write_mavlink_message(actuator_msg)
 
         self.get_logger().debug('Polling MCU via serial...')
         try:
@@ -278,13 +283,15 @@ class HwMcuNode(Node):
         actuators[2] = -0.3  # FL
         actuators[3] = -0.3   # RL
         # Remaining actuators (4-7) left at 0.0
+        # pymavlink expects 6 arguments: time_boot_ms, target_system, target_component, group_mlx, controls, flags
+        # pymavlink expects: time_usec, group_mlx, target_system, target_component, controls
+        self.get_logger().debug('sending data to UART serial...')
         return self.mav_tx.set_actuator_control_target_encode(
-            0,  # time_boot_ms
+            0,  # time_usec
+            0,  # group_mlx (0 = default)
             self.command_target_system,
             self.command_target_component,
-            0,  # group_mlx (0 = default)
-            actuators,
-            0  # flags
+            actuators
         )
 
     def _build_velocity_setpoint_message(self, twist: Twist):

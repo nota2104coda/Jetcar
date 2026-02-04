@@ -7,6 +7,12 @@
 #include <HardwareSerial.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <NewPing.h>
+#include "driver/uart.h"
+#include "esp_intr_alloc.h"
+
+#define UART_NUM UART_NUM_1
+#define BUF_SIZE 1024
+
 // #include <hardware/watchdog.h>
 
 // #define MCU_PICOW_RP2040
@@ -94,8 +100,8 @@ static uint16_t escTelemetrySequence = 0;
 
 // Forward declarations
 static void ensureJetsonSerialReady(uint32_t now);
-static void pumpJetsonSerialRx();
-static void flushJetsonSerialTx();
+static void readJetsonSerial();
+static void writeJetsonSerial();
 static void enqueueBytes(const uint8_t *data, size_t len);
 static void enqueueMavlinkMessage(const mavlink_message_t &message);
 static void pushHighresImu(const SensorBuffer &sensors);
@@ -114,8 +120,8 @@ static void pushJetsonRxByte(uint8_t value);
 static bool popJetsonRxByte(uint8_t &value);
 
 // Forward declaration for telemetry function
-void sendTelemetry(const SensorBuffer &sensors);
-
+void pushTelemetry(const SensorBuffer &sensors);
+// Unused UART helper block removed - using readJetsonSerial and writeJetsonSerial instead
 // Single-threaded loop bookkeeping
 static uint32_t lastLoopStart = 0;
 
@@ -123,6 +129,7 @@ static uint32_t lastLoopStart = 0;
 volatile uint32_t bootCounter = 0;
 
 void setup() {
+// Loop setup
   // Concept 5: Enable hardware watchdog (2 second timeout). 
   // watchdog_enable(kWatchdogTimeoutMs, true);
 
@@ -216,18 +223,18 @@ void setup() {
 
 void loop() {
   const uint32_t now = millis();
-  delay(1000);
+  delay(500);
   if (now - lastLoopStart < kLoopPeriodMs) {
     delay(1);
     return;
   }
   lastLoopStart = now;
 
-  // Keep Jetson UART telemetry online without blocking the control loop
+  // Keep Jetson UART telemetry online using helper abstraction
   ensureJetsonSerialReady(now);
-  pumpJetsonSerialRx();
+  readJetsonSerial();
+  writeJetsonSerial();
   processJetsonCommandStream();
-  flushJetsonSerialTx();
 
   // // Poll sonar (rear then front with crosstalk delay)
   // if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
@@ -298,14 +305,14 @@ void loop() {
    the que is filled every time we go through loop. 
   the draining of queue happens eitehr when jetson requests data over i2c, 
    or when we want to add data and queue is full, we drop oldest data. */
-  sendTelemetry(mcuSensors);
+  pushTelemetry(mcuSensors);
 
   // Feed watchdog
   // watchdog_update();
 }
 
 // Telemetry output function
-void sendTelemetry(const SensorBuffer &sensors) {
+void pushTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINT(">accel_x:");
   DEBUG_PRINTLN(sensors.accelX, 2);
   DEBUG_PRINT(">accel_y:");
@@ -605,9 +612,9 @@ static void pushEscTelemetry(const SensorBuffer &sensors) {
   mavlink_message_t message;
   mavlink_msg_esc_telemetry_1_to_4_encode(kMavSystemId, kMavComponentId, &message, &esc);
   const uint16_t frameLen = mavlink_msg_to_send_buffer(frame, &message);
-  DEBUG_I2C_PRINT(">[I2C1] Framelen:");
+  DEBUG_I2C_PRINT(">[UART] Framelen:");
   DEBUG_I2C_PRINTLN(frameLen);
-  DEBUG_I2C_PRINT(">[I2C1] Frame: ");
+  DEBUG_I2C_PRINT(">[UART] Frame: ");
   for (size_t i = 0; i < frameLen; ++i) {
     DEBUG_I2C_PRINT(frame[i], HEX);
     DEBUG_I2C_PRINT(" ");
@@ -618,19 +625,20 @@ static void pushEscTelemetry(const SensorBuffer &sensors) {
   escTelemetrySequence++;
 }
 
-static void pumpJetsonSerialRx() {
+static void readJetsonSerial() {
   if (!jetsonSerialReady) {
     return;
   }
 
   while (jetsonSerial.available() > 0) {
-    const uint8_t value = static_cast<uint8_t>(jetsonSerial.read());
-    pushJetsonRxByte(value);
+    const uint8_t value = static_cast<uint8_t>(jetsonSerial.read());    DEBUG_I2C_PRINT("[UART RX] ");
+    DEBUG_I2C_PRINT(value, HEX);    pushJetsonRxByte(value);
     lastJetsonActivityMs = millis();
   }
+  DEBUG_I2C_PRINTLN(" ");
 }
 
-static void flushJetsonSerialTx() {
+static void writeJetsonSerial() {
   if (!jetsonSerialReady) {
     return;
   }
@@ -644,6 +652,12 @@ static void flushJetsonSerialTx() {
     }
 
     if (bytesToSend > 0) {
+      DEBUG_I2C_PRINT("[UART TX] ");
+      for (size_t i = 0; i < bytesToSend; i++) {
+        DEBUG_I2C_PRINT(chunk[i], HEX);
+        DEBUG_I2C_PRINT(" ");
+      }
+      DEBUG_I2C_PRINTLN();
       jetsonSerial.write(chunk, bytesToSend);
       lastJetsonActivityMs = millis();
     }
@@ -662,7 +676,10 @@ static void ensureJetsonSerialReady(uint32_t now) {
     jetsonSerial.begin(kJetsonSerialBaud, SERIAL_8N1, MCU_JETSON_UART1_RX, MCU_JETSON_UART1_TX);
     jetsonSerialReady = true;
     lastJetsonActivityMs = now;
-    Serial.println("[UART] Jetson telemetry ready");
+    Serial.print("[UART] Jetson telemetry ready on RX:");
+    Serial.print(MCU_JETSON_UART1_RX);
+    Serial.print(" TX:");
+    Serial.println(MCU_JETSON_UART1_TX);
   }
 }
 

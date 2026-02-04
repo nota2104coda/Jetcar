@@ -248,6 +248,8 @@
   #define DEBUG_I2C_PRINTLN(...) ((void)0)
 #endif
 
+
+
 //UART SCHEMA
 /*Line protocol (ASCII, newline-delimited)
 
