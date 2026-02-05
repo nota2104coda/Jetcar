@@ -20,9 +20,9 @@
 #define NONSTEER_4WD_RUBBERWHL_2XSONAR_2xCLIFF
 
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
-#define LOOP_DEBUG_A 0
+#define LOOP_DEBUG_A 1
 #define LOOP_DEBUG_B 0
-#define LOOP_DEBUG_I2C 1
+#define LOOP_DEBUG_I2C 0
 
 
 #include <Adafruit_Sensor.h>
@@ -108,7 +108,7 @@ static void pushHighresImu(const SensorBuffer &sensors);
 static void pushSonars(const SensorBuffer &sensors);
 static void pushIRSensors(const SensorBuffer &sensors);
 static void pushEscTelemetry(const SensorBuffer &sensors);
-void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL);
+void queue_motor_command(float tqFR, float tqRR, float tqFL, float tqRL);
 static void initI2Cgeneric(TwoWire &bus,
                            int sdaPin,
                            int sclPin,
@@ -223,7 +223,7 @@ void setup() {
 
 void loop() {
   const uint32_t now = millis();
-  delay(500);
+  delay(50);
   if (now - lastLoopStart < kLoopPeriodMs) {
     delay(1);
     return;
@@ -455,17 +455,17 @@ static void handleJetsonCommand(const mavlink_message_t &message) {
       float tqRR = constrain(act.controls[1], -1.0f, 1.0f);
       float tqFL = constrain(act.controls[2], -1.0f, 1.0f);
       float tqRL = constrain(act.controls[3], -1.0f, 1.0f);
-      DEBUG_I2C_PRINT(">tqFR: ");
-      DEBUG_I2C_PRINTLN(tqFR,2);
-      DEBUG_I2C_PRINT(">tqRR: ");
-      DEBUG_I2C_PRINTLN(tqRR,2);
-      DEBUG_I2C_PRINT(">tqFL: ");
-      DEBUG_I2C_PRINTLN(tqFL,2);
-      DEBUG_I2C_PRINT(">tqRL: ");
-      DEBUG_I2C_PRINTLN(tqRL,2);
+      DEBUG_PRINT(">tqFR: ");
+      DEBUG_PRINTLN(tqFR,2);
+      DEBUG_PRINT(">tqRR: ");
+      DEBUG_PRINTLN(tqRR,2);
+      DEBUG_PRINT(">tqFL: ");
+      DEBUG_PRINTLN(tqFL,2);
+      DEBUG_PRINT(">tqRL: ");
+      DEBUG_PRINTLN(tqRL,2);
     
       
-      // queue_motor_command(tqFR, tqRR, tqFL, tqRL);
+      queue_motor_command(tqFR, tqRR, tqFL, tqRL);
       break;
     }
     default:
@@ -629,9 +629,9 @@ static void readJetsonSerial() {
   if (!jetsonSerialReady) {
     return;
   }
-
+  DEBUG_I2C_PRINT("[UART RX] ");
   while (jetsonSerial.available() > 0) {
-    const uint8_t value = static_cast<uint8_t>(jetsonSerial.read());    DEBUG_I2C_PRINT("[UART RX] ");
+    const uint8_t value = static_cast<uint8_t>(jetsonSerial.read());    
     DEBUG_I2C_PRINT(value, HEX);    pushJetsonRxByte(value);
     lastJetsonActivityMs = millis();
   }

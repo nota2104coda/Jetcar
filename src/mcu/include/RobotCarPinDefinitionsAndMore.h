@@ -129,8 +129,8 @@
     #define MCU_LD2450RADAR_UART0_TX 12
     #define JETSON_LD06_UART0_RX 10
     #define JETSON_LD06_UART0_TX 8
-    #define MCU_JETSON_UART1_RX 44
-    #define MCU_JETSON_UART1_TX 43
+    #define MCU_JETSON_UART1_RX 14
+    #define MCU_JETSON_UART1_TX 13
   #endif
 
 #elif defined(MCU_PICOW_RP2040)
