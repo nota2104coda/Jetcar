@@ -194,9 +194,11 @@ class HwMcuNode(Node):
             self._open_serial()
             if self.serial is None:
                 return
+
         # Publish actuator_control_message on UART after reading serial data
         actuator_msg = self._build_actuator_control_message(Twist())
         if actuator_msg is not None:
+            self.get_logger().info(f"Sending actuator_control_message: {actuator_msg}")
             self._write_mavlink_message(actuator_msg)
 
         self.get_logger().debug('Polling MCU via serial...')
@@ -208,6 +210,7 @@ class HwMcuNode(Node):
             return
 
         if not raw_bytes:
+            self.get_logger().warn(f'raw_bytes was blank')
             return
 
         self.get_logger().debug(
@@ -252,6 +255,8 @@ class HwMcuNode(Node):
 
         if self.command_mode == 'set_actuator_control_target':
             message = self._build_actuator_control_message(twist)
+            if message is not None:
+                self.get_logger().info(f"Sending actuator_control_message (from cmd_vel): {message}")
         else:
             message = self._build_velocity_setpoint_message(twist)
 
@@ -270,22 +275,22 @@ class HwMcuNode(Node):
         w = max(min(twist.angular.z, 1.0), -1.0)
         left = v - w
         right = v + w
-        # actuators[0] = right  # FR
-        # actuators[1] = right   # RR
-        # actuators[2] = left  # FL
-        # actuators[3] = left   # RL
+        actuators[0] = right  # FR
+        actuators[1] = right   # RR
+        actuators[2] = left  # FL
+        actuators[3] = left   # RL
         # actuators[0] = 0.3 + 0.1*random.random()  # FR
         # actuators[1] = -0.3 + 0.1*random.random()  # RR
         # actuators[2] = 0.5 + 0.1*random.random()  # FL
         # actuators[3] = -0.5 + 0.1*random.random()  # RL
-        actuators[0] = 0.3  # FR
-        actuators[1] = 0.3   # RR
-        actuators[2] = -0.3  # FL
-        actuators[3] = -0.3   # RL
+        # actuators[0] = 0  # FR
+        # actuators[1] = 0   # RR
+        # actuators[2] = 0  # FL
+        # actuators[3] = 0   # RL
         # Remaining actuators (4-7) left at 0.0
         # pymavlink expects 6 arguments: time_boot_ms, target_system, target_component, group_mlx, controls, flags
         # pymavlink expects: time_usec, group_mlx, target_system, target_component, controls
-        self.get_logger().debug('sending data to UART serial...')
+        self.get_logger().debug('queing data for Tx...')
         return self.mav_tx.set_actuator_control_target_encode(
             0,  # time_usec
             0,  # group_mlx (0 = default)
