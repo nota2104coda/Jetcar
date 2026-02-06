@@ -9,7 +9,6 @@ scipy
 #ROS2
 rclpy
 
-#serial comms with arduino etc
-pyserial  # USB serial communication with Pi Pico
-pyserial-asyncio  # Async serial support
-smbus2==0.4.3  # I2C communication for sensors
+smbus2==0.6.0  # I2C communication for sensors
+pymavlink==2.4.49  # MAVLink communication protocol
+smbus2  # I2C communication for sensors

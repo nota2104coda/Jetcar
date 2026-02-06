@@ -15,7 +15,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*launch.[pxy][yma]*')),
         (os.path.join('share', package_name, 'urdf'), glob('urdf/**/*', recursive=True)),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'pyserial','smbus2'],
     zip_safe=True,
     maintainer='nota2104coda',
     maintainer_email='jeevanghadge@gmail.com',
@@ -25,8 +25,11 @@ setup(
     entry_points={
         'console_scripts': [
             "camera_node = pi5_pkg.camera_node:main",
-            'pico_sensors_node = pi5_pkg.pico_sensors_node:main',
-            'hmi_node = pi5_pkg.hmi_node:main'
+            'hmi_node = pi5_pkg.hmi_node:main',
+            'hw_mcu_node = pi5_pkg.hw_mcu_node:main',
+            'ld06_lidar_node = pi5_pkg.ld06_lidar_node:main',
+            # 'ldlidar_node = pi5_pkg.ldlidar_node:main',
+            'hw_realsense_node = pi5_pkg.hw_realsense_node:main'
         ],
     },
 )

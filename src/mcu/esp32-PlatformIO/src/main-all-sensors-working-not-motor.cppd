@@ -1,0 +1,540 @@
+#include <cstdint>
+#include <array>
+#include <limits>
+#include <cmath>
+#include <SimpleFOC.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+#include <NewPing.h>
+// #include <hardware/watchdog.h>
+
+// #define MCU_PICOW_RP2040
+#define MCU_ESP32S3_40PIN 
+#define NONSTEER_4WD_RUBBERWHL_2XSONAR_2xCLIFF
+
+// Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
+#define LOOP_DEBUG_A 1
+#define LOOP_DEBUG_B 0
+#define LOOP_DEBUG_I2C 1
+
+#if LOOP_DEBUG_A
+  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_PRINT(...) ((void)0)
+  #define DEBUG_PRINTLN(...) ((void)0)
+#endif
+#if LOOP_DEBUG_B
+  #define DEBUG_B_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_B_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_B_PRINT(...) ((void)0)
+  #define DEBUG_B_PRINTLN(...) ((void)0)
+#endif
+
+#if LOOP_DEBUG_I2C
+  #define DEBUG_I2C_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_I2C_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_I2C_PRINT(...) ((void)0)
+  #define DEBUG_I2C_PRINTLN(...) ((void)0)
+#endif
+
+#include <Adafruit_Sensor.h>
+#include <Adafruit_MPU6050.h>
+#include <Arduino.h>
+#include <MAVLink_ardupilotmega.h>
+
+//follow metric system everywhere except for distance/speed/acceleration are in cm. angles in rad, angular velocity in rad/s
+
+#include "/home/jeevan/PicoWCar/src/mcu/include/CarConfigurations.h"
+#include "/home/jeevan/PicoWCar/src/mcu/include/RobotCarPinDefinitionsAndMore.h"
+#include "/home/jeevan/PicoWCar/src/mcu/include/CliffSensor.h"
+#include "/home/jeevan/PicoWCar/src/mcu/include/PCA9685_AWDDriver.h"
+#include "/home/jeevan/PicoWCar/src/mcu/include/stateMachines.h"
+
+CliffSensor frontCliff(PIN_FRONT_CLIFF);
+CliffSensor rearCliff(PIN_REAR_CLIFF);
+
+NewPing sonarF(PIN_TRIG_SONAR_FRONT, PIN_ECHO_SONAR_FRONT, kMaxSonarRangecm); //the lib needs cm as max range
+NewPing sonarR(PIN_TRIG_SONAR_REAR, PIN_ECHO_SONAR_REAR, kMaxSonarRangecm);
+
+uint32_t lastPublish = 0;
+int32_t sonarDistanceFront = 5;
+int32_t sonarDistanceRear = 7;
+uint32_t lastSonarFrontPoll = 0;
+uint32_t lastSonarRearPoll = 0;
+uint32_t lastMotorCommandTime = 0;
+SystemState systemState = SystemState::INIT;
+bool mpuAvailable = false;
+
+// I2C and peripherals - construct statically, initialize in setup()
+TwoWire *picomasteri2c = &Wire;  // or &Wire1 depending on which I2C bus
+Adafruit_MPU6050 mpu;
+
+// Motor driver object lives in static storage for deterministic lifetime
+static PCA9685_AWDDriver motorDriver(
+  MOTOR_DRV_ADDR, picomasteri2c,
+  PIN_ENC_FRONT_RIGHT_Y, PIN_ENC_FRONT_RIGHT_G,
+  PIN_ENC_FRONT_LEFT_G, PIN_ENC_FRONT_LEFT_Y,
+  PIN_ENC_REAR_RIGHT_Y, PIN_ENC_REAR_RIGHT_G,
+  PIN_ENC_REAR_LEFT_G, PIN_ENC_REAR_LEFT_Y,
+  PULSE_PER_REV, kMaxSaneRpm
+);
+
+// Simple shared state (single core)
+static SensorBuffer mcuSensors = {0};
+static MotorCommand latestMotorCmd = {0.1, 0.1, 0.1, 0.1, 0};
+static bool robotEnabled = true;
+
+// MAVLink + Jetson I2C bridge state
+static constexpr uint8_t kMavSystemId = 42;
+static constexpr uint8_t kMavComponentId = MAV_COMP_ID_ONBOARD_COMPUTER;
+static constexpr uint8_t kJetsonI2CAddress = 0x42; // 7-bit slave address polled by the Jetson master
+static constexpr uint32_t kI2CReconnectIntervalMs = 1000;
+static constexpr uint32_t kI2CInactivityTimeoutMs = 5000;
+static constexpr size_t kMavlinkFifoSize = 768;
+static constexpr size_t kI2CMaxChunk = 32;
+
+static TwoWire *jetsonI2c = &Wire1;
+static bool jetsonI2CInitialized = false;
+static uint32_t lastI2CInitAttempt = 0;
+static volatile uint32_t lastJetsonActivityMs = 0;
+static std::array<uint8_t, kMavlinkFifoSize> mavlinkTxFifo{};
+static volatile size_t mavlinkTxHead = 0;
+static volatile size_t mavlinkTxTail = 0;
+static uint16_t escTelemetrySequence = 0;
+
+// Forward declarations
+static void jetsonI2COnRequest();
+static void jetsonI2COnReceive(int numBytes);
+static void ensureJetsonI2CReady(uint32_t now);
+static void enqueueBytes(const uint8_t *data, size_t len);
+static void enqueueMavlinkMessage(const mavlink_message_t &message);
+static void publishHighresImu(const SensorBuffer &sensors);
+static void publishSonars(const SensorBuffer &sensors);
+static void publishInfraredSensors(const SensorBuffer &sensors);
+static void publishEscTelemetry(const SensorBuffer &sensors);
+void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL);
+static void initI2Cgeneric(TwoWire &bus,
+                           int sdaPin,
+                           int sclPin,
+                           int slaveAddress = -1,
+                           uint32_t frequencyHz = 400000U);
+
+// Forward declaration for telemetry function
+void sendTelemetry(const SensorBuffer &sensors);
+
+// Single-threaded loop bookkeeping
+static uint32_t lastLoopStart = 0;
+
+// Add a global boot counter (retained in RTC memory if possible)
+volatile uint32_t bootCounter = 0;
+
+void setup() {
+  bootCounter++;
+  Serial.print("[BOOT] Count: ");
+  Serial.println(bootCounter);
+
+  // Concept 5: Enable hardware watchdog (2 second timeout). 
+  // watchdog_enable(kWatchdogTimeoutMs, true);
+
+  // Concept 1: Timeout on USB Serial (for debug/monitoring)
+  Serial.begin(115200);
+  delay(500);
+  const uint32_t serialStart = millis();
+  while ((!Serial) && ((millis() - serialStart) < kSerialWaitMs)) {
+    delay(10);
+    // watchdog_update();
+  }
+
+  Serial.println();
+  Serial.println("==========================================");
+  Serial.println("[DEBUG] MCU BOOT - Watchdog ENABLED");
+  Serial.flush();
+
+  Serial.println("[INIT] MCU starting...");
+  systemState = SystemState::INIT;
+
+  Serial.println("[INIT] Initializing cliff sensors...");
+  frontCliff.init();
+  rearCliff.init();
+  Serial.println("[INIT] Cliff sensors initialized.");
+
+  Serial.println("[INIT] I2C0 bus and motor driver...");
+  // End any previous I2C transmission and re-initialize with proper pins
+  initI2Cgeneric(*picomasteri2c, MCU_I2C0_SDA, MCU_I2C0_SCL);
+  delay(100);  // Allow I2C to stabilize
+  
+  // Scan I2C bus to see what devices are present
+  Serial.println("[DEBUG] Scanning I2C0 bus...");
+  for (uint8_t addr = 0x08; addr < 0x78; addr++) {
+    picomasteri2c->beginTransmission(addr);
+    uint8_t result = picomasteri2c->endTransmission();
+    if (result == 0) {
+      Serial.print("[DEBUG] I2C0 device found at address: 0x");
+      Serial.println(addr, HEX);
+    }
+  }
+  
+  // Check PCA9685 presence.
+  Serial.print("[DEBUG] Checking for PCA9685 at address: 0x");
+  Serial.println(MOTOR_DRV_ADDR, HEX);
+  picomasteri2c->beginTransmission(MOTOR_DRV_ADDR);
+  int ackStatus = picomasteri2c->endTransmission();
+  if (ackStatus != 0) {
+    Serial.println("[ERROR] PCA9685 not responding on I2C0");
+    systemState = SystemState::ERROR;
+  }
+
+  // Initialize motor driver (PCA9685 + encoders)
+  Serial.println("[INIT] Initializing motor driver and encoders...");
+  motorDriver.begin(kPwmFreqHz);
+  Serial.println("[INIT] Motor driver and encoders initialized.");
+  
+
+  // Concept 3 & 4: Graceful MPU6050 failure handling (no infinite loop)
+  if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, picomasteri2c)) {
+    delay(2000);
+    Serial.println("[WARN] MPU6050 not detected. Running in DEGRADED mode without IMU.");
+    mpuAvailable = false;
+    systemState = SystemState::DEGRADED;
+  } else {
+    mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    Serial.println("[INIT] MPU6050 ready.");
+    mpuAvailable = true;
+    systemState = SystemState::RUNNING;
+  }
+  
+  Serial.println("[INIT] Configuring Jetson I2C1 telemetry bridge...");
+  ensureJetsonI2CReady(millis());
+
+  // Ensure motors are in a known safe state before entering the main loop. This was AI generated, not really required because init of PCA9685 takes care.
+  queue_motor_command(0.0f, 0.0f, 0.0f, 0.0f);
+
+  Serial.println("[INIT] System ready. Streaming data every 100ms.");
+  lastPublish = millis();
+  lastMotorCommandTime = millis();  
+
+
+}
+
+void loop() {
+  const uint32_t now = millis();
+  if (now - lastLoopStart < kLoopPeriodMs) {
+    delay(1);
+    return;
+  }
+  lastLoopStart = now;
+
+  // Keep Jetson I2C telemetry online without blocking the control loop
+  ensureJetsonI2CReady(now);
+
+  // Poll sonar (rear then front with crosstalk delay)
+  if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
+    int32_t rear = sonarR.ping_cm();
+    if (rear > 0 && rear < kMaxSonarRangecm) {
+      sonarDistanceRear = rear;
+    }
+    lastSonarRearPoll = now;
+  }
+
+  if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
+    delay(min_sonar_delayMs);
+    int32_t front = sonarF.ping_cm();
+    if (front > 0 && front < kMaxSonarRangecm) {
+      sonarDistanceFront = front;
+    }
+    lastSonarFrontPoll = now;
+  }
+
+  // Read IMU and cliffs
+  sensors_event_t accel = {}, gyro = {}, temp = {};
+  if (mpuAvailable) {
+    mpu.getEvent(&accel, &gyro, &temp);
+  }
+  frontCliff.read();
+  rearCliff.read();
+
+  // Update sensor struct
+  mcuSensors.accelX = accel.acceleration.x;
+  mcuSensors.accelY = accel.acceleration.y;
+  mcuSensors.gyroZ = gyro.gyro.z;
+  mcuSensors.temp = temp.temperature;
+  mcuSensors.speedFL = motorDriver.getRPM(MOTOR_FL) * MOTOR_RPM_TO_CMPS;
+  mcuSensors.speedFR = motorDriver.getRPM(MOTOR_FR) * MOTOR_RPM_TO_CMPS;
+  mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL) * MOTOR_RPM_TO_CMPS;
+  mcuSensors.speedRR = motorDriver.getRPM(MOTOR_RR) * MOTOR_RPM_TO_CMPS;
+  mcuSensors.sonarFrontcm = sonarDistanceFront;
+  mcuSensors.sonarRearcm = sonarDistanceRear;
+  mcuSensors.cliffFront = frontCliff.getLastState();
+  mcuSensors.cliffRear = rearCliff.getLastState();
+  mcuSensors.timestamp = now;
+
+
+  // Safety check
+  if (!robotEnabled || motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
+    motorDriver.setMotor(MOTOR_FR, 0.0f);
+    motorDriver.setMotor(MOTOR_FL, 0.0f);
+    motorDriver.setMotor(MOTOR_RR, 0.0f);
+    motorDriver.setMotor(MOTOR_RL, 0.0f);
+  } else {
+  // Pick motor command (updated when higher level control enqueues new torques)
+    motorDriver.setMotor(MOTOR_FR, latestMotorCmd.tqFR);
+    motorDriver.setMotor(MOTOR_FL, latestMotorCmd.tqFL);
+    motorDriver.setMotor(MOTOR_RR, latestMotorCmd.tqRR);
+    motorDriver.setMotor(MOTOR_RL, latestMotorCmd.tqRL);
+    lastMotorCommandTime = now;
+  }
+
+  // Telemetry
+  sendTelemetry(mcuSensors);
+
+  // Feed watchdog
+  // watchdog_update();
+}
+
+// Telemetry output function
+void sendTelemetry(const SensorBuffer &sensors) {
+  DEBUG_PRINT(">accel_x:");
+  DEBUG_PRINTLN(sensors.accelX, 2);
+  DEBUG_PRINT(">accel_y:");
+  DEBUG_PRINTLN(sensors.accelY, 2);
+
+  DEBUG_PRINT(">gyro_z:");
+  DEBUG_PRINTLN(sensors.gyroZ, 2);
+
+  DEBUG_PRINT(">temp_c:");
+  DEBUG_PRINTLN(sensors.temp, 2);
+ 
+  DEBUG_PRINT(">sonar_frt_cm:");
+  DEBUG_PRINTLN(sensors.sonarFrontcm);
+  DEBUG_PRINT(">sonar_rear_cm:");
+  DEBUG_PRINTLN(sensors.sonarRearcm);
+
+  DEBUG_PRINT(">speedFR:");
+  DEBUG_PRINTLN(sensors.speedFR);
+  DEBUG_PRINT(">speedFL:");
+  DEBUG_PRINTLN(sensors.speedFL);
+  DEBUG_PRINT(">speedRR:");
+  DEBUG_PRINTLN(sensors.speedRR);
+  DEBUG_PRINT(">speedRL:");
+  DEBUG_PRINTLN(sensors.speedRL);
+
+  DEBUG_PRINT(">cliff_front:");
+  DEBUG_PRINTLN(sensors.cliffFront ? 1 : 0);
+  DEBUG_PRINT(">cliff_rear:");
+  DEBUG_PRINTLN(sensors.cliffRear ? 1 : 0);
+
+  publishHighresImu(sensors);
+  publishSonars(sensors);
+  publishInfraredSensors(sensors);
+  publishEscTelemetry(sensors);
+}
+
+void queue_motor_command(float tqFR, float tqFL, float tqRR, float tqRL) {
+  latestMotorCmd = {tqFR, tqFL, tqRR, tqRL, millis()};
+}
+
+static inline uint16_t cmpsToRpm(float cmps) {
+  const float rpm = fabsf(cmps / MOTOR_RPM_TO_CMPS);
+  const float bounded = constrain(rpm, 0.0f, 60000.0f);
+  return static_cast<uint16_t>(bounded);
+}
+
+static uint16_t clampDistanceCm(int32_t value) {
+  const int32_t clamped = constrain(value, 0, kMaxSonarRangecm);
+  return static_cast<uint16_t>(clamped);
+}
+
+static void enqueueBytes(const uint8_t *data, size_t len) {
+  noInterrupts();
+  for (size_t i = 0; i < len; ++i) {
+    const size_t next = (mavlinkTxHead + 1U) % kMavlinkFifoSize;
+    if (next == mavlinkTxTail) {
+      mavlinkTxTail = (mavlinkTxTail + 1U) % kMavlinkFifoSize;
+    }
+    mavlinkTxFifo[mavlinkTxHead] = data[i];
+    mavlinkTxHead = next;
+  }
+  interrupts();
+}
+
+static void enqueueMavlinkMessage(const mavlink_message_t &message) {
+  uint8_t frame[MAVLINK_MAX_PACKET_LEN];
+  const uint16_t frameLen = mavlink_msg_to_send_buffer(frame, &message);
+  enqueueBytes(frame, frameLen);
+}
+
+static void publishHighresImu(const SensorBuffer &sensors) {
+  mavlink_highres_imu_t imu{};
+  imu.time_usec = static_cast<uint64_t>(sensors.timestamp) * 1000ULL;
+  imu.xacc = sensors.accelX;
+  imu.yacc = sensors.accelY;
+  imu.zacc = 0.0f;
+  imu.xgyro = 0.0f;
+  imu.ygyro = 0.0f;
+  imu.zgyro = sensors.gyroZ;
+  const float nanValue = std::numeric_limits<float>::quiet_NaN();
+  imu.xmag = nanValue;
+  imu.ymag = nanValue;
+  imu.zmag = nanValue;
+  imu.abs_pressure = nanValue;
+  imu.diff_pressure = nanValue;
+  imu.pressure_alt = nanValue;
+  imu.temperature = sensors.temp;
+  imu.fields_updated = static_cast<uint16_t>((1U << 0) | (1U << 1) | (1U << 2) |
+                                             (1U << 3) | (1U << 4) | (1U << 5) |
+                                             (1U << 12));
+  imu.id = 0;
+
+  mavlink_message_t message;
+  mavlink_msg_highres_imu_encode(kMavSystemId, kMavComponentId, &message, &imu);
+  enqueueMavlinkMessage(message);
+}
+
+static void publishDistanceReading(uint8_t id,
+                                   uint8_t type,
+                                   uint8_t orientation,
+                                   uint16_t currentDistance,
+                                   uint16_t minDistance,
+                                   uint16_t maxDistance,
+                                   uint8_t signalQuality,
+                                   uint32_t timestampMs) {
+  mavlink_distance_sensor_t distance{};
+  distance.time_boot_ms = timestampMs;
+  distance.min_distance = minDistance;
+  distance.max_distance = maxDistance;
+  distance.current_distance = currentDistance;
+  distance.type = type;
+  distance.id = id;
+  distance.orientation = orientation;
+  distance.covariance = 0xFF;
+  distance.horizontal_fov = 0.0f;
+  distance.vertical_fov = 0.0f;
+  distance.signal_quality = signalQuality;
+  for (size_t i = 0; i < 4; ++i) {
+    distance.quaternion[i] = 0.0f;
+  }
+
+  mavlink_message_t message;
+  mavlink_msg_distance_sensor_encode(kMavSystemId, kMavComponentId, &message, &distance);
+  enqueueMavlinkMessage(message);
+}
+
+static void publishSonars(const SensorBuffer &sensors) {
+  const uint16_t front = clampDistanceCm(sensors.sonarFrontcm);
+  const uint16_t rear = clampDistanceCm(sensors.sonarRearcm);
+  const uint16_t rangeMax = static_cast<uint16_t>(kMaxSonarRangecm);
+  publishDistanceReading(1, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_NONE,
+                         front, 2U, rangeMax, 100U, sensors.timestamp);
+  publishDistanceReading(2, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_YAW_180,
+                         rear, 2U, rangeMax, 100U, sensors.timestamp);
+}
+
+static void publishInfraredSensors(const SensorBuffer &sensors) {
+  const uint16_t rangeMax = static_cast<uint16_t>(kMaxSonarRangecm);
+  const uint16_t frontValue = sensors.cliffFront ? rangeMax : 5U;
+  const uint16_t rearValue = sensors.cliffRear ? rangeMax : 5U;
+
+  publishDistanceReading(3, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
+                         frontValue, 0U, rangeMax, sensors.cliffFront ? 25U : 100U, sensors.timestamp);
+  publishDistanceReading(4, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
+                         rearValue, 0U, rangeMax, sensors.cliffRear ? 25U : 100U, sensors.timestamp);
+}
+
+static void publishEscTelemetry(const SensorBuffer &sensors) {
+  mavlink_esc_telemetry_1_to_4_t esc{};
+  esc.rpm[0] = cmpsToRpm(sensors.speedFR);
+  esc.rpm[1] = cmpsToRpm(sensors.speedFL);
+  esc.rpm[2] = cmpsToRpm(sensors.speedRR);
+  esc.rpm[3] = cmpsToRpm(sensors.speedRL);
+
+  const uint8_t temperature = static_cast<uint8_t>(constrain(sensors.temp, 0.0f, 255.0f));
+  for (size_t i = 0; i < 4; ++i) {
+    esc.temperature[i] = temperature;
+    esc.voltage[i] = 0;
+    esc.current[i] = 0;
+    esc.totalcurrent[i] = 0;
+    esc.count[i] = escTelemetrySequence;
+  }
+
+  mavlink_message_t message;
+  mavlink_msg_esc_telemetry_1_to_4_encode(kMavSystemId, kMavComponentId, &message, &esc);
+  enqueueMavlinkMessage(message);
+  escTelemetrySequence++;
+}
+
+static void jetsonI2COnRequest() {
+  uint8_t chunk[kI2CMaxChunk];
+  size_t count = 0;
+  while ((count < kI2CMaxChunk) && (mavlinkTxTail != mavlinkTxHead)) {
+    chunk[count++] = mavlinkTxFifo[mavlinkTxTail];
+    mavlinkTxTail = (mavlinkTxTail + 1U) % kMavlinkFifoSize;
+  }
+  if (count == 0) {
+    chunk[count++] = 0;
+  }
+  jetsonI2c->write(chunk, count);
+  lastJetsonActivityMs = millis();
+}
+
+static void jetsonI2COnReceive(int numBytes) {
+  while (numBytes-- > 0) {
+    (void)jetsonI2c->read();
+  }
+  lastJetsonActivityMs = millis();
+}
+
+static void ensureJetsonI2CReady(uint32_t now) {
+  if (jetsonI2CInitialized) {
+    const uint32_t idle = now - lastJetsonActivityMs;
+    if (idle > kI2CInactivityTimeoutMs) {
+      DEBUG_I2C_PRINTLN("[I2C1] Activity timeout, resetting Jetson link");
+      jetsonI2c->end();
+      jetsonI2CInitialized = false;
+    }
+  }
+
+  if (!jetsonI2CInitialized) {
+    const uint32_t sinceAttempt = now - lastI2CInitAttempt;
+    if ((lastI2CInitAttempt == 0U) || (sinceAttempt >= kI2CReconnectIntervalMs)) {
+      lastI2CInitAttempt = now;
+      jetsonI2c->end();
+      initI2Cgeneric(*jetsonI2c, MCU_JETSON_I2C1_SDA, MCU_JETSON_I2C1_SCL,kJetsonI2CAddress,400000);
+      jetsonI2c->onRequest(jetsonI2COnRequest);
+      jetsonI2c->onReceive(jetsonI2COnReceive);
+      lastJetsonActivityMs = now;
+      jetsonI2CInitialized = true;
+      DEBUG_I2C_PRINTLN("[I2C1] Jetson telemetry ready");
+    }
+  }
+}
+
+static void initI2Cgeneric(TwoWire &bus,
+                           int sdaPin,
+                           int sclPin,
+                           int slaveAddress,
+                           uint32_t frequencyHz) {
+#if defined(MCU_PICOW_RP2040)
+  bus.end();
+  bus.setSDA(sdaPin);
+  bus.setSCL(sclPin);
+  if (slaveAddress >= 0) {
+    bus.begin(slaveAddress);
+  } else {
+    bus.begin();
+  }
+#elif defined(MCU_ESP32S3_40PIN)
+  bus.end();
+  if (slaveAddress >= 0) {
+    bus.begin(static_cast<uint8_t>(slaveAddress), sdaPin, sclPin, frequencyHz);
+  } else {
+    bus.begin(sdaPin, sclPin, frequencyHz);
+  }
+#else
+  #error "Unsupported MCU for I2C init"
+#endif
+}

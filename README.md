@@ -1,34 +1,52 @@
 # PicoWCar Project
 
 ## Overview
-PicoWCar is a 4-wheel robot system using Jetson Orin Nano, Pi Pico W, and Arduino Nano. It fuses camera, lidar, radar, and other sensor data for autonomous navigation and object search, controlled via a web interface. Development will use ROS2 Humble and docker containers for easy dependency management and deployment.
-The sensors it has are : front - realsense D435 depth camera via USB, LD2450 human tracking lidar. Rear - rolling shutter CSI camera , 8x8 lidar VL53L5CX. Also a MPU6050 acceleration sensor. Also it has front and rear sonar SR04 type. The sensors are connected to an arduino nano and a raspberry pi pico W . The arduino/pico report back to a jetson orin nano over USB or another suitable bus. For simplicity, I havent mentioned which devices connect to arduino or pico. That's based on simplifying wiring. The pico drives the 4 wheel motors. The jetson orin nano with jetpack 6.2 runs ROS2 nodes to read the data from the arduinos and cameras and pipe back the commands for motion. It also runs a local web server to collect commands from the user. It will also have a rplidar 2D lidar at top.
-The purpose of the robot is: when the user asks to navigate to the red football, it scans the room, does SLAM and navigates to the ball and stops at a safe distance. If the path is below a chair, it should intelligently see the height and go below or around. 
+PicoWCar is a 4-wheel robot system using Jetson Orin Nano and Pi Pico W RP2040. It fuses Realsense 435 camera, LD06 lidar and other sensor data for autonomous navigation and object search, controlled via a web interface. Development will use ROS2 Humble and docker containers for easy dependency management and deployment.
 
+## Use Cases: 
+when the user asks to navigate to the red football, it scans the room by spinning the body, until the object is found. It then navigates to the ball and stops at a safe distance. If the path is below a chair, it should intelligently see the height and go below or around. 
+
+## Learning Objective
+ Learn use of FreeRTOS on Pi Pico, with concurrent processes on both cores. Learn to configure a robot in ROS2 Humble. Learn to apply LLM/VLM for mobile robots.
 
 ## Hardware Architecture
-- **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to Pico W via USB serial or UART or similar bus.
-- **Pi Pico W**: Controls motors, reads sensors (radar, lidar, IMU, encoders, SPI display), communicates with Arduino Nano and Jetson Orin Nano
+- **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to Pico W via UART.
+- **Raspberry Pi Pico W**: Controls motors, reads sensors (radar, lidar, IMU,wheel encoders, SPI display), communicates with Arduino Nano and Jetson Orin Nano
 - **Arduino Nano**: Reads ultrasonic and IR cliff sensors, communicates with Pico W
-
+  **Sensors**: The sensors it has are : front - realsense D435 depth camera via USB, LD2450 human tracking lidar. 8x8 lidar VL53L5CX. Rear: HC-SR04 sonar. On body:  MPU6050 acceleration sensor. The sensors are connected to an arduino nano and a raspberry pi pico W . The arduino/pico report back to a jetson orin nano over USB or another suitable bus. For simplicity, I havent mentioned which devices connect to arduino or pico. That's based on simplifying wiring. The pico drives the 4 wheel motors. The jetson orin nano with jetpack 6.2 runs ROS2 nodes to read the data from the arduinos and cameras and pipe back the commands for motion. It also runs a local web server to collect commands from the user. It will also have a rplidar 2D lidar at top.
+  **Actuators**: 4x 370 type DC brushed motors with encoders. gear ratio 46, pulses per rev 11, hall encoder with forward and reverse sensor pickups.
 
 ## Quick Start
 1. **Clone the repo**
-2. **Build Docker container**
-   - For PC: `docker-compose -f docker/docker-compose.dev.yml up --build`
-   - For Pi5: `docker-compose -f docker/docker-compose.pi5.yml up --build`
-3. **Develop ROS2 nodes in `src/pi5_nodes/`**
-4. **Define custom messages in `robot_msgs/msg/` and build with `colcon`
-5. **Access web interface at `http://localhost:8080`**
+2. **Develop ROS2 nodes in** `src/pi5_pkg/`
+4. **Develop Pi Pico W code in** `src/ardpicoW/pico-PlatformIO/`
+5. Define custom messages in `src/robot_msgs/msg/` and build with `colcon`
+6. **Access web interface at** `http://localhost:8080`
+7. **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
+8. **Define robot urdf** in `src/pi5_pkg/urdf`
+9. **Access foxglove visualisation** `ws://192.168.50.176:8765`
 
 ## Diagrams
-See `docs/diagrams/architecture.md` for system and software architecture diagrams (Mermaid format).
+See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.
+See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format).
 
+## Specifications
+**Pico**
+I2C1 comms Pico to Jetson :
+In loop, if I2C1 connection is not established, try establishing it as a slave. The bus is I2C1 and pins are PICOW_JETSON_I2C1_RX and  PICOW_JETSON_I2C1_TX . If connection is established, there should be interrupt to call a function and record the incoming data whenever received, and then send outgoing data read from all sensors. If connection is not established, then use substitute value of 0 for motor commands.
+use MAVlink to send messages to jetson and receive them.Map the sensors in struct SensorBuffer to mavlink messages. for e.g. map wheel speeds into 4 motor rpms that might be available. map 2 SONAR distances into DISTANCE_SENSOR type messages. map IMU to HIGHRES_IMU. map IR prximity sensor to PROXIMITY.
 ## Next Steps
-- Implement sensor fusion and navigation logic in ROS2 nodes
-- Integrate serial communication with Pico W
+**Pico W**
+- Vehicle control class - arbitrate between commands and safe distance from sensors. Use input from I2C1 coming from Jetson
+- Implement FreeRTOS as per software architecture diagram
+  STATUS: Two-core design works .
+- I2C sensor data piping to Jetson
+
+**Jetson**
+- Integrate I2C communication with Pico W - use as a remote control use hmi_node and pico_node for this.
 - Expand web interface for visualization
-- Flash Pico W and Arduino Mega with respective firmware
+- Implement sensor fusion and navigation logic in ROS2 nodes
+
 
 ## Memory budget
 Can your robot run all of this at once?
