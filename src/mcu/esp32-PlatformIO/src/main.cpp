@@ -69,7 +69,7 @@ static PCA9685_AWDDriver motorDriver(
 
 // Simple shared state (single core)
 static SensorBuffer mcuSensors = {0};
-static MotorCommand latestMotorCmd = {0.1, 0.1, 0.1, 0.1, 0};
+static MotorCommand latestMotorCmd = {0, 0, 0, 0, 0};
 static bool robotEnabled = true;
 
 // MAVLink + Jetson serial bridge state
@@ -146,7 +146,6 @@ void setup() {
   Serial.print("[BOOT] Count: ");
   Serial.println(bootCounter);
 
-  
 
   Serial.println();
   Serial.println("==========================================");
@@ -191,7 +190,7 @@ void setup() {
   Serial.println("[INIT] Initializing motor driver and encoders...");
   motorDriver.begin(kPwmFreqHz);
   Serial.println("[INIT] Motor driver and encoders initialized.");
-  
+
 
   // Concept 3 & 4: Graceful MPU6050 failure handling (no infinite loop)
   if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, picomasteri2c)) {
@@ -218,7 +217,6 @@ void setup() {
   lastPublish = millis();
   lastMotorCommandTime = millis();  
 
-
 }
 
 void loop() {
@@ -237,40 +235,45 @@ void loop() {
   processJetsonCommandStream();
 
   // // Poll sonar (rear then front with crosstalk delay)
-  // if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
-  //   int32_t rear = sonarR.ping_cm();
-  //   if (rear > 0 && rear < kMaxSonarRangecm) {
-  //     sonarDistanceRear = rear;
-  //   }
-  //   lastSonarRearPoll = now;
-  // }
+  /*constrain(x,a,b) is interesting in that you can pass float, which could be a function pointer. 
+  And this will cause completely incorrect results. This can't be caught by the compiler.
+  Hence docs say never pass a function. Store the value returned by a function and pass to constrain(). 
+  This is where functions need strong typing to avoid incorrect uses. 
+  Other standard arduino functions like fabsf will have the same issue */
+  if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
+    delay(min_sonar_delayMs);
+    int32_t rear = sonarR.ping_cm(); //cm  
+    sonarDistanceRear = constrain( rear, kMinSonarRangecm, kMaxSonarRangecm ); //cm
+    lastSonarRearPoll = now;
+  }
 
   // if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
   //   delay(min_sonar_delayMs);
-  //   int32_t front = sonarF.ping_cm();
+  //   int32_t front = sonarF.ping_cm(); //cm
   //   if (front > 0 && front < kMaxSonarRangecm) {
   //     sonarDistanceFront = front;
   //   }
   //   lastSonarFrontPoll = now;
   // }
 
-  // Read IMU and cliffs
+  // Read IMU and cliffsensor
   sensors_event_t accel = {}, gyro = {}, temp = {};
   if (mpuAvailable) {
     mpu.getEvent(&accel, &gyro, &temp);
   }
-  frontCliff.read();
-  rearCliff.read();
+  frontCliff.read(); //bool
+  rearCliff.read();  //bool
 
   // Update sensor struct
-  mcuSensors.accelX = accel.acceleration.x;
-  mcuSensors.accelY = accel.acceleration.y;
-  mcuSensors.gyroZ = gyro.gyro.z;
+  mcuSensors.accelX = accel.acceleration.x; //mps2
+  mcuSensors.accelY = accel.acceleration.y; //mps2
+  mcuSensors.gyroZ = gyro.gyro.z; //radps
   mcuSensors.temp = temp.temperature;
-  // mcuSensors.speedFL = motorDriver.getRPM(MOTOR_FL) * MOTOR_RPM_TO_CMPS;
-  // mcuSensors.speedFR = motorDriver.getRPM(MOTOR_FR) * MOTOR_RPM_TO_CMPS;
-  // mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL) * MOTOR_RPM_TO_CMPS;
-  // mcuSensors.speedRR = motorDriver.getRPM(MOTOR_RR) * MOTOR_RPM_TO_CMPS;
+  mcuSensors.speedFR = motorDriver.getRPM(MOTOR_FR); //RPM
+  mcuSensors.speedRR = motorDriver.getRPM(MOTOR_RR); //RPM
+  mcuSensors.speedFL = motorDriver.getRPM(MOTOR_FL); //RPM  
+  mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL); //RPM
+  
   //temporary override to test I2C
   mcuSensors.speedFR = 1;
   mcuSensors.speedRR = 2;
@@ -278,8 +281,10 @@ void loop() {
   mcuSensors.speedRL = 4;
   
 
-  mcuSensors.sonarFrontcm = sonarDistanceFront;
-  mcuSensors.sonarRearcm = sonarDistanceRear;
+  mcuSensors.sonarFrontm = sonarDistanceFront * CONV_CM_TO_M; // convert cm to m
+  mcuSensors.sonarFquality = 100U; //sonar library doesn't provide quality metric, intend to make one later based on readings consistency
+  mcuSensors.sonarRearm = sonarDistanceRear * CONV_CM_TO_M; // convert cm to m
+  mcuSensors.sonarRquality = 100U; //sonar library doesn't provide quality metric, intend to make one later based on readings consistency
   mcuSensors.cliffFront = frontCliff.getLastState();
   mcuSensors.cliffRear = rearCliff.getLastState();
   mcuSensors.timestamp = now;
@@ -288,14 +293,14 @@ void loop() {
   // Safety check
   if (!robotEnabled || motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
     motorDriver.setMotor(MOTOR_FR, 0.0f);
-    motorDriver.setMotor(MOTOR_FL, 0.0f);
     motorDriver.setMotor(MOTOR_RR, 0.0f);
+    motorDriver.setMotor(MOTOR_FL, 0.0f);    
     motorDriver.setMotor(MOTOR_RL, 0.0f);
   } else {
   // Pick motor command (updated when higher level control enqueues new torques)
     motorDriver.setMotor(MOTOR_FR, latestMotorCmd.tqFR);
-    motorDriver.setMotor(MOTOR_FL, latestMotorCmd.tqFL);
     motorDriver.setMotor(MOTOR_RR, latestMotorCmd.tqRR);
+    motorDriver.setMotor(MOTOR_FL, latestMotorCmd.tqFL);    
     motorDriver.setMotor(MOTOR_RL, latestMotorCmd.tqRL);
     lastMotorCommandTime = now;
   }
@@ -325,9 +330,9 @@ void pushTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINTLN(sensors.temp, 2);
  
   DEBUG_PRINT(">sonar_frt_cm:");
-  DEBUG_PRINTLN(sensors.sonarFrontcm);
+  DEBUG_PRINTLN(sensors.sonarFrontm);
   DEBUG_PRINT(">sonar_rear_cm:");
-  DEBUG_PRINTLN(sensors.sonarRearcm);
+  DEBUG_PRINTLN(sensors.sonarRearm);
 
   DEBUG_PRINT(">speedFR:");
   DEBUG_PRINTLN(sensors.speedFR);
@@ -344,14 +349,14 @@ void pushTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINTLN(sensors.cliffRear ? 1 : 0);
 
   // HIGHRES_IMU -> /mcu/imu (sensor_msgs/Imu)
-  // pushHighresImu(sensors);
+  pushHighresImu(sensors);
   // DISTANCE_SENSOR id=1 -> /mcu/range/front (sensor_msgs/Range, ultrasound)
   // DISTANCE_SENSOR id=2 -> /mcu/range/rear (sensor_msgs/Range, ultrasound)
-  // pushSonars(sensors);
+  pushSonars(sensors);
   // DISTANCE_SENSOR id=3 -> /mcu/cliff/front (sensor_msgs/Range, infrared)
   // DISTANCE_SENSOR id=4 -> /mcu/cliff/rear (sensor_msgs/Range, infrared)
-  // pushIRSensors(sensors);
-  // ESC_TELEMETRY_1_TO_4 -> /esc_telemetry (std_msgs/Float32MultiArray, [FR, FL, RR, RL] RPM)
+  pushIRSensors(sensors);
+  // ESC_TELEMETRY_1_TO_4 -> /esc_telemetry (std_msgs/Float32MultiArray, [FR, RR, FL, RL] radps)
   pushEscTelemetry(sensors);
 }
 
@@ -359,16 +364,6 @@ void queue_motor_command(float tqFR, float tqRR, float tqFL, float tqRL) {
   latestMotorCmd = {tqFR, tqRR, tqFL, tqRL, millis()};
 }
 
-static inline uint16_t cmpsToRpm(float cmps) {
-  const float rpm = fabsf(cmps / MOTOR_RPM_TO_CMPS);
-  const float bounded = constrain(rpm, 0.0f, 60000.0f); 
-  /*constrain(x,a,b) is interesting in that you can pass float, which could be a function pointer. 
-  And this will cause completely incorrect results. This can't be caught by the compiler.
-  Hence docs say never pass a function. Store the value returned by a function and pass to constrain(). 
-  This is where functions need strong typing to avoid incorrect uses. 
-  Other standard arduino functions like fabsf will have the same issue */
-  return static_cast<uint16_t>(bounded);
-}
 
 static uint16_t clampDistanceCm(int32_t value) {
   const int32_t clamped = constrain(value, 0, kMaxSonarRangecm);
@@ -387,17 +382,6 @@ static void enqueueBytes(const uint8_t *data, size_t len) {
     mavlinkTxFifo[mavlinkTxHead] = data[i];
     mavlinkTxHead = next;
   }
-  // Serial.print("tail: " );
-  // Serial.println(mavlinkTxTail);
-  // Serial.print(" head: ");
-  // Serial.println(mavlinkTxHead);
-  // Serial.print("mavlinkTxFifo:");
-  // for (size_t i = (mavlinkTxTail - 45); i < (mavlinkTxTail+1); i++) {
-  //   Serial.print(mavlinkTxFifo[i],HEX);
-  //   Serial.print(" ");
-  // }
-  
-  // Serial.println(";");
   interrupts();
 }
 
@@ -503,9 +487,9 @@ static void pushHighresImu(const SensorBuffer &sensors) {
   mavlink_message_t message;
   mavlink_msg_highres_imu_encode(kMavSystemId, kMavComponentId, &message, &imu);
   
-  // Direct write to FIFO without intermediate buffer
   const uint16_t frameLen = mavlink_msg_to_send_buffer(frame, &message);
-  enqueueBytes(frame, frameLen);  // Already doing this
+  // write to FIFO buffer
+  enqueueBytes(frame, frameLen);  
 }
 
 static void pushDistanceReading(uint8_t id,
@@ -543,19 +527,15 @@ static void pushDistanceReading(uint8_t id,
 
 static void pushSonars(const SensorBuffer &sensors) {
   // MISRA: Function-scope constants eliminate magic numbers (Rule 2.5)
-  // and reduce runtime recalculation overhead
-  static constexpr uint16_t kSonarMinRangecm = 10U;
-  static constexpr uint16_t kSonarMaxRangecm = static_cast<uint16_t>(kMaxSonarRangecm);
-  static constexpr uint8_t kSonarQuality = 100U;
-  
-  const uint16_t front = clampDistanceCm(sensors.sonarFrontcm);
-  const uint16_t rear = clampDistanceCm(sensors.sonarRearcm);
+  // and reduce runtime recalculation overhead (Rule 8.9)..and i deleted them in favour of global    
+  //clamp no longer reqd, already done at source
+
   
   // id=1: front sonar, id=2: rear sonar (matches /pico/range/front and /pico/range/rear)
   pushDistanceReading(1, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_NONE,
-                         front, kSonarMinRangecm, kSonarMaxRangecm, kSonarQuality, sensors.timestamp);
+                         sensors.sonarFrontm, kMinSonarRangecm/CONV_M_TO_CM, kMaxSonarRangecm/CONV_M_TO_CM, sensors.sonarFquality, sensors.timestamp);
   pushDistanceReading(2, MAV_DISTANCE_SENSOR_ULTRASOUND, MAV_SENSOR_ROTATION_YAW_180,
-                         rear, kSonarMinRangecm, kSonarMaxRangecm, kSonarQuality, sensors.timestamp);
+                         sensors.sonarRearm, kMinSonarRangecm/CONV_M_TO_CM, kMaxSonarRangecm/CONV_M_TO_CM, sensors.sonarRquality, sensors.timestamp);
 }
 
 // Cliff sensor telemetry: Binary sensors reporting presence/absence of floor
@@ -569,33 +549,35 @@ static void pushSonars(const SensorBuffer &sensors) {
 static void pushIRSensors(const SensorBuffer &sensors) {
   // MISRA: Named constants eliminate magic numbers (Rule 2.5)
   // MISRA: Function-scope static const avoids repeated runtime initialization (Rule 8.9)
-  static constexpr uint16_t kCliffMinRangecm = 7U;     // Floor directly below sensor
-  static constexpr uint16_t kCliffMaxRangecm = 10U;  // No floor (cliff)
+  static constexpr float kCliffMinRange = 0.07F;     // Floor directly below sensor, 7cm
+  static constexpr float kCliffMaxRange = 0.10F;  // No floor (cliff), 10cm is arbitrary beyond expected max range
   static constexpr uint8_t kCliffQualityDanger = 25U;  // Low quality when cliff detected
   static constexpr uint8_t kCliffQualitySafe = 100U;   // High quality when floor present
   
   // MISRA: Separate variable assignments avoid ternary in function calls (Rule 17.8)
   // Binary mapping: TRUE (cliff) -> max height, FALSE (floor) -> min height (0cm = floor present)
-  const uint16_t frontHeight = sensors.cliffFront ? kCliffMaxRangecm : kCliffMinRangecm;
-  const uint16_t rearHeight = sensors.cliffRear ? kCliffMaxRangecm : kCliffMinRangecm;
+  const float frontHeight = sensors.cliffFront ? kCliffMaxRange : kCliffMinRange;
+  const float rearHeight = sensors.cliffRear ? kCliffMaxRange : kCliffMinRange;
   const uint8_t frontQuality = sensors.cliffFront ? kCliffQualityDanger : kCliffQualitySafe;
   const uint8_t rearQuality = sensors.cliffRear ? kCliffQualityDanger : kCliffQualitySafe;
 
   // id=3: front cliff IR, id=4: rear cliff IR (matches /pico/cliff/front and /pico/cliff/rear)
   pushDistanceReading(3, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
-                         frontHeight, kCliffMinRangecm, kCliffMaxRangecm, frontQuality, sensors.timestamp);
+                         frontHeight, kCliffMinRange, kCliffMaxRange, frontQuality, sensors.timestamp);
   pushDistanceReading(4, MAV_DISTANCE_SENSOR_INFRARED, MAV_SENSOR_ROTATION_PITCH_270,
-                         rearHeight, kCliffMinRangecm, kCliffMaxRangecm, rearQuality, sensors.timestamp);
+                         rearHeight, kCliffMinRange, kCliffMaxRange, rearQuality, sensors.timestamp);
 }
 
 static void pushEscTelemetry(const SensorBuffer &sensors) {
   // MISRA: Static buffer eliminates repeated stack allocation (Rule 8.9)
+  // remember that mavlink ESC_TELEMETRY_1_TO_4 message has default units of speed in RPM, 
+  // mainly to save network space. So keep the original speed in rpm
   static uint8_t frame[MAVLINK_MAX_PACKET_LEN];
   mavlink_esc_telemetry_1_to_4_t esc{};
-  esc.rpm[0] = cmpsToRpm(sensors.speedFR);
-  esc.rpm[1] = cmpsToRpm(sensors.speedRR);
-  esc.rpm[2] = cmpsToRpm(sensors.speedFL);
-  esc.rpm[3] = cmpsToRpm(sensors.speedRL);
+  esc.rpm[0] = sensors.speedFR;
+  esc.rpm[1] = sensors.speedRR;
+  esc.rpm[2] = sensors.speedFL;
+  esc.rpm[3] = sensors.speedRL;
 
   const uint8_t temperature = static_cast<uint8_t>(constrain(sensors.temp, 0.0f, 255.0f));
   // MISRA: Named constant kEscTelemetryCount instead of magic number (Rule 14.3)

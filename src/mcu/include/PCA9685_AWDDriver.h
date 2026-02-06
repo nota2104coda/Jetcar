@@ -75,17 +75,15 @@ public:
   }
   
   float getRPM(uint8_t motorNum) {
+    float velocity = 0.0f;
     switch(motorNum) {
-      case 0: return (encFR.getVelocity() * 60.0) / (2.0 * PI) / pulsesPerRev;
-      case 1: return (encFL.getVelocity() * 60.0) / (2.0 * PI) / pulsesPerRev;
-      case 2: return (encRR.getVelocity() * 60.0) / (2.0 * PI) / pulsesPerRev;
-      case 3: return (encRL.getVelocity() * 60.0) / (2.0 * PI) / pulsesPerRev;
-      default: return 0.0F;
+      case 0: velocity = encFR.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
+      case 1: velocity = encFL.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
+      case 2: velocity = encRR.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
+      case 3: velocity = encRL.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
+      default: velocity = 0.0F;
     }
-  }
-  
-  bool isRPMSane(float rpm) {
-    return (fabsf(rpm) <= maxSaneRpm);
+    return constrain(velocity, -maxSaneRpm, maxSaneRpm);
   }
   
   void setMotor(uint8_t motorNum, float torqueCmd) {

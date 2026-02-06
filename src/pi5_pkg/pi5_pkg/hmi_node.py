@@ -38,13 +38,13 @@ class HMINode(Node):
         self.button_states.backward = msg.linear.x < -0.1
         self.button_states.left_turn = msg.angular.z > 0.1
         self.button_states.right_turn = msg.angular.z < -0.1
-        self.button_states.stop = abs(msg.linear.x) < 0.1 and abs(msg.linear.y) < 0.1 and abs(msg.angular.z) < 0.1
+        self.button_states.stop_button = abs(msg.linear.x) < 0.1 and abs(msg.linear.y) < 0.1 and abs(msg.angular.z) < 0.1
 
     def stop_callback(self, msg):
-        self.button_states.stop = msg.data
+        self.button_states.stop_button = msg.data
 
     def auto_mode_callback(self, msg):
-        self.button_states.auto_mode = msg.data
+        self.button_states.auto_mode_button = msg.data
 
     def publish_states(self):
         # Check if no twist message received recently (e.g., 0.5 seconds), assume released
@@ -54,7 +54,7 @@ class HMINode(Node):
             self.button_states.backward = False
             self.button_states.left_turn = False
             self.button_states.right_turn = False
-            self.button_states.stop = True
+            self.button_states.stop_button = True
         self.publisher_.publish(self.button_states)
 
 

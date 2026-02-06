@@ -25,6 +25,7 @@ from rclpy.qos import QoSProfile
 from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, Range, Temperature
+from robot_msgs.msg import ButtonStates  # Update with your actual message import
 from tf2_ros import TransformBroadcaster
 
 import serial
@@ -41,6 +42,8 @@ class HwMcuNode(Node):
         self.get_logger().set_level(rclpy.logging.LoggingSeverity.DEBUG)
         self.get_logger().info('Hardware MCU node starting (USB serial + MAVLink).')
         self._mavlink_buffer = bytearray()
+        # Stop button state
+        self._stop_button = True
 
         # --- Parameters ---
         self.declare_parameter('serial_port', '/dev/ttyUSB0')
@@ -153,6 +156,18 @@ class HwMcuNode(Node):
             Twist, self.command_topic, self._command_callback, qos_profile
         )
 
+        # Subscribe to /stop_button (std_msgs/Bool)
+        from std_msgs.msg import Bool
+        self.create_subscription(Bool, '/stop_button', self._stop_button_callback, qos_profile)
+    
+    def _stop_button_callback(self, msg):
+        self._stop_button = msg.data
+        if self._stop_button:
+            # Immediately send zero-torque command to all wheels
+            zero_twist = Twist()
+            # Optionally, set all fields to zero (already default)
+            self._write_mavlink_message(self._build_actuator_control_message(zero_twist))
+
     def _open_serial(self) -> None:
         """Open the configured MCU serial port if possible."""
         self._close_serial()
@@ -195,12 +210,6 @@ class HwMcuNode(Node):
             if self.serial is None:
                 return
 
-        # Publish actuator_control_message on UART after reading serial data
-        actuator_msg = self._build_actuator_control_message(Twist())
-        if actuator_msg is not None:
-            self.get_logger().info(f"Sending actuator_control_message: {actuator_msg}")
-            self._write_mavlink_message(actuator_msg)
-
         self.get_logger().debug('Polling MCU via serial...')
         try:
             raw_bytes = self._read_serial_chunk()
@@ -210,7 +219,6 @@ class HwMcuNode(Node):
             return
 
         if not raw_bytes:
-            self.get_logger().warn(f'raw_bytes was blank')
             return
 
         self.get_logger().debug(
@@ -222,7 +230,7 @@ class HwMcuNode(Node):
         while i < len(self._mavlink_buffer):
             msg = self.mav_parser.parse_char(bytes([self._mavlink_buffer[i]]))
             if msg is not None:
-                # self.get_logger().info(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
+                self.get_logger().debug(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
                 self._handle_mavlink_message(msg)
                 # Remove bytes up to and including this message from buffer
                 # pymavlink does not expose consumed length, so we conservatively clear up to i
@@ -256,7 +264,7 @@ class HwMcuNode(Node):
         if self.command_mode == 'set_actuator_control_target':
             message = self._build_actuator_control_message(twist)
             if message is not None:
-                self.get_logger().info(f"Sending actuator_control_message (from cmd_vel): {message}")
+                self.get_logger().debug(f"Sending actuator_control_message (from cmd_vel): {message}")
         else:
             message = self._build_velocity_setpoint_message(twist)
 
@@ -266,27 +274,28 @@ class HwMcuNode(Node):
         self._write_mavlink_message(message)
 
     def _build_actuator_control_message(self, twist: Twist):
+        # Twist presents desired speed (m/s and rad/s). 
+        # I want to send a torque request to each motor, that too normalised to between -1 and 1.
         # Map Twist to actuator controls (4 wheels: FR, RR, FL, RL)
         # For a diff-drive, map linear.x to both, angular.z to left/right diff
         # Here, we assume 4 actuators, values in [-1, 1]
         actuators = [0.0] * 8
-        # Simple diff-drive mapping for 4 wheels
-        v = max(min(twist.linear.x, 1.0), -1.0)
-        w = max(min(twist.angular.z, 1.0), -1.0)
-        left = v - w
-        right = v + w
+        # Use stop button state from /stop_button topic
+        if self._stop_button:
+            left = 0.0
+            right = 0.0
+        else:
+            vX = max(min(twist.linear.x, 1.0), -1.0)
+            wZ = max(min(twist.angular.z, 1.0), -1.0)
+            left = 0.2 * (vX - wZ)
+            right = 0.2 * (vX + wZ)
+        # Mapping: 0=FR, 1=FL, 2=RR, 3=RL. 
+        # Something wrong here, which forced me to set 1 = FL. 
+        # Otherwise in MCU code , 1 = RR
         actuators[0] = right  # FR
-        actuators[1] = right   # RR
-        actuators[2] = left  # FL
+        actuators[1] = left  # FL
+        actuators[2] = right   # RR
         actuators[3] = left   # RL
-        # actuators[0] = 0.3 + 0.1*random.random()  # FR
-        # actuators[1] = -0.3 + 0.1*random.random()  # RR
-        # actuators[2] = 0.5 + 0.1*random.random()  # FL
-        # actuators[3] = -0.5 + 0.1*random.random()  # RL
-        # actuators[0] = 0  # FR
-        # actuators[1] = 0   # RR
-        # actuators[2] = 0  # FL
-        # actuators[3] = 0   # RL
         # Remaining actuators (4-7) left at 0.0
         # pymavlink expects 6 arguments: time_boot_ms, target_system, target_component, group_mlx, controls, flags
         # pymavlink expects: time_usec, group_mlx, target_system, target_component, controls
@@ -369,7 +378,7 @@ class HwMcuNode(Node):
         temp_msg.header.frame_id = self.imu_frame_id
         temp_msg.temperature = msg.temperature
         temp_msg.variance = 0.0
-        self.temp_publisher.publish(temp_msg)
+        # self.temp_publisher.publish(temp_msg)
 
     def _publish_distance_sensor(self, msg) -> None:
         mapping = self.range_publishers.get(msg.id)
@@ -381,9 +390,9 @@ class HwMcuNode(Node):
         range_msg.header.frame_id = frame_id
         range_msg.radiation_type = radiation
         range_msg.field_of_view = 0.1
-        range_msg.min_range = msg.min_distance / 100.0
-        range_msg.max_range = msg.max_distance / 100.0
-        range_msg.range = msg.current_distance / 100.0
+        range_msg.min_range = float(msg.min_distance)
+        range_msg.max_range = float(msg.max_distance)
+        range_msg.range = float(msg.current_distance)
         publisher.publish(range_msg)
 
     def _publish_esc_telemetry(self, msg) -> None:

@@ -12,8 +12,10 @@ struct SensorBuffer {
   float accelX, accelY;
   float gyroZ;
   float temp;
-  int32_t sonarFrontcm;
-  int32_t sonarRearcm;
+  int32_t sonarFrontm;
+  int8_t sonarFquality;
+  int32_t sonarRearm;
+  int8_t sonarRquality;
   bool cliffFront, cliffRear;
   float speedFL, speedFR, speedRL, speedRR;
   uint32_t timestamp;
