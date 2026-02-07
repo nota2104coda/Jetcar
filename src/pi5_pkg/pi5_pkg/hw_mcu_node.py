@@ -41,7 +41,7 @@ class HwMcuNode(Node):
         super().__init__('hw_mcu_node')
         self.get_logger().set_level(rclpy.logging.LoggingSeverity.DEBUG)
         self.get_logger().info('Hardware MCU node starting (USB serial + MAVLink).')
-        self._mavlink_buffer = bytearray()
+
         # Stop button state
         self._stop_button = True
 
@@ -224,20 +224,11 @@ class HwMcuNode(Node):
         self.get_logger().debug(
             f'Serial read returned {len(raw_bytes)} bytes: {[f"{b:02X}" for b in raw_bytes]}'
         )
-        self._mavlink_buffer.extend(raw_bytes)
-        # Parse as many messages as possible from the buffer
-        i = 0
-        while i < len(self._mavlink_buffer):
-            msg = self.mav_parser.parse_char(bytes([self._mavlink_buffer[i]]))
+        for byte in raw_bytes:
+            msg = self.mav_parser.parse_char(bytes([byte]))
             if msg is not None:
                 self.get_logger().debug(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
                 self._handle_mavlink_message(msg)
-                # Remove bytes up to and including this message from buffer
-                # pymavlink does not expose consumed length, so we conservatively clear up to i
-                self._mavlink_buffer = self._mavlink_buffer[i+1:]
-                i = 0
-            else:
-                i += 1
 
     def _read_serial_chunk(self) -> bytearray:
         assert self.serial is not None

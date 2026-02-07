@@ -215,7 +215,7 @@
       <geometry>
         <cylinder length="0.015" radius="0.02"/>
       </geometry>
-      <origin xyz="-0.0 0.0 -0.0" rpy="0 0 -1.570"/>
+      <origin xyz=" 0.0 0.0 0.0" rpy="0 0 1.570"/>
       <material name="purple">
         <color rgba="0.6 0.2 0.8 1"/>
       </material>
