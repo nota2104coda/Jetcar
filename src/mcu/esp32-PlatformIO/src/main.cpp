@@ -247,14 +247,14 @@ void loop() {
     lastSonarRearPoll = now;
   }
 
-  // if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
-  //   delay(min_sonar_delayMs);
-  //   int32_t front = sonarF.ping_cm(); //cm
-  //   if (front > 0 && front < kMaxSonarRangecm) {
-  //     sonarDistanceFront = front;
-  //   }
-  //   lastSonarFrontPoll = now;
-  // }
+  if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
+    delay(min_sonar_delayMs);
+    int32_t front = sonarF.ping_cm(); //cm
+    if (front > 0 && front < kMaxSonarRangecm) {
+      sonarDistanceFront = front;
+    }
+    lastSonarFrontPoll = now;
+  }
 
   // Read IMU and cliffsensor
   sensors_event_t accel = {}, gyro = {}, temp = {};
@@ -275,10 +275,10 @@ void loop() {
   mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL); //RPM
   
   //temporary override to test I2C
-  mcuSensors.speedFR = 1;
-  mcuSensors.speedRR = 2;
-  mcuSensors.speedFL = 3;
-  mcuSensors.speedRL = 4;
+  // mcuSensors.speedFR = 1;
+  // mcuSensors.speedRR = 2;
+  // mcuSensors.speedFL = 3;
+  // mcuSensors.speedRL = 4;
   
 
   mcuSensors.sonarFrontm = sonarDistanceFront * CONV_CM_TO_M; // convert cm to m
@@ -330,9 +330,9 @@ void pushTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINTLN(sensors.temp, 2);
  
   DEBUG_PRINT(">sonar_frt_cm:");
-  DEBUG_PRINTLN(sensors.sonarFrontm);
+  DEBUG_PRINTLN(sensors.sonarFrontm,3);
   DEBUG_PRINT(">sonar_rear_cm:");
-  DEBUG_PRINTLN(sensors.sonarRearm);
+  DEBUG_PRINTLN(sensors.sonarRearm,3);
 
   DEBUG_PRINT(">speedFR:");
   DEBUG_PRINTLN(sensors.speedFR);

@@ -5,6 +5,7 @@
 /src/build/
 /src/install/
 /src/log/
+/localROS/
 
 .ros/
 .vscode/
