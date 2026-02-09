@@ -221,13 +221,13 @@ class HwMcuNode(Node):
         if not raw_bytes:
             return
 
-        self.get_logger().debug(
-            f'Serial read returned {len(raw_bytes)} bytes: {[f"{b:02X}" for b in raw_bytes]}'
-        )
+        # self.get_logger().debug(
+        #     f'Serial read returned {len(raw_bytes)} bytes: {[f"{b:02X}" for b in raw_bytes]}'
+        # )
         for byte in raw_bytes:
             msg = self.mav_parser.parse_char(bytes([byte]))
             if msg is not None:
-                self.get_logger().debug(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
+                # self.get_logger().debug(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
                 self._handle_mavlink_message(msg)
 
     def _read_serial_chunk(self) -> bytearray:
@@ -290,7 +290,7 @@ class HwMcuNode(Node):
         # Remaining actuators (4-7) left at 0.0
         # pymavlink expects 6 arguments: time_boot_ms, target_system, target_component, group_mlx, controls, flags
         # pymavlink expects: time_usec, group_mlx, target_system, target_component, controls
-        self.get_logger().debug('queing data for Tx...')
+        # self.get_logger().debug('queing data for Tx...')
         return self.mav_tx.set_actuator_control_target_encode(
             0,  # time_usec
             0,  # group_mlx (0 = default)
@@ -397,6 +397,7 @@ class HwMcuNode(Node):
         # motor direction we only integrate magnitudes for odometry.
         right_linear = self._rpm_to_linear((rpm[0] + rpm[1]) * 0.5)
         left_linear = self._rpm_to_linear((rpm[2] + rpm[3]) * 0.5)
+        self.get_logger().debug(f'ESC Telemetry RPM: {rpm}, Left Linear: {left_linear:.4f}, Right Linear: {right_linear:.4f}')
         self.update_odometry(left_linear, right_linear)
 
     def _rpm_to_linear(self, rpm_value: float) -> float:
