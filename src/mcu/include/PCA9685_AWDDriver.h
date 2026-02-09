@@ -77,11 +77,11 @@ public:
   float getRPM(uint8_t motorNum) {
     float velocity = 0.0f;
     switch(motorNum) {
-      case 0: velocity = encFR.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
-      case 1: velocity = encFL.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
-      case 2: velocity = encRR.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
-      case 3: velocity = encRL.getVelocity() / RPM_TO_RADPS / pulsesPerRev;
-      default: velocity = 0.0F;
+      case 0: velocity = encFR.getVelocity() / RPM_TO_RADPS / pulsesPerRev; break;
+      case 1: velocity = encFL.getVelocity() / RPM_TO_RADPS / pulsesPerRev; break;
+      case 2: velocity = encRR.getVelocity() / RPM_TO_RADPS / pulsesPerRev; break;
+      case 3: velocity = encRL.getVelocity() / RPM_TO_RADPS / pulsesPerRev; break;
+      default: velocity = 0.0F; break;
     }
     return constrain(velocity, -maxSaneRpm, maxSaneRpm);
   }

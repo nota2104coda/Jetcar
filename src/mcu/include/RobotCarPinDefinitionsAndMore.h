@@ -248,6 +248,14 @@
   #define DEBUG_I2C_PRINTLN(...) ((void)0)
 #endif
 
+#if LOOP_DEBUG_I2C2
+  #define DEBUG_I2C2_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_I2C2_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_I2C2_PRINT(...) ((void)0)
+  #define DEBUG_I2C2_PRINTLN(...) ((void)0)
+#endif
+
 
 
 //UART SCHEMA

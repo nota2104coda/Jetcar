@@ -25,7 +25,6 @@ from rclpy.qos import QoSProfile
 from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, Range, Temperature
-from robot_msgs.msg import ButtonStates  # Update with your actual message import
 from tf2_ros import TransformBroadcaster
 
 import serial
@@ -44,6 +43,7 @@ class HwMcuNode(Node):
 
         # Stop button state
         self._stop_button = True
+        self._auto_mode_button = False
 
         # --- Parameters ---
         self.declare_parameter('serial_port', '/dev/ttyUSB0')
@@ -52,6 +52,7 @@ class HwMcuNode(Node):
         self.declare_parameter('serial_chunk_size', 256)
         self.declare_parameter('serial_retry_seconds', 2.0)
         self.declare_parameter('poll_period', 0.01)
+        self.declare_parameter('control_period', 0.05)
         self.declare_parameter('wheel_base', 0.12)
         self.declare_parameter('wheel_radius', 0.035)
         self.declare_parameter('gear_ratio', 46.0)
@@ -59,9 +60,10 @@ class HwMcuNode(Node):
         self.declare_parameter('base_frame_id', 'base_link')
         self.declare_parameter('imu_frame_id', 'imu_link')
         self.declare_parameter('command_topic', 'cmd_vel')
+        self.declare_parameter('auto_command_topic', 'cmd_vel_auto')
         self.declare_parameter('command_mode', 'set_actuator_control_target')
-        self.declare_parameter('command_target_system', 42)
-        self.declare_parameter('command_target_component', mavlink2.MAV_COMP_ID_AUTOPILOT1)
+        self.declare_parameter('command_target_system', 200)
+        self.declare_parameter('command_target_component', 191)
         self.declare_parameter('command_source_system', 200)
         self.declare_parameter('command_source_component', 191)
         self.declare_parameter('manual_linear_max', 1.0)
@@ -82,6 +84,7 @@ class HwMcuNode(Node):
             self.get_parameter('serial_retry_seconds').get_parameter_value().double_value
         )
         self.poll_period = self.get_parameter('poll_period').get_parameter_value().double_value
+        self.control_period = self.get_parameter('control_period').get_parameter_value().double_value
         self.wheel_base = self.get_parameter('wheel_base').get_parameter_value().double_value
         self.wheel_radius = self.get_parameter('wheel_radius').get_parameter_value().double_value
         self.gear_ratio = self.get_parameter('gear_ratio').get_parameter_value().double_value
@@ -89,6 +92,7 @@ class HwMcuNode(Node):
         self.base_frame_id = self.get_parameter('base_frame_id').get_parameter_value().string_value
         self.imu_frame_id = self.get_parameter('imu_frame_id').get_parameter_value().string_value
         self.command_topic = self.get_parameter('command_topic').get_parameter_value().string_value
+        self.auto_command_topic = self.get_parameter('auto_command_topic').get_parameter_value().string_value
         self.command_mode = self.get_parameter('command_mode').get_parameter_value().string_value.lower()
         self.command_target_system = self.get_parameter('command_target_system').get_parameter_value().integer_value
         self.command_target_component = (
@@ -130,6 +134,13 @@ class HwMcuNode(Node):
         self.serial: Optional[serial.Serial] = None
         self.last_serial_error_log = 0.0
 
+        # Control loop state
+        self._last_manual_twist = Twist()
+        self._last_auto_twist = Twist()
+        # Initialize with a time in the past to ensure no immediate motion
+        self._last_manual_received_time = self.get_clock().now()
+        self._last_auto_received_time = self.get_clock().now()
+
         # --- ROS interfaces ---
         qos_profile = QoSProfile(depth=10)
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -152,21 +163,19 @@ class HwMcuNode(Node):
 
         self._open_serial()
         self.timer = self.create_timer(self.poll_period, self.poll_mcu)
+        self.control_timer = self.create_timer(self.control_period, self._control_loop)
         self.command_subscription = self.create_subscription(
-            Twist, self.command_topic, self._command_callback, qos_profile
+            Twist, self.command_topic, self._manual_twist_callback, qos_profile
+        )
+        self.auto_command_subscription = self.create_subscription(
+            Twist, self.auto_command_topic, self._auto_twist_callback, qos_profile
         )
 
         # Subscribe to /stop_button (std_msgs/Bool)
         from std_msgs.msg import Bool
         self.create_subscription(Bool, '/stop_button', self._stop_button_callback, qos_profile)
+        self.create_subscription(Bool, '/auto_mode_button', self._auto_mode_callback, qos_profile)
     
-    def _stop_button_callback(self, msg):
-        self._stop_button = msg.data
-        if self._stop_button:
-            # Immediately send zero-torque command to all wheels
-            zero_twist = Twist()
-            # Optionally, set all fields to zero (already default)
-            self._write_mavlink_message(self._build_actuator_control_message(zero_twist))
 
     def _open_serial(self) -> None:
         """Open the configured MCU serial port if possible."""
@@ -176,7 +185,15 @@ class HwMcuNode(Node):
                 self.serial_port,
                 baudrate=self.serial_baud_rate,
                 timeout=self.serial_timeout,
+                write_timeout=0.1,  # Non-blocking write with short timeout
+                dsrdtr=False,
+                rtscts=False,
+                xonxoff=False
             )
+            # Set DTR/RTS True (Active) to signal readiness to some USB-UART bridges
+            self.serial.dtr = True
+            self.serial.rts = True
+            
             self.serial.reset_input_buffer()
             self.serial.reset_output_buffer()
             self.get_logger().info(
@@ -210,7 +227,7 @@ class HwMcuNode(Node):
             if self.serial is None:
                 return
 
-        self.get_logger().debug('Polling MCU via serial...')
+        # self.get_logger().debug('Polling MCU via serial...')
         try:
             raw_bytes = self._read_serial_chunk()
         except SerialException as exc:
@@ -230,6 +247,7 @@ class HwMcuNode(Node):
                 # self.get_logger().debug(f'Parsed MAVLink message: {msg.get_type()} (ID {msg.get_msgId()})')
                 self._handle_mavlink_message(msg)
 
+
     def _read_serial_chunk(self) -> bytearray:
         assert self.serial is not None
         available = self.serial.in_waiting if hasattr(self.serial, 'in_waiting') else 0
@@ -246,23 +264,66 @@ class HwMcuNode(Node):
         elif msg_id == mavlink2.MAVLINK_MSG_ID_ESC_TELEMETRY_1_TO_4:
             self._publish_esc_telemetry(message)
 
-    def _command_callback(self, twist: Twist) -> None:
+    def _stop_button_callback(self, msg):
+        self._stop_button = msg.data
+        self._last_manual_twist = Twist()  # Clear manual command on stop
+        self._last_auto_twist = Twist()  # Clear auto command on stop
+
+    def _auto_mode_callback(self, msg):
+        self._auto_mode_button = msg.data
+        self._last_manual_twist = Twist()  # Clear manual command when switching modes
+        self._last_auto_twist = Twist()  # Clear auto command on mode change
+
+    def _manual_twist_callback(self, twist: Twist) -> None:
+        self._last_manual_twist = twist
+        self._last_manual_received_time = self.get_clock().now()
+        self.get_logger().debug(f'manual twist: {twist.linear.x}, Forward, {twist.angular.z}, angular')
+
+    def _auto_twist_callback(self, twist: Twist) -> None:
+        self._last_auto_twist = twist
+        self._last_auto_received_time = self.get_clock().now()
+        self.get_logger().debug(f'auto twist: {twist.linear.x}, Forward, {twist.angular.z}, angular')
+
+    def _control_loop(self) -> None:
+        """Periodic control loop to arbitrate and send commands."""
+        now = self.get_clock().now()
+        # Timeout: if no command received for 0.5s, consider it stale/stopped
+        timeout_duration = rclpy.duration.Duration(seconds=0.5)
+        
+        target_twist = Twist()  # Default is zero/stop
+        source = "NONE"
+        self.get_logger().debug(f'control loop last_manual_twist: {self._last_manual_twist.linear.x}, Forward, {self._last_manual_twist.angular.z}, angular')
+
+        if self._stop_button:
+            # STOP button overrides everything -> target remains zero
+            target_twist = Twist()
+            # pass
+        else:
+            if self._auto_mode_button:
+                # Auto mode: check if we have a fresh auto command
+                # if (now - self._last_auto_received_time) < timeout_duration:
+                target_twist = self._last_auto_twist
+                source = "AUTO"
+            else:
+                # Manual mode: check if we have a fresh manual command
+                # if (now - self._last_manual_received_time) < timeout_duration:
+                target_twist = self._last_manual_twist
+                source = "MANUAL"
+
+        # If serial is down, try to open (or return)
         if self.serial is None:
             self._open_serial()
             if self.serial is None:
                 return
-
+        self.get_logger().debug(f'control loop target_twist: {target_twist.linear.x}, Forward, {target_twist.angular.z}, angular')
+        message = None
         if self.command_mode == 'set_actuator_control_target':
-            message = self._build_actuator_control_message(twist)
-            if message is not None:
-                self.get_logger().debug(f"Sending actuator_control_message (from cmd_vel): {message}")
+            message = self._build_actuator_control_message(target_twist)
         else:
-            message = self._build_velocity_setpoint_message(twist)
+            message = self._build_velocity_setpoint_message(target_twist)
 
-        if message is None:
-            return
-
-        self._write_mavlink_message(message)
+        if message is not None:
+             self._write_mavlink_message(message)
 
     def _build_actuator_control_message(self, twist: Twist):
         # Twist presents desired speed (m/s and rad/s). 
@@ -270,16 +331,11 @@ class HwMcuNode(Node):
         # Map Twist to actuator controls (4 wheels: FR, RR, FL, RL)
         # For a diff-drive, map linear.x to both, angular.z to left/right diff
         # Here, we assume 4 actuators, values in [-1, 1]
-        actuators = [0.0] * 8
-        # Use stop button state from /stop_button topic
-        if self._stop_button:
-            left = 0.0
-            right = 0.0
-        else:
-            vX = max(min(twist.linear.x, 1.0), -1.0)
-            wZ = max(min(twist.angular.z, 1.0), -1.0)
-            left = 0.2 * (vX - wZ)
-            right = 0.2 * (vX + wZ)
+        actuators = [0.0] * 8        
+        vX = max(min(twist.linear.x, 1.0), -1.0)
+        wZ = max(min(twist.angular.z, 1.0), -1.0)
+        left = 0.2 * (vX - wZ)
+        right = 0.2 * (vX + wZ)
         # Mapping: 0=FR, 1=FL, 2=RR, 3=RL. 
         # Something wrong here, which forced me to set 1 = FL. 
         # Otherwise in MCU code , 1 = RR
@@ -287,12 +343,17 @@ class HwMcuNode(Node):
         actuators[1] = left  # FL
         actuators[2] = right   # RR
         actuators[3] = left   # RL
+        self.get_logger().debug(f'actuator cmd: right = {right}, Left = {left}')
         # Remaining actuators (4-7) left at 0.0
         # pymavlink expects 6 arguments: time_boot_ms, target_system, target_component, group_mlx, controls, flags
         # pymavlink expects: time_usec, group_mlx, target_system, target_component, controls
         # self.get_logger().debug('queing data for Tx...')
+        
+        # Use current time in microseconds
+        time_usec = int(self.get_clock().now().nanoseconds / 1000)
+        
         return self.mav_tx.set_actuator_control_target_encode(
-            0,  # time_usec
+            time_usec,
             0,  # group_mlx (0 = default)
             self.command_target_system,
             self.command_target_component,
@@ -309,8 +370,11 @@ class HwMcuNode(Node):
             | mavlink2.POSITION_TARGET_TYPEMASK_AZ_IGNORE
             | mavlink2.POSITION_TARGET_TYPEMASK_YAW_IGNORE
         )
+        
+        time_boot_ms = int(self.get_clock().now().nanoseconds / 1000000)
+        
         return self.mav_tx.set_position_target_local_ned_encode(
-            0,
+            time_boot_ms,
             self.command_target_system,
             self.command_target_component,
             mavlink2.MAV_FRAME_BODY_NED,
@@ -336,11 +400,15 @@ class HwMcuNode(Node):
 
         frame = message.pack(self.mav_tx)
         try:
-            self.serial.write(frame)
+            bytes_written = self.serial.write(frame)
+            # self.get_logger().debug(f'Wrote {bytes_written} bytes')
+            # Force flush to push data to hardware immediately
             self.serial.flush()
         except SerialException as exc:
             self.get_logger().warn(f'Failed to send MAVLink command: {exc}')
             self._close_serial()
+        except Exception as e:
+            self.get_logger().warn(f'Serial write error (timeout?): {e}')
 
     @staticmethod
     def _clamp(value: float, minimum: float, maximum: float) -> float:
@@ -397,7 +465,7 @@ class HwMcuNode(Node):
         # motor direction we only integrate magnitudes for odometry.
         right_linear = self._rpm_to_linear((rpm[0] + rpm[1]) * 0.5)
         left_linear = self._rpm_to_linear((rpm[2] + rpm[3]) * 0.5)
-        self.get_logger().debug(f'ESC Telemetry RPM: {rpm}, Left Linear: {left_linear:.4f}, Right Linear: {right_linear:.4f}')
+        # self.get_logger().debug(f'ESC Telemetry RPM: {rpm}, Left Linear: {left_linear:.4f}, Right Linear: {right_linear:.4f}')
         self.update_odometry(left_linear, right_linear)
 
     def _rpm_to_linear(self, rpm_value: float) -> float:
