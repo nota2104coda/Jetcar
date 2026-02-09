@@ -207,7 +207,7 @@ class LD06LidarNode(Node):
         intensities = []
 
         for i in range(NUM_BINS):
-            src = (i + half) % NUM_BINS   # rotate: output index 0 ← bin 360 (= 180 °)
+            src = (half - i + NUM_BINS) % NUM_BINS   # mirror the scan
             if self._bins[src] is not None:
                 ranges.append(self._bins[src][0])
                 intensities.append(self._bins[src][1])

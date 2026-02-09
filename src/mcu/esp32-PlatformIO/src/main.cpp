@@ -1,3 +1,6 @@
+/*this code can handle timeouts properly from the hw_mcu_node
+yaay*/
+
 #include <cstdint>
 #include <array>
 #include <limits>
@@ -20,9 +23,10 @@
 #define NONSTEER_4WD_RUBBERWHL_2XSONAR_2xCLIFF
 
 // Set to 1 to enable loop debug output, 0 to disable. Ralph S Bacon from Youtube solution
-#define LOOP_DEBUG_A 1
+#define LOOP_DEBUG_A 0
 #define LOOP_DEBUG_B 0
 #define LOOP_DEBUG_I2C 0
+#define LOOP_DEBUG_I2C2 1
 
 
 #include <Adafruit_Sensor.h>
@@ -71,6 +75,7 @@ static PCA9685_AWDDriver motorDriver(
 static SensorBuffer mcuSensors = {0};
 static MotorCommand latestMotorCmd = {0, 0, 0, 0, 0};
 static bool robotEnabled = true;
+static uint32_t lastMavlinkCommandTime = 0;
 
 // MAVLink + Jetson serial bridge state
 static constexpr uint8_t kMavSystemId = 200;
@@ -220,19 +225,22 @@ void setup() {
 }
 
 void loop() {
+  // Always pump the serial data as fast as possible to prevent buffer overflows
+  // at high baud rates (921600). Do NOT wait for the loop timer.
+  ensureJetsonSerialReady(millis());
+  readJetsonSerial();
+  writeJetsonSerial();
+  processJetsonCommandStream();
+
   const uint32_t now = millis();
-  delay(50);
+  
+  // Rate limiting for the rest of the control loop (Sensors, Motors, Telemetry)
   if (now - lastLoopStart < kLoopPeriodMs) {
+    // Yield to other RTOS tasks briefly
     delay(1);
     return;
   }
   lastLoopStart = now;
-
-  // Keep Jetson UART telemetry online using helper abstraction
-  ensureJetsonSerialReady(now);
-  readJetsonSerial();
-  writeJetsonSerial();
-  processJetsonCommandStream();
 
   // // Poll sonar (rear then front with crosstalk delay)
   /*constrain(x,a,b) is interesting in that you can pass float, which could be a function pointer. 
@@ -240,12 +248,12 @@ void loop() {
   Hence docs say never pass a function. Store the value returned by a function and pass to constrain(). 
   This is where functions need strong typing to avoid incorrect uses. 
   Other standard arduino functions like fabsf will have the same issue */
-  if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
-    delay(min_sonar_delayMs);
-    int32_t rear = sonarR.ping_cm(); //cm  
-    sonarDistanceRear = constrain( rear, kMinSonarRangecm, kMaxSonarRangecm ); //cm
-    lastSonarRearPoll = now;
-  }
+  // if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
+  //   delay(min_sonar_delayMs);
+  //   int32_t rear = sonarR.ping_cm(); //cm  
+  //   sonarDistanceRear = constrain( rear, kMinSonarRangecm, kMaxSonarRangecm ); //cm
+  //   lastSonarRearPoll = now;
+  // }
 
   // if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
   //   delay(min_sonar_delayMs);
@@ -259,7 +267,15 @@ void loop() {
   // Read IMU and cliffsensor
   sensors_event_t accel = {}, gyro = {}, temp = {};
   if (mpuAvailable) {
-    mpu.getEvent(&accel, &gyro, &temp);
+    // Check if device is still responding on I2C to avoid timeout errors
+    picomasteri2c->beginTransmission(MPU6050_I2CADDR_DEFAULT);
+    if (picomasteri2c->endTransmission() == 0) {
+      mpu.getEvent(&accel, &gyro, &temp);
+    } else {
+      Serial.println("[WARN] MPU6050 lost connection. Disabling IMU.");
+      mpuAvailable = false;
+      systemState = SystemState::DEGRADED;
+    }
   }
   frontCliff.read(); //bool
   rearCliff.read();  //bool
@@ -275,10 +291,10 @@ void loop() {
   mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL); //RPM
   
   //temporary override to test I2C
-  mcuSensors.speedFR = 1;
-  mcuSensors.speedRR = 2;
-  mcuSensors.speedFL = 3;
-  mcuSensors.speedRL = 4;
+  // mcuSensors.speedFR = 1;
+  // mcuSensors.speedRR = 2;
+  // mcuSensors.speedFL = 3;
+  // mcuSensors.speedRL = 4;
   
 
   mcuSensors.sonarFrontm = sonarDistanceFront * CONV_CM_TO_M; // convert cm to m
@@ -291,11 +307,14 @@ void loop() {
 
 
   // Safety check
-  if (!robotEnabled || motorDriver.checkMotorSafetyTimeouts(kMotorSafetyTimeoutMs)) {
+  if (!robotEnabled || (now - lastMavlinkCommandTime > kMotorSafetyTimeoutMs)) {
+  // if (!robotEnabled ) {
     motorDriver.setMotor(MOTOR_FR, 0.0f);
     motorDriver.setMotor(MOTOR_RR, 0.0f);
     motorDriver.setMotor(MOTOR_FL, 0.0f);    
     motorDriver.setMotor(MOTOR_RL, 0.0f);
+    Serial.print("[SAFETY] Motors stopped due to safety timeout or robot disabled:");
+    Serial.println(millis());
   } else {
   // Pick motor command (updated when higher level control enqueues new torques)
     motorDriver.setMotor(MOTOR_FR, latestMotorCmd.tqFR);
@@ -330,9 +349,9 @@ void pushTelemetry(const SensorBuffer &sensors) {
   DEBUG_PRINTLN(sensors.temp, 2);
  
   DEBUG_PRINT(">sonar_frt_cm:");
-  DEBUG_PRINTLN(sensors.sonarFrontm);
+  DEBUG_PRINTLN(sensors.sonarFrontm,3);
   DEBUG_PRINT(">sonar_rear_cm:");
-  DEBUG_PRINTLN(sensors.sonarRearm);
+  DEBUG_PRINTLN(sensors.sonarRearm,3);
 
   DEBUG_PRINT(">speedFR:");
   DEBUG_PRINTLN(sensors.speedFR);
@@ -418,13 +437,13 @@ static void processJetsonCommandStream() {
   while (popJetsonRxByte(byte)) {
     int parse_result = mavlink_parse_char(MAVLINK_COMM_1, byte, &jetsonRxMessage, &jetsonRxStatus);
     if (parse_result != 0) {
-      DEBUG_I2C_PRINT("[MAVLINK] Parsed message: ");
-      DEBUG_I2C_PRINTLN(jetsonRxMessage.msgid);
+      DEBUG_I2C2_PRINT("[MAVLINK] Parsed message: ");
+      DEBUG_I2C2_PRINTLN(jetsonRxMessage.msgid);
       handleJetsonCommand(jetsonRxMessage);
     } else {
-      DEBUG_I2C_PRINT("[MAVLINK] Byte ");
-      DEBUG_I2C_PRINT(byte);
-      DEBUG_I2C_PRINTLN(": No message parsed yet.");
+      DEBUG_I2C2_PRINT("[MAVLINK] Byte ");
+      DEBUG_I2C2_PRINT(byte);
+      DEBUG_I2C2_PRINTLN(": No message parsed yet.");
     }
   }
 }
@@ -432,6 +451,7 @@ static void processJetsonCommandStream() {
 static void handleJetsonCommand(const mavlink_message_t &message) {
   switch (message.msgid) {
     case MAVLINK_MSG_ID_SET_ACTUATOR_CONTROL_TARGET: {
+      lastMavlinkCommandTime = millis();
       mavlink_set_actuator_control_target_t act = {};
       mavlink_msg_set_actuator_control_target_decode(&message, &act);
       // Map actuators[0-3] to FR, FL, RR, RL
@@ -614,7 +634,8 @@ static void readJetsonSerial() {
   DEBUG_I2C_PRINT("[UART RX] ");
   while (jetsonSerial.available() > 0) {
     const uint8_t value = static_cast<uint8_t>(jetsonSerial.read());    
-    DEBUG_I2C_PRINT(value, HEX);    pushJetsonRxByte(value);
+    DEBUG_I2C_PRINT(value, HEX);    
+    pushJetsonRxByte(value);
     lastJetsonActivityMs = millis();
   }
   DEBUG_I2C_PRINTLN(" ");

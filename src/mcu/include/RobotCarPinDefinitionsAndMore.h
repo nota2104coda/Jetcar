@@ -199,7 +199,7 @@
   static constexpr uint32_t kSerialBaud = 115200;
   static constexpr uint32_t kSerialWaitMs = 500; // Wait up to 500ms for Serial to start
   static constexpr uint32_t kPwmFreqHz = 1600;
-  static constexpr uint32_t kSonarPollIntervalMs = 50;
+  static constexpr uint32_t kSonarPollIntervalMs = 500;
   static constexpr uint32_t kSonarMaxWaitMs = 50; // Max wait per sonar reading. if its beyond, it should default to kMaxSonarRangecm
   static constexpr uint32_t kWatchdogTimeoutMs = 2000; // 2 second watchdog timeout
   static constexpr uint32_t kMotorSafetyTimeoutMs = 1000; // 1 second motor command timeout
@@ -246,6 +246,14 @@
 #else
   #define DEBUG_I2C_PRINT(...) ((void)0)
   #define DEBUG_I2C_PRINTLN(...) ((void)0)
+#endif
+
+#if LOOP_DEBUG_I2C2
+  #define DEBUG_I2C2_PRINT(...) Serial.print(__VA_ARGS__); Serial.flush()
+  #define DEBUG_I2C2_PRINTLN(...) Serial.println(__VA_ARGS__); Serial.flush()
+#else
+  #define DEBUG_I2C2_PRINT(...) ((void)0)
+  #define DEBUG_I2C2_PRINTLN(...) ((void)0)
 #endif
 
 

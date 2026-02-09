@@ -30,6 +30,8 @@ class HMINode(Node):
         self.publisher_ = self.create_publisher(ButtonStates, '/hmi/button_states', 10)
         self.timer = self.create_timer(0.05, self.publish_states)
         self.last_twist_time = self.get_clock().now()
+        # Parameterized timeout duration in seconds
+        self.cmd_vel_timeout = 5.0
         self.get_logger().info("hmi_node started, publishing button states.")
 
     def twist_callback(self, msg):
@@ -47,14 +49,14 @@ class HMINode(Node):
         self.button_states.auto_mode_button = msg.data
 
     def publish_states(self):
-        # Check if no twist message received recently (e.g., 0.5 seconds), assume released
+        # Check if no twist message received recently, assume released
         time_since_last = self.get_clock().now() - self.last_twist_time
-        if time_since_last.nanoseconds > 500000000:  # 0.5 seconds
-            self.button_states.forward = False
-            self.button_states.backward = False
-            self.button_states.left_turn = False
-            self.button_states.right_turn = False
-            self.button_states.stop_button = True
+        # if (time_since_last.nanoseconds / 1e9) > self.cmd_vel_timeout:
+            # self.button_states.forward = False
+            # self.button_states.backward = False
+            # self.button_states.left_turn = False
+            # self.button_states.right_turn = False
+            # self.button_states.stop_button = True
         self.publisher_.publish(self.button_states)
 
 
