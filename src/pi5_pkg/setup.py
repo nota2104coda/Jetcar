@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             "camera_node = pi5_pkg.camera_node:main",
+            "adaptive_resolution_node = pi5_pkg.adaptive_resolution_node:main",
             'hmi_node = pi5_pkg.hmi_node:main',
             'hw_mcu_node = pi5_pkg.hw_mcu_node:main',
             'ld06_lidar_node = pi5_pkg.ld06_lidar_node:main',
