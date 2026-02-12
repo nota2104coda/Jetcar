@@ -1,5 +1,6 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, Command
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
@@ -30,12 +31,6 @@ def generate_launch_description():
     )
 
     # Your custom Python nodes
-    camera_node = Node(
-        package='pi5_pkg',
-        executable='camera_node',
-        name='camera',
-        output='screen'
-    )
     hmi_node = Node(
         package='pi5_pkg',
         executable='hmi_node',
@@ -45,13 +40,36 @@ def generate_launch_description():
                 'PYTHONPATH': f"{venv_path}:{os.environ.get('PYTHONPATH', '')}"
             }
     )
-    # # smolvla_node = Node(
-    #     package='pi5_pkg',
-    #     executable='smolvla_node.py',
-    #     name='vla_decision_node',
-    #     output='screen'
-    # )
+    hw_mcu_node = Node(
+        package='pi5_pkg',
+        executable='hw_mcu_node',
+        name='hw_mcu_node',
+        output='screen',
+        env={
+                'PYTHONPATH': f"{venv_path}:{os.environ.get('PYTHONPATH', '')}"
+            }
+    )
+
+    realsense_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            os.path.join(pkg_share_dir, 'launch', 'realsense_optimized.launch.py')
+        ])
+    )
     
+    adaptive_resolution_node = Node(
+        package='pi5_pkg',
+        executable='adaptive_resolution_node',
+        name='adaptive_resolution_node',
+        output='screen'
+    )
+
+    ld06_lidar_node = Node(
+        package='pi5_pkg',
+        executable='ld06_lidar_node',
+        name='ld06_lidar_node',
+        output='screen'
+    )
+
     # motor_control_node = Node(
     #     package='pi5_pkg',
     #     executable='motor_control_node.py',
@@ -71,6 +89,8 @@ def generate_launch_description():
         robot_model_path_arg,
         robot_state_publisher_node,
         hmi_node,
-        camera_node,
-        # smolvla_node,
+        hw_mcu_node,
+        realsense_node,
+        adaptive_resolution_node,
+        ld06_lidar_node
     ])
