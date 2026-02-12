@@ -29,7 +29,8 @@ from tf2_ros import TransformBroadcaster
 
 import serial
 from serial import SerialException
-from pymavlink.dialects.v20 import ardupilotmega as mavlink2
+# Use locally generated MAVLink dialect to ensure custom messages are available
+from . import mavlink_ardupilotmega as mavlink2
 
 
 
@@ -261,8 +262,8 @@ class HwMcuNode(Node):
             self._publish_highres_imu(message)
         elif msg_id == mavlink2.MAVLINK_MSG_ID_DISTANCE_SENSOR:
             self._publish_distance_sensor(message)
-        elif msg_id == mavlink2.MAVLINK_MSG_ID_ESC_TELEMETRY_1_TO_4:
-            self._publish_esc_telemetry(message)
+        elif msg_id == mavlink2.MAVLINK_MSG_ID_WHEEL_RPM:
+            self._publish_wheel_rpm(message)
 
     def _stop_button_callback(self, msg):
         self._stop_button = msg.data
@@ -277,12 +278,12 @@ class HwMcuNode(Node):
     def _manual_twist_callback(self, twist: Twist) -> None:
         self._last_manual_twist = twist
         self._last_manual_received_time = self.get_clock().now()
-        self.get_logger().debug(f'manual twist: {twist.linear.x}, Forward, {twist.angular.z}, angular')
+        # self.get_logger().debug(f'manual twist: {twist.linear.x}, Forward, {twist.angular.z}, angular')
 
     def _auto_twist_callback(self, twist: Twist) -> None:
         self._last_auto_twist = twist
         self._last_auto_received_time = self.get_clock().now()
-        self.get_logger().debug(f'auto twist: {twist.linear.x}, Forward, {twist.angular.z}, angular')
+        # self.get_logger().debug(f'auto twist: {twist.linear.x}, Forward, {twist.angular.z}, angular')
 
     def _control_loop(self) -> None:
         """Periodic control loop to arbitrate and send commands."""
@@ -292,7 +293,7 @@ class HwMcuNode(Node):
         
         target_twist = Twist()  # Default is zero/stop
         source = "NONE"
-        self.get_logger().debug(f'control loop last_manual_twist: {self._last_manual_twist.linear.x}, Forward, {self._last_manual_twist.angular.z}, angular')
+        # self.get_logger().debug(f'control loop last_manual_twist: {self._last_manual_twist.linear.x}, Forward, {self._last_manual_twist.angular.z}, angular')
 
         if self._stop_button:
             # STOP button overrides everything -> target remains zero
@@ -315,7 +316,7 @@ class HwMcuNode(Node):
             self._open_serial()
             if self.serial is None:
                 return
-        self.get_logger().debug(f'control loop target_twist: {target_twist.linear.x}, Forward, {target_twist.angular.z}, angular')
+        # self.get_logger().debug(f'control loop target_twist: {target_twist.linear.x}, Forward, {target_twist.angular.z}, angular')
         message = None
         if self.command_mode == 'set_actuator_control_target':
             message = self._build_actuator_control_message(target_twist)
@@ -343,7 +344,7 @@ class HwMcuNode(Node):
         actuators[1] = left  # FL
         actuators[2] = right   # RR
         actuators[3] = left   # RL
-        self.get_logger().debug(f'actuator cmd: right = {right}, Left = {left}')
+        # self.get_logger().debug(f'actuator cmd: right = {right}, Left = {left}')
         # Remaining actuators (4-7) left at 0.0
         # pymavlink expects 6 arguments: time_boot_ms, target_system, target_component, group_mlx, controls, flags
         # pymavlink expects: time_usec, group_mlx, target_system, target_component, controls
@@ -430,6 +431,7 @@ class HwMcuNode(Node):
         imu_msg.orientation.y = 0.0
         imu_msg.orientation.z = 0.0
         imu_msg.orientation_covariance[0] = -1.0  # Unknown orientation from MCU
+        # self.get_logger().debug(f'IMU: {self.imu_frame_id} = {imu_msg.linear_acceleration.x}, {imu_msg.linear_acceleration.y}, {imu_msg.linear_acceleration.z}')
         self.imu_publisher.publish(imu_msg)
 
         temp_msg = Temperature()
@@ -440,32 +442,40 @@ class HwMcuNode(Node):
         # self.temp_publisher.publish(temp_msg)
 
     def _publish_distance_sensor(self, msg) -> None:
-        mapping = self.range_publishers.get(msg.id)
-        if mapping is None:
+        if msg.id not in self.range_publishers:
             return
-        frame_id, publisher, radiation = mapping
+
+        _, publisher, radiation_type = self.range_publishers[msg.id]
+
         range_msg = Range()
         range_msg.header.stamp = self.get_clock().now().to_msg()
-        range_msg.header.frame_id = frame_id
-        range_msg.radiation_type = radiation
-        range_msg.field_of_view = 0.1
-        range_msg.min_range = float(msg.min_distance)
-        range_msg.max_range = float(msg.max_distance)
-        range_msg.range = float(msg.current_distance)
+        range_msg.header.frame_id = self.base_frame_id
+        range_msg.radiation_type = radiation_type
+        range_msg.field_of_view = float(msg.horizontal_fov)
+        range_msg.min_range = float(msg.min_distance) / 100.0  # cm to m
+        range_msg.max_range = float(msg.max_distance) / 100.0  # cm to m
+        range_msg.range = float(msg.current_distance) / 100.0  # cm to m
+
         publisher.publish(range_msg)
 
-    def _publish_esc_telemetry(self, msg) -> None:
-        rpm = [float(value) for value in msg.rpm]
-        # Publish as Float32MultiArray for /esc_telemetry
+    def _publish_wheel_rpm(self, msg) -> None:
+        # The WHEEL_RPM message sends four float fields.
+        # We need to maintain the same logic for odometry calculation.
+        # Right wheels are FR and RR. Left wheels are FL and RL.
+        right_linear = self._rpm_to_linear((msg.rpm_fr + msg.rpm_rr) * 0.5)
+        left_linear = self._rpm_to_linear((msg.rpm_fl + msg.rpm_rl) * 0.5)
+
+        # The /esc_telemetry topic expects data in [FR, RR, FL, RL] order.
         from std_msgs.msg import Float32MultiArray
         esc_msg = Float32MultiArray()
-        esc_msg.data = rpm
+        esc_msg.data = [msg.rpm_fr, msg.rpm_rr, msg.rpm_fl, msg.rpm_rl]
         self.esc_publisher.publish(esc_msg)
-        # sendTelemetry() encodes absolute wheel RPM; until the firmware exports
-        # motor direction we only integrate magnitudes for odometry.
-        right_linear = self._rpm_to_linear((rpm[0] + rpm[1]) * 0.5)
-        left_linear = self._rpm_to_linear((rpm[2] + rpm[3]) * 0.5)
-        # self.get_logger().debug(f'ESC Telemetry RPM: {rpm}, Left Linear: {left_linear:.4f}, Right Linear: {right_linear:.4f}')
+
+        self.get_logger().debug(
+            f'WHEEL_RPM: fr={msg.rpm_fr:.2f}, rr={msg.rpm_rr:.2f}, '
+            f'fl={msg.rpm_fl:.2f}, rl={msg.rpm_rl:.2f}, '
+            f'Left Linear: {left_linear:.4f}, Right Linear: {right_linear:.4f}'
+        )
         self.update_odometry(left_linear, right_linear)
 
     def _rpm_to_linear(self, rpm_value: float) -> float:

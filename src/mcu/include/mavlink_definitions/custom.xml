@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<mavlink>
+    <include>common.xml</include>
+    <messages>
+        <message id="43000" name="WHEEL_RPM">
+            <description>Wheel RPMs for a 4-wheel robot.</description>
+            <field type="float" name="rpm_fl">Front-left wheel RPM</field>
+            <field type="float" name="rpm_fr">Front-right wheel RPM</field>
+            <field type="float" name="rpm_rl">Rear-left wheel RPM</field>
+            <field type="float" name="rpm_rr">Rear-right wheel RPM</field>
+        </message>
+    </messages>
+</mavlink>

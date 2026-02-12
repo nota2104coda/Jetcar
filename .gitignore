@@ -6,6 +6,12 @@
 /src/install/
 /src/log/
 /localROS/
+/src/mcu/pico-PlatformIO/.pio/
+/src/mcu/pico-PlatformIO/build/
+/src/mcu/pico-PlatformIO/.vscode/
+/src/mcu/pico-PlatformIO/lib/
+
+
 
 .ros/
 .vscode/
@@ -33,5 +39,12 @@ docker/logs/
 .idea/
 *.swp
 *.swo
+
+# PlatformIO
+**/.pio/
+
+# Generated MAVLink
+**/lib/mavlink-arduino/mavlink/
+
 
 

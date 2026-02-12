@@ -12,9 +12,9 @@ struct SensorBuffer {
   float accelX, accelY;
   float gyroZ;
   float temp;
-  int32_t sonarFrontm;
+  int16_t sonarFrontcm;    //maintain distance in cm because mavlink DISTANCE_SENSOR uses uint16 for distance
   int8_t sonarFquality;
-  int32_t sonarRearm;
+  int16_t sonarRearcm;    //maintain distance in cm because mavlink DISTANCE_SENSOR uses uint16 for distance
   int8_t sonarRquality;
   bool cliffFront, cliffRear;
   float speedFL, speedFR, speedRL, speedRR;

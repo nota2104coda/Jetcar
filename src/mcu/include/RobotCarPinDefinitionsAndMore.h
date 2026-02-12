@@ -204,10 +204,10 @@
   static constexpr uint32_t kWatchdogTimeoutMs = 2000; // 2 second watchdog timeout
   static constexpr uint32_t kMotorSafetyTimeoutMs = 1000; // 1 second motor command timeout
   static constexpr float kMaxSaneRpm = 200.0; // Max sane RPM for encoders
-  static constexpr int32_t kMinSonarRangecm = 10; // Min range for sonar in m
-  static constexpr int32_t kMaxSonarRangecm = 400; // Max range for sonar in m
+  static constexpr int16_t kMinSonarRangecm = 10; // Min range for sonar in m
+  static constexpr int16_t kMaxSonarRangecm = 400; // Max range for sonar in m
   static constexpr int32_t CONV_M_TO_CM = 100; // Conversion factor from meters to centimeters
-  static constexpr int32_t CONV_CM_TO_M = 0.01; // Conversion factor from centimeters to meters
+  static constexpr float CONV_CM_TO_M = 0.01; // Conversion factor from centimeters to meters
   static constexpr int32_t min_sonar_delayMs = 25; //msec delay between reading from two sonars. otherwise there could be crosstalk. this is limiting the transmission rate from arduino to PicoW. This comes from (SONAR_MAX_DISTANCE*2/speed_of_sound in cm/ms) 
   static constexpr int32_t PULSE_PER_REV = 12;    //for encoders 
   static constexpr float RPM_TO_RADPS =  0.10472;
