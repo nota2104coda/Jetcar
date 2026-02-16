@@ -45,6 +45,8 @@ docker/logs/
 
 # Generated MAVLink
 **/lib/mavlink-arduino/mavlink/
+src/jetson_cpp_pkg/include/mavlink/
+
 
 
 
