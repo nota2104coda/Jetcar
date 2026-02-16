@@ -27,14 +27,17 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'product_name': 'LDLiDAR_LD06'},
-            {'topic_name': topic_name},
+            {'laser_scan_topic_name': topic_name},
+            {'point_cloud_2d_topic_name': 'pointcloud2d'},
             {'frame_id': lidar_frame},
             {'port_name': port},
-            {'port_baudrate': 230400},
+            {'serial_baudrate': 230400},
             {'laser_scan_dir': True},
             {'enable_angle_crop_func': False},
             {'angle_crop_min': 135.0},
-            {'angle_crop_max': 225.0}
+            {'angle_crop_max': 225.0},
+            {'range_min': 0.02},
+            {'range_max': 12.0}
         ]
     )
     
