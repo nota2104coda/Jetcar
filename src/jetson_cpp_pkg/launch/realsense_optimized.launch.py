@@ -37,10 +37,12 @@ def generate_launch_description():
         'depth_module.depth_qos': 'SENSOR_DATA',
         'align_depth.enable': 'true',
         'enable_sync': 'true',
-        'pointcloud.enable': 'false', 
+        'pointcloud.enable': 'true', 
         'decimation_filter.enable': 'true', # Reduces depth resolution by 2x (very fast)
         'spatial_filter.enable': 'true',    # Smooths depth
         'temporal_filter.enable': 'true',   # Stabilizes depth
+        # Fix MIPI error by lowering infra resolution or matching profiles
+        'depth_module.infra_profile': '640x480x15',
     }
 
     # Include the official launch file with our overrides
