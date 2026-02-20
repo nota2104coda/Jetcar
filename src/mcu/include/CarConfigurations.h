@@ -88,8 +88,9 @@
  */
 #if defined(NONSTEER_4WD_RUBBERWHL_2XSONAR_2xCLIFF)
     #define CAR_HAS_4_DCMOTORS_WAVESHARE	//denotes use of waveshare 4 motor driver with PCA9685
-    #define CAR_HAS_UART
-    #define CAR_HAS_I2C
+    #define CAR_HAS_LD2450RADAR
+    #define CAR_HAS_MPU6050_IMU
+    #define CAR_HAS_LD06_LIDAR
     #define CAR_HAS_4_MOTORENCODERS	//
     #define CAR_HAS_FRT_RR_SONAR // Activate this if your car has one HCSR04 US distance sensors at front and one at rear
     //#define CAR_HAS_RR_SONAR // Activate this if your car has one HCSR04 US distance sensors at rr

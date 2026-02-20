@@ -57,6 +57,9 @@ ament_target_dependencies(hw_mcu_node rclcpp std_msgs geometry_msgs robot_msgs n
 install(TARGETS hmi_node adaptive_resolution_node hw_mcu_node
   DESTINATION lib/${PROJECT_NAME})
 
+install(PROGRAMS scripts/lidar_pwm.py
+  DESTINATION lib/${PROJECT_NAME})
+
 install(DIRECTORY launch urdf
   DESTINATION share/${PROJECT_NAME})
 

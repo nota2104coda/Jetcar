@@ -38,7 +38,9 @@ def generate_launch_description():
             {'angle_crop_max': 225.0},
             {'range_min': 0.02},
             {'range_max': 12.0}
-        ]
+        ],
+        respawn=True,
+        respawn_delay=2.0,
     )
     
     # Static TF: base_link -> ld06_lidar
@@ -51,10 +53,20 @@ def generate_launch_description():
         arguments=['0','0','0.18','0','0','0', 'base_link', lidar_frame]
     )
 
+    # PWM Control Node for Motor (GPIO12)
+    lidar_pwm_node = Node(
+        package='jetson_cpp_pkg',
+        executable='lidar_pwm.py',
+        name='lidar_pwm_control',
+        output='screen'
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('port', default_value='/dev/ttyTHS1', description='Serial port for LIDAR'),
         DeclareLaunchArgument('lidar_frame', default_value='ld06_lidar', description='Frame ID for LIDAR'),
         DeclareLaunchArgument('topic_name', default_value='scan', description='Topic name for laser scan'),
+        lidar_pwm_node,
         ld06_node,
         static_tf
     ])
+

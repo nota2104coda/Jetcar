@@ -84,26 +84,26 @@
   #define MOTOR_RL 3
 
   #if defined(CAR_HAS_4_MOTORENCODERS)
-    #define PIN_ENC_FRONT_RIGHT_Y 1   // GPIO5
-    #define PIN_ENC_FRONT_RIGHT_G 2   // GPIO6
-    #define PIN_ENC_FRONT_LEFT_G 37    // GPIO7
-    #define PIN_ENC_FRONT_LEFT_Y 38   // GPIO15
-    #define PIN_ENC_REAR_RIGHT_Y 42   // GPIO16
-    #define PIN_ENC_REAR_RIGHT_G 41   // GPIO17
-    #define PIN_ENC_REAR_LEFT_G 39    // GPIO18
-    #define PIN_ENC_REAR_LEFT_Y 40     // GPIO8
+    #define PIN_ENC_FRONT_RIGHT_Y 1   // PIN24
+    #define PIN_ENC_FRONT_RIGHT_G 2   // PIN25
+    #define PIN_ENC_FRONT_LEFT_G 37    // PIN16
+    #define PIN_ENC_FRONT_LEFT_Y 38   // PIN17
+    #define PIN_ENC_REAR_RIGHT_Y 42   // PIN21
+    #define PIN_ENC_REAR_RIGHT_G 41   // PIN22
+    #define PIN_ENC_REAR_LEFT_G 39    // PIN19
+    #define PIN_ENC_REAR_LEFT_Y 40     // PIN20
   #endif
 
   #if defined(CAR_HAS_FRT_RR_SONAR)
-    #define PIN_TRIG_SONAR_FRONT 7   // GPIO11
-    #define PIN_ECHO_SONAR_FRONT 8   // GPIO12
-    #define PIN_TRIG_SONAR_REAR 36    // GPIO13
-    #define PIN_ECHO_SONAR_REAR 35    // GPIO14
+    #define PIN_TRIG_SONAR_FRONT 7   // PIN31
+    #define PIN_ECHO_SONAR_FRONT 8   // PIN32
+    #define PIN_TRIG_SONAR_REAR 36    // PIN11
+    #define PIN_ECHO_SONAR_REAR 35    // PIN10
   #endif
 
   #if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR)
-    #define PIN_FRONT_CLIFF 15        // GPIO40
-    #define PIN_REAR_CLIFF 16         // GPIO39
+    #define PIN_FRONT_CLIFF 15        // PIN6
+    #define PIN_REAR_CLIFF 16         // PIN7
   #endif
 
   #if defined(CAR_HAS_SPI_DISPLAY)
@@ -117,20 +117,21 @@
     #define CS0  ESP32_SPI_CS0
   #endif
 
-  #if defined(CAR_HAS_I2C)
-    #define MCU_I2C0_SDA 4
-    #define MCU_I2C0_SCL 5
-    #define MCU_JETSON_I2C1_SDA 13
-    #define MCU_JETSON_I2C1_SCL 14    
+  #if defined(CAR_HAS_MPU6050_IMU)
+    #define MCU_I2C0_SDA 4  //PIN26
+    #define MCU_I2C0_SCL 5  //PIN27
+  #endif
+  
+  #define MCU_JETSON_UART1_RX 14 //PIN5 to JETSON USB
+  #define MCU_JETSON_UART1_TX 13 //PIN4
+
+  #if defined(CAR_HAS_LD2450RADAR)
+    #define MCU_LD2450RADAR_UART0_RX 11 //PIN1
+    #define MCU_LD2450RADAR_UART0_TX 12 //PIN2
   #endif
 
-  #if defined(CAR_HAS_UART)
-    #define MCU_LD2450RADAR_UART0_RX 11
-    #define MCU_LD2450RADAR_UART0_TX 12
-    #define JETSON_LD06_UART0_RX 10
-    #define JETSON_LD06_UART0_TX 8
-    #define MCU_JETSON_UART1_RX 14
-    #define MCU_JETSON_UART1_TX 13
+  #if defined(CAR_HAS_LD06_LIDAR)
+    #define JETSON_LD06_UART0_RX 10 //JETSPIN10
   #endif
 
 #elif defined(MCU_PICOW_RP2040)
@@ -281,32 +282,3 @@ Command ingest: adjust process_uart_commands to:
 Read a line
 If it starts with CMD,set, parse four floats
 Else map the verb to the preset torques or enable/disable
-Physical Pin,Pico GP Label,ESP32-S3 GPIO,Primary Function (Default)
-1,GP0,43,UART0 TX
-2,GP1,44,UART0 RX
-4,GP2,1,ADC1_CH0
-5,GP3,2,ADC1_CH1
-6,GP4,42,I2C SDA (Default)
-7,GP5,41,I2C SCL (Default)
-9,GP6,3,ADC1_CH2
-10,GP7,4,ADC1_CH3
-11,GP8,5,ADC1_CH4
-12,GP9,6,ADC1_CH5
-14,GP10,7,ADC1_CH6
-15,GP11,8,ADC1_CH7
-16,GP12,9,ADC1_CH8
-17,GP13,10,ADC1_CH9
-19,GP14,17,UART1 TX
-20,GP15,18,UART1 RX
-21,GP16,11,SPI MISO
-22,GP17,12,SPI CS
-24,GP18,13,SPI CLK (Your previous query)
-25,GP19,14,SPI MOSI
-26,GP20,15,ADC2_CH4
-27,GP21,16,ADC2_CH5
-29,GP22,21,General IO
-31,GP26,38,ADC Input / A0
-32,GP27,39,ADC Input / A1
-34,GP28,40,ADC Input / A2
-Onboard,LED,21,Built-in RGB/LED (Shared with GP22)
-*/

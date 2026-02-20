@@ -3,9 +3,9 @@ import time
 import sys
 from pymavlink import mavutil
 
-port = '/dev/ttyUSB0'
+port = '/dev/ttyTHS1'
 # baud_rates = [921600, 115200, 57600]
-baud_rates = [921600, 115200] # Try likely ones first to save time
+baud_rates = [230400,921600, 115200] # Try likely ones first to save time
 
 print(f"Active Scanning {port}...")
 

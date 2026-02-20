@@ -3,6 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 import serial
 import math
+import RPi.GPIO as GPIO
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import StaticTransformBroadcaster
 
@@ -68,6 +69,17 @@ class LD06LidarNode(Node):
         self.baudrate = self.get_parameter('baudrate').value
         self.topic    = self.get_parameter('topic').value
 
+        # --- GPIO PWM for Motor Control ---
+        self.declare_parameter('pwm_pin', 12)
+        self.pwm_pin = self.get_parameter('pwm_pin').value
+        self.target_speed = 3600  # 10 Hz * 360 deg/sec
+        self.current_duty = 60.0  # Start with 60% duty cycle
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.pwm_pin, GPIO.OUT)
+        self.pwm = GPIO.PWM(self.pwm_pin, 30000)  # 30 kHz
+        self.pwm.start(self.current_duty)
+
         # --- Serial ---
         self.serial = serial.Serial(self.port, self.baudrate, timeout=0.01)
 
@@ -83,7 +95,8 @@ class LD06LidarNode(Node):
         self._dbg_frames_proc   = 0
         self._dbg_bins_filled   = 0
         self._dbg_scans_pub     = 0
-        self._dbg_timer = self.create_timer(2.0, self._print_debug)
+        self._dbg_last_speed    = 0
+        self._dbg_timer = self.create_timer(1.0, self._print_debug)
 
         # --- Accumulator: fixed-size bins ---
         # Each bin stores (distance_m, intensity).  None = no measurement yet.
@@ -125,12 +138,14 @@ class LD06LidarNode(Node):
             f"frames_proc={self._dbg_frames_proc} "
             f"bins_filled={self._dbg_bins_filled} "
             f"scans_pub={self._dbg_scans_pub} "
-            f"buf_len={len(self.buffer)}"
+            f"buf_len={len(self.buffer)} "
+            f"last_speed={self._dbg_last_speed} deg/s"
         )
         self._dbg_headers_seen  = 0
         self._dbg_frames_proc   = 0
         self._dbg_bins_filled   = 0
         self._dbg_scans_pub     = 0
+        self._dbg_last_speed    = 0
 
     # ------------------------------------------------------------------
     # UART polling
@@ -158,6 +173,24 @@ class LD06LidarNode(Node):
     # Frame parsing
     # ------------------------------------------------------------------
     def _process_frame(self, pkt: bytes):
+        radar_speed = (pkt[3] << 8 | pkt[2]) # degrees per second
+        self._dbg_last_speed = radar_speed
+        
+        # Simple P-controller for motor speed
+        error = self.target_speed - radar_speed
+        
+        # Adjust duty cycle slowly
+        Kp = 0.00005 
+        adjustment = error * Kp
+        
+        # Clamp adjustment to avoid jumping around
+        if adjustment > 0.1: adjustment = 0.1
+        if adjustment < -0.1: adjustment = -0.1
+        
+        self.current_duty += adjustment
+        self.current_duty = max(0.0, min(100.0, self.current_duty))
+        self.pwm.ChangeDutyCycle(self.current_duty)
+
         start_angle_deg = (pkt[5] << 8 | pkt[4]) / 100.0   # 0.01 ° resolution
         end_angle_deg   = (pkt[43] << 8 | pkt[42]) / 100.0
 
@@ -235,6 +268,11 @@ class LD06LidarNode(Node):
 
         self._dbg_scans_pub += 1
         self.publisher.publish(scan)
+
+    def destroy_node(self):
+        self.pwm.stop()
+        GPIO.cleanup()
+        super().destroy_node()
 
 
 # ---------------------------------------------------------------------------
