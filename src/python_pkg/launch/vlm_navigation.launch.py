@@ -18,7 +18,7 @@ def generate_launch_description():
         
         # SmolVLA decision node (manages VLM container + publishes cmd_vel)
         Node(
-            package='pi5_pkg',
+            package='python_pkg',
             executable='smolvla_node',
             name='smolvla_decision',
             output='screen',

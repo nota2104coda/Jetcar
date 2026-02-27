@@ -8,7 +8,7 @@ import os
 
 def generate_launch_description():
     # Get the package directory
-    pkg_share_dir = get_package_share_directory('pi5_pkg')
+    pkg_share_dir = get_package_share_directory('python_pkg')
     venv_path = os.path.expanduser('~/PicoWCar/.venv/lib/python3.12/site-packages')
     
     # Declare a launch argument for the robot model file
@@ -32,7 +32,7 @@ def generate_launch_description():
 
     # Your custom Python nodes
     hmi_node = Node(
-        package='pi5_pkg',
+        package='python_pkg',
         executable='hmi_node',
         name='hmi_node',
         output='screen',
@@ -41,7 +41,7 @@ def generate_launch_description():
             }
     )
     hw_mcu_node = Node(
-        package='pi5_pkg',
+        package='python_pkg',
         executable='hw_mcu_node',
         name='hw_mcu_node',
         output='screen',
@@ -57,28 +57,28 @@ def generate_launch_description():
     )
     
     adaptive_resolution_node = Node(
-        package='pi5_pkg',
+        package='python_pkg',
         executable='adaptive_resolution_node',
         name='adaptive_resolution_node',
         output='screen'
     )
 
     ld06_lidar_node = Node(
-        package='pi5_pkg',
+        package='python_pkg',
         executable='ld06_lidar_node',
         name='ld06_lidar_node',
         output='screen'
     )
 
     # motor_control_node = Node(
-    #     package='pi5_pkg',
+    #     package='python_pkg',
     #     executable='motor_control_node.py',
     #     name='motor_control_node',
     #     output='screen'
     # )
     
     # robot_state_node = Node(
-    #     package='pi5_pkg',
+    #     package='python_pkg',
     #     executable='robot_state_node.py',
     #     name='robot_state_node',
     #     output='screen'

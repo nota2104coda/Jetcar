@@ -18,13 +18,13 @@ when the user asks to navigate to the red football, it scans the room by spinnin
 
 ## Quick Start
 1. **Clone the repo**
-2. **Develop ROS2 nodes for Rpi5/Jetson in** `src/pi5_pkg/`
+2. **Develop ROS2 nodes for Rpi5/Jetson in** `src/python_pkg/`
 3. **Develop ROS nodes for PC in** `src/pc_pkg`
 4. **Develop Pi Pico W code in** `src/ardpicoW/pico-PlatformIO/`
 5. **Define custom messages in** `src/robot_msgs/msg/` and build with `colcon`
 6. **Access web interface at** `http://localhost:8080`
 7. **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
-8. **Define robot urdf** in `src/pi5_pkg/urdf`
+8. **Define robot urdf** in `src/python_pkg/urdf`
 9. **Access foxglove visualisation** `ws://192.168.50.176:8765`
 
 ## Diagrams

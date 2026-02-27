@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 import os
 from glob import glob
 
-package_name = 'pi5_pkg'
+package_name = 'python_pkg'
 
 setup(
     name=package_name,
@@ -24,13 +24,13 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "camera_node = pi5_pkg.camera_node:main",
-            "adaptive_resolution_node = pi5_pkg.adaptive_resolution_node:main",
-            'hmi_node = pi5_pkg.hmi_node:main',
-            'hw_mcu_node = pi5_pkg.hw_mcu_node:main',
-            'ld06_lidar_node = pi5_pkg.ld06_lidar_node:main',
-            # 'ldlidar_node = pi5_pkg.ldlidar_node:main',
-            'hw_realsense_node = pi5_pkg.hw_realsense_node:main'
+            "camera_node = python_pkg.camera_node:main",
+            "adaptive_resolution_node = python_pkg.adaptive_resolution_node:main",
+            'hmi_node = python_pkg.hmi_node:main',
+            'hw_mcu_node = python_pkg.hw_mcu_node:main',
+            'ld06_lidar_node = python_pkg.ld06_lidar_node:main',
+            # 'ldlidar_node = python_pkg.ldlidar_node:main',
+            'hw_realsense_node = python_pkg.hw_realsense_node:main'
         ],
     },
 )

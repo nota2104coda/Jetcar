@@ -1,7 +1,7 @@
 import sys
 import os
 # Add the ROS package directory to path to import the local dialect
-sys.path.append(os.path.join(os.getcwd(), "src/pi5_pkg/pi5_pkg"))
+sys.path.append(os.path.join(os.getcwd(), "src/python_pkg/python_pkg"))
 import mavlink_ardupilotmega as mavlink2
 import struct
 

@@ -155,7 +155,7 @@ cd docker
 ./start_ollama.sh
 
 # Terminal 2: Launch ROS2 node (if configured)
-ros2 run pi5_pkg smolvla_node
+ros2 run python_pkg smolvla_node
 
 # Terminal 3: Publish test image
 ros2 topic pub /camera/image_raw sensor_msgs/msg/Image ...

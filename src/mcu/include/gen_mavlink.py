@@ -46,7 +46,7 @@ def run_mavgen():
     
     # --- Python Generation (ROS) ---
     # Generate directly into the ROS package so it is tracked by Git
-    output_dir_py = os.path.join(repo_root, "src", "pi5_pkg", "pi5_pkg")
+    output_dir_py = os.path.join(repo_root, "src", "python_pkg", "python_pkg")
     cmd_py = [
         python_exe, mavgen_path,
         "--lang=Python", "--wire-protocol=2.0", "--no-validate",

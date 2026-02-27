@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(pi5_pkg)
+project(python_pkg)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_C_COMPILER_ID MATCHES "Clang")
 add_compile_options(-Wall -Wextra -Wpedantic)
@@ -36,11 +36,11 @@ ament_package()
 
 install(PROGRAMS
 #Install your Python nodes
-pi5_pkg/camera_node.py
-pi5_pkg/hmi_node.py
-pi5_pkg/pico_command_node.py
-pi5_pkg/pico_sensors_node.pypi
-pi5_pkg/robot_state_node.py
-pi5_pkg/smolvla_node.py
+python_pkg/camera_node.py
+python_pkg/hmi_node.py
+python_pkg/pico_command_node.py
+python_pkg/pico_sensors_node.pypi
+python_pkg/robot_state_node.py
+python_pkg/smolvla_node.py
 DESTINATION lib/${PROJECT_NAME}
 )

@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
-    pkg_jetson_cpp = get_package_share_directory('jetson_cpp_pkg')
+    pkg_jetson_cpp = get_package_share_directory('jetsoncpp_pkg')
     
     # 1. Robot Model (URDF)
     # Check if urdf exists in share directory
@@ -29,7 +29,7 @@ def generate_launch_description():
 
     # 2. HMI Node (C++)
     hmi_node = Node(
-        package='jetson_cpp_pkg',
+        package='jetsoncpp_pkg',
         executable='hmi_node',
         name='hmi_node',
         output='screen',
@@ -39,7 +39,7 @@ def generate_launch_description():
     # 3. Hardware MCU Node (C++)
     # Handles serial communication with MCU via MAVLink
     hw_mcu_node = Node(
-        package='jetson_cpp_pkg',
+        package='jetsoncpp_pkg',
         executable='hw_mcu_node',
         name='hw_mcu_node',
         output='screen',
@@ -53,14 +53,14 @@ def generate_launch_description():
 
     # 4. Adaptive Resolution Node (C++)
     adaptive_resolution_node = Node(
-        package='jetson_cpp_pkg',
+        package='jetsoncpp_pkg',
         executable='adaptive_resolution_node',
         name='adaptive_resolution_node',
         output='screen'
     )
 
     # 5. Realsense Camera (Optimized)
-    # Using the local launch file copied from pi5_pkg
+    # Using the local launch file copied from python_pkg
     realsense_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             os.path.join(pkg_jetson_cpp, 'launch', 'realsense_optimized.launch.py')

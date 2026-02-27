@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(jetson_cpp_pkg)
+project(jetsoncpp_pkg)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -Wno-address-of-packed-member -Wno-pedantic)
