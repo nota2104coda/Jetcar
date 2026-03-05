@@ -1,24 +1,31 @@
 # Jetcar Project
 
 ## Overview
-Jetcar is a 4-wheel differential drive robot system using Jetson Orin Nano and an MCU(Pi Pico W RP2040 or ESP32S3-Pico). It fuses Realsense 435 camera, LD06 lidar and other sensor data for autonomous navigation and object search, controlled via a web interface. It uses ROS2 Humble.
+Jetcar is a 4-wheel differential drive robot system using Jetson Orin Nano and an MCU(Pi Pico W RP2040 or ESP32S3-Pico). It uses a Realsense 435 camera, LD06 lidar and other sensor data for autonomous navigation and object search, controlled via a web interface. It uses ROS2 Humble.
 
 ## Use Cases: 
 when the user asks to navigate to the red football, it scans the room by spinning the body, until the object is found. It then navigates to the ball and stops at a safe distance. If the path is below a chair, it should intelligently see the height and go below or around. 
 
-## Learning Objective
-Learn use of FreeRTOS or Zephyr on Pi Pico, with concurrent processes on both cores. Learn to configure a robot in ROS2 Humble. Learn to apply LLM/VLM for mobile robots.
+## What Works and what's next:
+5-Mar-2026: Teleoperation using Foxglove GUI works. Gathering VSLAM data using ISAAC ROS and 2D lidar data using LD06 library works. 
+
+## Learning Objectives
+-Learn use of FreeRTOS or Zephyr on Pi Pico, with concurrent processes on both cores.
+-Learn considerations for safe use of C++ code and aligning as close as possible to MISRA concepts. Use non-blocking, deterministic code.
+-Learn to configure a robot in ROS2 Humble. 
+-Learn to apply LLM/VLM for mobile robots. 
+-Learn to test unit/integration/system level using test frameworks and Isaac Sim, without having to actually drive the robot
 
 ## Hardware Architecture
-- **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to MCU via USB-UART, reads Realsense D435 camera, reads LD06 Lidar via USB-UART. USB-UART is via CP2104 adapters. Comm between MCU and Jetson uses mavlink protocol.
-- **MCU = Raspberry Pi Pico W or ESP32S3-Pico**: Controls motors, reads cliff sensors, front and rear sonar, IMU 6050 and wheel encoders.It can override motor commands to prevent collision and it will stop motors in case Jetson commands are timed out.
+**Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to MCU via USB-UART, reads Realsense D435 camera, reads LD06 Lidar via USB-UART. USB-UART is via CP2104 adapters. Comm between MCU and Jetson uses mavlink protocol.
+**MCU = Raspberry Pi Pico W or ESP32S3-Pico**: Controls motors, reads cliff sensors, front and rear sonar, IMU 6050 and wheel encoders.It can override motor commands to prevent collision and it will stop motors in case Jetson commands are timed out.
 **Sensors**: The sensors it has are : front - realsense D435 depth camera via USB, LD2450 human tracking lidar. Front and Rear: HC-SR04 sonar. On body:  MPU6050 acceleration sensor and LD06 lidar. 
 **Actuators**: 4x 370 type DC brushed motors with encoders. gear ratio 46, pulses per rev 11, hall encoder with forward and reverse sensor pickups.
 
 ## Quick Start
 0. **Download only the script , edit it and run**
 This will clone the repo, install dependencies optionally and create the venv. 
-See script ...tbd...temp text below.
+See script ...TODO: Create closing and setup script...temp text below.
 
 1. **Clone the repo**
 USERNAME="jeevan" # CHANGE THIS to your Pi's username
@@ -36,39 +43,28 @@ pip install --upgrade pip
 pip install -r jetcar-requirements.txt
 
 3. **Develop ROS2 python nodes for Rpi5/Jetson in** `src/python_pkg/`
-  **Develop ROS2 C++ nodes for Jetson in** `src/jetsoncpp_pkg/`
+   **Develop ROS2 C++ nodes for Jetson in** `src/jetsoncpp_pkg/`
 4. **Develop ROS nodes for PC in** `src/pc_pkg`
 5. **Develop Pi Pico W code in** `src/mcu/pico-PlatformIO/`
-**Develop ESP32S3-Pico code in** `src/mcu/pico-PlatformIO/`
+**Develop ESP32S3-Pico code in** `src/mcu/esp32-PlatformIO/`
 **Common microcontroller include files** `src/mcu/include/`
 6. **Define custom ROS messages in** `src/robot_msgs/msg/` and build with `colcon build`
 7. **Access foxglove visualisation** `ws://192.168.50.177:8765` or your chosen IP address. configure this in the foxglove node
 8. **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
-9. **Define robot urdf** in `src/python_pkg/urdf`
+9. **Define robot urdf** in `src/jetsoncpp_pkg/urdf`
 
 ## Diagrams
-See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.
-See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format).
+See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts. TODO: Update circuit considering latest situation.
+See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format). TODO: Needs update considering Isaac.
 
-## Specifications
-**Pico**
-I2C1 comms Pico to Jetson :
-In loop, if I2C1 connection is not established, try establishing it as a slave. The bus is I2C1 and pins are PICOW_JETSON_I2C1_RX and  PICOW_JETSON_I2C1_TX . If connection is established, there should be interrupt to call a function and record the incoming data whenever received, and then send outgoing data read from all sensors. If connection is not established, then use substitute value of 0 for motor commands.
-use MAVlink to send messages to jetson and receive them.Map the sensors in struct SensorBuffer to mavlink messages. for e.g. map wheel speeds into 4 motor rpms that might be available. map 2 SONAR distances into DISTANCE_SENSOR type messages. map IMU to HIGHRES_IMU. map IR prximity sensor to PROXIMITY.
 ## Next Steps
-**Pico W**
-- Vehicle control class - arbitrate between commands and safe distance from sensors. Use input from I2C1 coming from Jetson
-- Implement FreeRTOS as per software architecture diagram
-  STATUS: Two-core design works .
-- I2C sensor data piping to Jetson
+**MCU**
+- TODO: Interlocks to ensure MCU stops robot at least 100mm from an obstacle to prevent collision. Also avoids falling down cliff
 
 **Jetson**
-- Integrate I2C communication with Pico W - use as a remote control use hmi_node and pico_node for this.
-- Expand web interface for visualization
-- Implement sensor fusion and navigation logic in ROS2 nodes
+- TODO: Implement sensor fusion and navigation logic in ROS2 nodes
 
-
-## Memory budget
+## Memory budget Notes
 Can your robot run all of this at once?
 Absolutely yes on Jetson Orin Nano 8GB — if you tune SLAM + Realsense + Nav2 costmaps.
 If you leave everything at defaults = Likely OOM at random times.

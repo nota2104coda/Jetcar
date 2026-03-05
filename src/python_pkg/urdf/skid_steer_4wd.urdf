@@ -91,7 +91,7 @@
   </joint>
 
   <!-- SR04 Sonar (frt) -->
-  <link name="sr04_frt">
+  <link name="front_sonar">
     <visual>
       <geometry>
         <box size="0.03 0.07 0.03"/>
@@ -103,7 +103,7 @@
     </visual>
   </link>
   <!-- SR04 Sonar (rear) -->
-  <link name="sr04_rear">
+  <link name="rear_sonar">
     <visual>
       <geometry>
         <box size="0.03 0.07 0.03"/>
@@ -116,13 +116,13 @@
   </link>
   <joint name="joint_sr04_front" type="fixed">
     <parent link="base_link"/>
-    <child link="sr04_frt"/>
-    <origin xyz="0.13 0 0.04"/>
+    <child link="front_sonar"/>
+    <origin xyz="0.13 0 0.04" rpy="0 0 0"/>
   </joint>
   <joint name="joint_sr04_rear" type="fixed">
     <parent link="base_link"/>
-    <child link="sr04_rear"/>
-    <origin xyz="-0.13 0 0.04"/>
+    <child link="rear_sonar"/>
+    <origin xyz="-0.13 0 0.04" rpy="0 0 3.14159"/>
   </joint>
   <!-- Cliff sensors (front/rear) -->
   <link name="cliff_front">
@@ -215,7 +215,7 @@
       <geometry>
         <cylinder length="0.015" radius="0.02"/>
       </geometry>
-      <origin xyz=" 0.0 0.0 0.0" rpy="0 0 -1.5708"/>
+      <origin xyz=" 0.0 0.0 0.0" rpy="0 0 0"/>
       <material name="purple">
         <color rgba="0.6 0.2 0.8 1"/>
       </material>
@@ -224,6 +224,6 @@
   <joint name="joint_ld06" type="fixed">
     <parent link="base_link"/>
     <child link="ld06_lidar"/>
-    <origin xyz="0.02 0.0 0.18" rpy="0 0 1.5708"/>
+    <origin xyz="0.02 0.0 0.18" rpy="0 0 -1.5708"/>
   </joint>
 </robot>
