@@ -303,13 +303,13 @@ class HwMcuNode(Node):
             if self._auto_mode_button:
                 # Auto mode: check if we have a fresh auto command
                 if (now - self._last_auto_received_time) < timeout_duration:
-                target_twist = self._last_auto_twist
-                source = "AUTO"
+                    target_twist = self._last_auto_twist
+                    source = "AUTO"
             else:
                 # Manual mode: check if we have a fresh manual command
                 if (now - self._last_manual_received_time) < timeout_duration:
-                target_twist = self._last_manual_twist
-                source = "MANUAL"
+                    target_twist = self._last_manual_twist
+                    source = "MANUAL"
 
         # If serial is down, try to open (or return)
         if self.serial is None:
@@ -324,7 +324,7 @@ class HwMcuNode(Node):
             message = self._build_velocity_setpoint_message(target_twist)
 
         if message is not None:
-             self._write_mavlink_message(message)
+            self._write_mavlink_message(message)
 
     def _build_actuator_control_message(self, twist: Twist):
         # Twist presents desired speed (m/s and rad/s). 

@@ -281,4 +281,4 @@ Telemetry emit: replace sendTelemetry body to print the TEL,... line once per lo
 Command ingest: adjust process_uart_commands to:
 Read a line
 If it starts with CMD,set, parse four floats
-Else map the verb to the preset torques or enable/disable
+Else map the verb to the preset torques or enable/disable */

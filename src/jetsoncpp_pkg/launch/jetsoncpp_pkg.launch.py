@@ -44,7 +44,7 @@ def generate_launch_description():
         name='hw_mcu_node',
         output='screen',
         parameters=[{
-            'serial_port': '/dev/ttyUSB0', 
+            'serial_port': '/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_02CZJZRS-if00-port0', 
             'serial_baud_rate': 921600,
             'poll_period': 0.01,
             'control_period': 0.05
@@ -73,7 +73,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([
             os.path.join(pkg_jetson_cpp, 'launch', 'ld06.launch.py')
         ]),
-        launch_arguments={'port': '/dev/ttyUSB1', 'lidar_frame': 'ld06_lidar'}.items()
+        launch_arguments={'port': '/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_024TKTOY-if00-port0', 'lidar_frame': 'ld06_lidar'}.items()
     )
 
     return LaunchDescription([

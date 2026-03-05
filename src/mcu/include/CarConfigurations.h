@@ -90,10 +90,11 @@
     #define CAR_HAS_4_DCMOTORS_WAVESHARE	//denotes use of waveshare 4 motor driver with PCA9685
     #define CAR_HAS_LD2450RADAR
     #define CAR_HAS_MPU6050_IMU
+    #define CAR_HAS_I2C
     #define CAR_HAS_LD06_LIDAR
     #define CAR_HAS_4_MOTORENCODERS	//
     #define CAR_HAS_FRT_RR_SONAR // Activate this if your car has one HCSR04 US distance sensors at front and one at rear
-    //#define CAR_HAS_RR_SONAR // Activate this if your car has one HCSR04 US distance sensors at rr
+    #define CAR_HAS_RR_SONAR // Activate this if your car has one HCSR04 US distance sensors at rr
     #define CAR_HAS_FRONT_RR_CLIFF_SENSOR // Activate this if your car has IR cliff sensor fr and rr
     #define NO_RTTTL_FOR_CAR                // Saves up to 3654 bytes
     #define CONFIG_NAME         "4WD rubber wheel + PICOW master + 5S2P NiMH + IR cliff frt and rr + US distance" // BASIC_CONFIG_NAME and CONFIG_NAME is printed by printConfigInfo()

@@ -36,8 +36,9 @@ def generate_launch_description():
         'rgb_camera.color_qos': 'SENSOR_DATA',
         'depth_module.depth_qos': 'SENSOR_DATA',
         'align_depth.enable': 'true',
+        'frames_queue_size': '1', 
         'enable_sync': 'true',
-        'pointcloud.enable': 'true', 
+        'pointcloud.enable': 'false', 
         'decimation_filter.enable': 'true', # Reduces depth resolution by 2x (very fast)
         'spatial_filter.enable': 'true',    # Smooths depth
         'temporal_filter.enable': 'true',   # Stabilizes depth

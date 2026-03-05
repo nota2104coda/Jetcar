@@ -33,14 +33,15 @@ yaay*/
 #include <Adafruit_MPU6050.h>
 #include <Arduino.h>
 #include <MAVLink_ardupilotmega.h>
+#include <Queue.h>
 
 //follow metric system everywhere except for distance/speed/acceleration are in cm. angles in rad, angular velocity in rad/s
 
-#include "/home/jeevan/PicoWCar/src/mcu/include/CarConfigurations.h"
-#include "/home/jeevan/PicoWCar/src/mcu/include/RobotCarPinDefinitionsAndMore.h"
-#include "/home/jeevan/PicoWCar/src/mcu/include/CliffSensor.h"
-#include "/home/jeevan/PicoWCar/src/mcu/include/PCA9685_AWDDriver.h"
-#include "/home/jeevan/PicoWCar/src/mcu/include/stateMachines.h"
+#include "/home/jeevan/Jetcar/src/mcu/include/CarConfigurations.h"
+#include "/home/jeevan/Jetcar/src/mcu/include/RobotCarPinDefinitionsAndMore.h"
+#include "/home/jeevan/Jetcar/src/mcu/include/CliffSensor.h"
+#include "/home/jeevan/Jetcar/src/mcu/include/PCA9685_AWDDriver.h"
+#include "/home/jeevan/Jetcar/src/mcu/include/stateMachines.h"
 
 CliffSensor frontCliff(PIN_FRONT_CLIFF);
 CliffSensor rearCliff(PIN_REAR_CLIFF);
@@ -56,6 +57,13 @@ uint32_t lastSonarRearPoll = 0;
 uint32_t lastMotorCommandTime = 0;
 SystemState systemState = SystemState::INIT;
 bool mpuAvailable = false;
+
+// Gyro Calibration
+float gyroZBias = 0.0f;
+bool isGyroCalibrated = false;
+const int kGyroCalibrationSamples = 100;
+int gyroCalibrationCount = 0;
+float gyroZSum = 0.0f;
 
 // I2C and peripherals - construct statically, initialize in setup()
 TwoWire *picomasteri2c = &Wire;  // or &Wire1 depending on which I2C bus
@@ -125,6 +133,50 @@ static bool popJetsonRxByte(uint8_t &value);
 
 // Forward declaration for telemetry function
 void pushTelemetry(const SensorBuffer &sensors);
+
+/**
+ * Monitors wheel speeds and updates gyroZBias if the robot has been stationary
+ * for 50 consecutive readings (approx 10s at 200ms loop).
+ * It sets the bias to the raw gyro reading captured 50 readings ago using a circular queue.
+ */
+void monitorAndSetGyroBias(float rawGyroZ, uint32_t now) {
+  static constexpr int kGyroWindow = 50;
+  static Queue<float, kGyroWindow> gyroHistory;
+  static int stationaryCount = 0;
+  
+  // Maintain a sliding window of the last 50 raw readings
+  if (gyroHistory.size() == kGyroWindow) {
+    gyroHistory.dequeue();  // drop oldest sample
+  }
+  gyroHistory.enqueue(rawGyroZ);
+
+  // Check if all wheels are effectively stopped (below 2 RPM)
+  bool wheelsStopped = (fabsf(mcuSensors.speedFR) < 2.0f && 
+                        fabsf(mcuSensors.speedFL) < 2.0f && 
+                        fabsf(mcuSensors.speedRR) < 2.0f && 
+                        fabsf(mcuSensors.speedRL) < 2.0f);
+  
+  if (wheelsStopped) {
+    stationaryCount++;
+    if (stationaryCount >= 50) {
+      // Stationary for 50 consecutive readings: update bias to the oldest value
+      // in our 50-sample buffer.
+      if (!gyroHistory.isEmpty()) {
+        gyroZBias = gyroHistory.front();
+        
+        // Reset counter to 0 to allow periodic re-biasing if still stationary
+        stationaryCount = 0;
+        
+        Serial.print("[GYRO] Auto-bias updated from 50-reading history: ");
+        Serial.println(gyroZBias, 5);
+      }
+    }
+  } else {
+    // Robot is moving: reset stationary counter
+    stationaryCount = 0;
+  }
+}
+
 // Unused UART helper block removed - using readJetsonSerial and writeJetsonSerial instead
 // Single-threaded loop bookkeeping
 static uint32_t lastLoopStart = 0;
@@ -209,6 +261,23 @@ void setup() {
     Serial.println("[INIT] MPU6050 ready.");
     mpuAvailable = true;
     systemState = SystemState::RUNNING;
+    // Gyro Calibration
+    int32_t now = millis();
+    sensors_event_t accel = {}, gyro = {}, temp = {};
+    while (!isGyroCalibrated) {
+      delay(10);
+      mpu.getEvent(&accel, &gyro, &temp);
+      gyroZSum += gyro.gyro.z;
+      gyroCalibrationCount++;
+      if (gyroCalibrationCount >= kGyroCalibrationSamples) {
+        gyroZBias = gyroZSum / (float)kGyroCalibrationSamples;
+        isGyroCalibrated = true;
+        Serial.print("[INIT] IMU Calibrated. Gyro Z Bias: ");
+        Serial.println(gyroZBias, 5);
+        gyroCalibrationCount = 0; // reset for potential future calibrations
+        gyroZSum = 0;
+      }  
+    }
   }
   
   Serial.println("[INIT] Configuring Jetson UART telemetry bridge...");
@@ -230,52 +299,26 @@ void loop() {
   readJetsonSerial();
   writeJetsonSerial();
   processJetsonCommandStream();
-
   const uint32_t now = millis();
-  
-  // Rate limiting for the rest of the control loop (Sensors, Motors, Telemetry)
-  if (now - lastLoopStart < kLoopPeriodMs) {
-    // Yield to other RTOS tasks briefly
-    delay(1);
-    return;
-  }
-  lastLoopStart = now;
-
-  // // Poll sonar (rear then front with crosstalk delay)
-  /*constrain(x,a,b) is interesting in that you can pass float, which could be a function pointer. 
-  And this will cause completely incorrect results. This can't be caught by the compiler.
-  Hence docs say never pass a function. Store the value returned by a function and pass to constrain(). 
-  This is where functions need strong typing to avoid incorrect uses. 
-  Other standard arduino functions like fabsf will have the same issue */
-  if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
-    delay(min_sonar_delayMs);
-    int16_t rear = sonarR.ping_cm(); //cm  
-    sonarDistanceRearcm = constrain( rear, kMinSonarRangecm, kMaxSonarRangecm ); //cm
-    lastSonarRearPoll = now;
-  }
-
-  if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
-    delay(min_sonar_delayMs);
-    int16_t front = sonarF.ping_cm(); //cm
-    if (front > 0 && front < kMaxSonarRangecm) {
-      sonarDistanceFrontcm = front;
-    }
-    lastSonarFrontPoll = now;
-  }
-
   // Read IMU and cliffsensor
   sensors_event_t accel = {}, gyro = {}, temp = {};
+  float currentRawGyroZ = 0.0f;
   if (mpuAvailable) {
     // Check if device is still responding on I2C to avoid timeout errors
     picomasteri2c->beginTransmission(MPU6050_I2CADDR_DEFAULT);
     if (picomasteri2c->endTransmission() == 0) {
       mpu.getEvent(&accel, &gyro, &temp);
-    } else {
-      Serial.println("[WARN] MPU6050 lost connection. Disabling IMU.");
-      mpuAvailable = false;
-      systemState = SystemState::DEGRADED;
+      currentRawGyroZ = gyro.gyro.z; // Capture the raw reading
+      // Apply bias and deadzone
+      gyro.gyro.z -= gyroZBias;
     }
+  } 
+  else {
+    Serial.println("[WARN] MPU6050 lost connection. Disabling IMU.");
+    mpuAvailable = false;
+    systemState = SystemState::DEGRADED;
   }
+  
   frontCliff.read(); //bool
   rearCliff.read();  //bool
 
@@ -288,6 +331,9 @@ void loop() {
   mcuSensors.speedRR = motorDriver.getRPM(MOTOR_RR); //RPM
   mcuSensors.speedFL = motorDriver.getRPM(MOTOR_FL); //RPM  
   mcuSensors.speedRL = motorDriver.getRPM(MOTOR_RL); //RPM
+  
+  // Call the monitor function to update bias when stationary
+  monitorAndSetGyroBias(currentRawGyroZ, now);
   
   //temporary override to test I2C
   // mcuSensors.speedFR = 1;
@@ -332,6 +378,40 @@ void loop() {
 
   // Feed watchdog
   // watchdog_update();
+
+  const uint32_t loopNow = millis();
+  
+  // Rate limiting for the rest of the control loop (Sensors, Motors, Telemetry)
+  if (loopNow - lastLoopStart < kLoopPeriodMs) {
+    // Yield to other RTOS tasks briefly
+    delay(1);
+    return;
+  }
+  lastLoopStart = loopNow;
+
+  // // Poll sonar (rear then front with crosstalk delay)
+  /*constrain(x,a,b) is interesting in that you can pass float, which could be a function pointer. 
+  And this will cause completely incorrect results. This can't be caught by the compiler.
+  Hence docs say never pass a function. Store the value returned by a function and pass to constrain(). 
+  This is where functions need strong typing to avoid incorrect uses. 
+  Other standard arduino functions like fabsf will have the same issue */
+  if (loopNow - lastSonarRearPoll >= kSonarPollIntervalMs) {
+    delay(min_sonar_delayMs);
+    int16_t rear = sonarR.ping_cm(); //cm  
+    sonarDistanceRearcm = constrain( rear, kMinSonarRangecm, kMaxSonarRangecm ); //cm
+    lastSonarRearPoll = loopNow;
+  }
+
+  if (loopNow - lastSonarFrontPoll >= kSonarPollIntervalMs) {
+    delay(min_sonar_delayMs);
+    int16_t front = sonarF.ping_cm(); //cm
+    if (front > 0 && front < kMaxSonarRangecm) {
+      sonarDistanceFrontcm = front;
+    }
+    lastSonarFrontPoll = loopNow;
+  }
+
+  
 }
 
 // Telemetry output function

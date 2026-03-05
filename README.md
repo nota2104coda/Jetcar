@@ -1,31 +1,50 @@
-# PicoWCar Project
+# Jetcar Project
 
 ## Overview
-PicoWCar is a 4-wheel robot system using Jetson Orin Nano and Pi Pico W RP2040. It fuses Realsense 435 camera, LD06 lidar and other sensor data for autonomous navigation and object search, controlled via a web interface. Development will use ROS2 Humble and docker containers for easy dependency management and deployment.
+Jetcar is a 4-wheel differential drive robot system using Jetson Orin Nano and an MCU(Pi Pico W RP2040 or ESP32S3-Pico). It fuses Realsense 435 camera, LD06 lidar and other sensor data for autonomous navigation and object search, controlled via a web interface. It uses ROS2 Humble.
 
 ## Use Cases: 
 when the user asks to navigate to the red football, it scans the room by spinning the body, until the object is found. It then navigates to the ball and stops at a safe distance. If the path is below a chair, it should intelligently see the height and go below or around. 
 
 ## Learning Objective
- Learn use of FreeRTOS on Pi Pico, with concurrent processes on both cores. Learn to configure a robot in ROS2 Humble. Learn to apply LLM/VLM for mobile robots.
+Learn use of FreeRTOS or Zephyr on Pi Pico, with concurrent processes on both cores. Learn to configure a robot in ROS2 Humble. Learn to apply LLM/VLM for mobile robots.
 
 ## Hardware Architecture
-- **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to Pico W via UART.
-- **Raspberry Pi Pico W**: Controls motors, reads sensors (radar, lidar, IMU,wheel encoders, SPI display), communicates with Arduino Nano and Jetson Orin Nano
-- **Arduino Nano**: Reads ultrasonic and IR cliff sensors, communicates with Pico W
-  **Sensors**: The sensors it has are : front - realsense D435 depth camera via USB, LD2450 human tracking lidar. 8x8 lidar VL53L5CX. Rear: HC-SR04 sonar. On body:  MPU6050 acceleration sensor. The sensors are connected to an arduino nano and a raspberry pi pico W . The arduino/pico report back to a jetson orin nano over USB or another suitable bus. For simplicity, I havent mentioned which devices connect to arduino or pico. That's based on simplifying wiring. The pico drives the 4 wheel motors. The jetson orin nano with jetpack 6.2 runs ROS2 nodes to read the data from the arduinos and cameras and pipe back the commands for motion. It also runs a local web server to collect commands from the user. It will also have a rplidar 2D lidar at top.
-  **Actuators**: 4x 370 type DC brushed motors with encoders. gear ratio 46, pulses per rev 11, hall encoder with forward and reverse sensor pickups.
+- **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to MCU via USB-UART, reads Realsense D435 camera, reads LD06 Lidar via USB-UART. USB-UART is via CP2104 adapters. Comm between MCU and Jetson uses mavlink protocol.
+- **MCU = Raspberry Pi Pico W or ESP32S3-Pico**: Controls motors, reads cliff sensors, front and rear sonar, IMU 6050 and wheel encoders.It can override motor commands to prevent collision and it will stop motors in case Jetson commands are timed out.
+**Sensors**: The sensors it has are : front - realsense D435 depth camera via USB, LD2450 human tracking lidar. Front and Rear: HC-SR04 sonar. On body:  MPU6050 acceleration sensor and LD06 lidar. 
+**Actuators**: 4x 370 type DC brushed motors with encoders. gear ratio 46, pulses per rev 11, hall encoder with forward and reverse sensor pickups.
 
 ## Quick Start
+0. **Download only the script , edit it and run**
+This will clone the repo, install dependencies optionally and create the venv. 
+See script ...tbd...temp text below.
+
 1. **Clone the repo**
-2. **Develop ROS2 nodes for Rpi5/Jetson in** `src/python_pkg/`
-3. **Develop ROS nodes for PC in** `src/pc_pkg`
-4. **Develop Pi Pico W code in** `src/ardpicoW/pico-PlatformIO/`
-5. **Define custom messages in** `src/robot_msgs/msg/` and build with `colcon`
-6. **Access web interface at** `http://localhost:8080`
-7. **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
-8. **Define robot urdf** in `src/python_pkg/urdf`
-9. **Access foxglove visualisation** `ws://192.168.50.176:8765`
+USERNAME="jeevan" # CHANGE THIS to your Pi's username
+EMAIL="jeevanghadge@gmail.com" # CHANGE THIS
+GIT_USER="nota2104coda" # CHANGE THIS
+REPO_URL="git@github.com:nota2104coda/Jetcar.git"
+REPO_DIR="/home/$USERNAME/Jetcar"
+git clone --recurse-submodules $REPO_URL $REPO_DIR
+
+2. **create .venv and install local python dependencies**
+cd $REPO_DIR
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r jetcar-requirements.txt
+
+3. **Develop ROS2 python nodes for Rpi5/Jetson in** `src/python_pkg/`
+  **Develop ROS2 C++ nodes for Jetson in** `src/jetsoncpp_pkg/`
+4. **Develop ROS nodes for PC in** `src/pc_pkg`
+5. **Develop Pi Pico W code in** `src/mcu/pico-PlatformIO/`
+**Develop ESP32S3-Pico code in** `src/mcu/pico-PlatformIO/`
+**Common microcontroller include files** `src/mcu/include/`
+6. **Define custom ROS messages in** `src/robot_msgs/msg/` and build with `colcon build`
+7. **Access foxglove visualisation** `ws://192.168.50.177:8765` or your chosen IP address. configure this in the foxglove node
+8. **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
+9. **Define robot urdf** in `src/python_pkg/urdf`
 
 ## Diagrams
 See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts.

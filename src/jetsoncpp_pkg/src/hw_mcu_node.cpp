@@ -35,7 +35,8 @@ public:
         RCLCPP_INFO(this->get_logger(), "Hardware MCU node starting (USB serial + MAVLink).");
 
         // Parameters
-        this->declare_parameter("serial_port", "/dev/ttyUSB0");
+        // this->declare_parameter("serial_port", "/dev/ttyUSB0");
+        this->declare_parameter("serial_port", "/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_02CZJZRS-if00-port0");
         this->declare_parameter("serial_baud_rate", 921600);
         this->declare_parameter("serial_timeout", 0.01);
         this->declare_parameter("serial_chunk_size", 256); // processed in loop
@@ -47,7 +48,7 @@ public:
         this->declare_parameter("gear_ratio", 46.0);
         this->declare_parameter("odom_frame_id", "odom");
         this->declare_parameter("base_frame_id", "base_link");
-        this->declare_parameter("imu_frame_id", "imu_link");
+        this->declare_parameter("imu_frame_id", "base_link");
         this->declare_parameter("command_topic", "cmd_vel");
         this->declare_parameter("auto_command_topic", "cmd_vel_auto");
         this->declare_parameter("command_mode", "set_actuator_control_target");
@@ -312,6 +313,9 @@ private:
                      while (theta_ > M_PI) theta_ -= 2*M_PI;
                      while (theta_ < -M_PI) theta_ += 2*M_PI;
                 }
+                RCLCPP_INFO_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000,  // once per second
+                    "theta = %.3f rad", theta_);
                 last_imu_time = now;
 
                 auto imu_msg = sensor_msgs::msg::Imu();

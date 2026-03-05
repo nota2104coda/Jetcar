@@ -10,7 +10,8 @@ def generate_launch_description():
     ldlidar_pkg = FindPackageShare('ldlidar_ros2')
     
     # Arguments
-    port = LaunchConfiguration('port', default='/dev/ttyTHS1')
+    portname = '/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_024TKTOY-if00-port0'
+    port = LaunchConfiguration('port', default=portname)
     lidar_frame = LaunchConfiguration('lidar_frame', default='ld06_lidar')
     topic_name = LaunchConfiguration('topic_name', default='scan')
 
@@ -43,16 +44,6 @@ def generate_launch_description():
         respawn_delay=2.0,
     )
     
-    # Static TF: base_link -> ld06_lidar
-    # Note: LD06 usually needs a slight translation/rotation depending on mounting.
-    # Arguments: x y z roll pitch yaw frame_id child_frame_id
-    static_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='base_link_to_ld06',
-        arguments=['0','0','0.18','0','0','0', 'base_link', lidar_frame]
-    )
-
     # PWM Control Node for Motor (GPIO12)
     lidar_pwm_node = Node(
         package='jetsoncpp_pkg',
@@ -62,11 +53,10 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        DeclareLaunchArgument('port', default_value='/dev/ttyTHS1', description='Serial port for LIDAR'),
+        DeclareLaunchArgument('port', default_value=portname, description='Serial port for LIDAR'),
         DeclareLaunchArgument('lidar_frame', default_value='ld06_lidar', description='Frame ID for LIDAR'),
         DeclareLaunchArgument('topic_name', default_value='scan', description='Topic name for laser scan'),
         lidar_pwm_node,
-        ld06_node,
-        static_tf
+        ld06_node
     ])
 

@@ -30,6 +30,7 @@ def generate_launch_description():
             # Set resolution and FPS (width,height,fps)
             'rgb_camera.color_profile': '640,480,15',
             'depth_module.depth_profile': '640,480,15',
+            'frames_queue_size': '2', # Reduce queue size to minimize latency
             # Enable the decimation filter so we can modify it
             'filters': 'decimation',
         }.items()
