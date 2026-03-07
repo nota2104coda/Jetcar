@@ -81,11 +81,11 @@ fi
 echo ""
 echo "Step 4: Build ROS2 Package (Optional)"
 echo "─────────────────────────────"
-read -p "Build pi5_pkg with updated smolvla_node? (y/n) " -n 1 -r
+read -p "Build python_pkg with updated smolvla_node? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     cd ..
-    colcon build --packages-select pi5_pkg
+    colcon build --packages-select python_pkg
     source install/setup.bash
     echo "✅ Package built successfully"
 fi
@@ -99,7 +99,7 @@ echo "Next Steps:"
 echo "───────────"
 echo ""
 echo "1. Test ROS2 node (if built):"
-echo "   ros2 run pi5_pkg smolvla_node"
+echo "   ros2 run python_pkg smolvla_node"
 echo ""
 echo "2. Monitor Ollama container:"
 echo "   docker logs -f picowcar-ollama-service"
