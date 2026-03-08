@@ -1,0 +1,17 @@
+https://cdn-shop.adafruit.com/datasheets/create_2_Open_Interface_Spec.pdf
+
+https://www.instructables.com/Inspector-Roomba/
+
+https://anrg.usc.edu/ee579/spring2016/Roomba/iRobot_Roomba_600_Open_Interface_Spec.pdf
+
+Best instruction is 
+https://www.instructables.com/Roomblock-a-Platform-for-Learning-ROS-Navigation-W/
+
+Create3 docs 
+https://iroboteducation.github.io/create3_docs/api/ros2/
+
+ROS Node for Create2 , 10 years ago
+https://github.com/CentroEPiaggio/irobotcreate2ros
+
+https://hackaday.io/project/178565/logs
+
