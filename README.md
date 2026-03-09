@@ -55,12 +55,12 @@ ros2 launch jetsoncpp_pkg isaac_extension.launch.py
 ```
 
 ## Diagrams
-See `docs/designs/wiring/wiring-withANano.fzz` for wiring layouts. TODO: Update circuit considering latest situation.
-See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format). TODO: Needs update considering Isaac.
+See `docs/designs/wiring/wiring-withEsp32.fzz` for wiring layouts. 
+See `docs/designs/architecture.md` for system and software architecture diagrams (Mermaid format). TODO: Needs update for ROS2 node diagram considering Isaac
 
 ## Next Steps
 **MCU**
-- TODO: Interlocks to ensure MCU stops robot at least 100mm from an obstacle to prevent collision. Also avoids falling down cliff
+- TODO: Interlocks to ensure MCU stops robot at least 100mm from an obstacle to prevent collision. Also avoids falling down cliff.
 
 **Jetson**
 - TODO: Implement sensor fusion and navigation logic in ROS2 nodes
