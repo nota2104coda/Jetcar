@@ -13,7 +13,10 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),        
         (os.path.join('share', package_name, 'launch'), glob('launch/*launch.[pxy][yma]*')),
-        (os.path.join('share', package_name, 'urdf'), glob('urdf/**/*', recursive=True)),
+        (os.path.join('share', package_name, 'urdf'), [
+            path for path in glob('urdf/**/*', recursive=True)
+            if os.path.isfile(path)
+        ]),
     ],
     install_requires=['setuptools', 'pyserial','smbus2'],
     zip_safe=True,

@@ -59,6 +59,7 @@ public:
         this->declare_parameter("command_source_component", 191);
         this->declare_parameter("manual_linear_max", 1.0);
         this->declare_parameter("manual_yaw_rate_max", 1.0);
+        this->declare_parameter("enable_tf_broadcast", true);
 
         // Get Parameters
         serial_port_ = this->get_parameter("serial_port").as_string();
@@ -85,13 +86,14 @@ public:
 
         manual_linear_max_ = this->get_parameter("manual_linear_max").as_double();
         manual_yaw_rate_max_ = this->get_parameter("manual_yaw_rate_max").as_double();
+        enable_tf_broadcast_ = this->get_parameter("enable_tf_broadcast").as_bool();
 
         // Derived calculations
         double rpm_to_rad_per_sec = (2.0 * M_PI) / 60.0;
         mps_per_rpm_ = (rpm_to_rad_per_sec * wheel_radius_) / std::max(gear_ratio_, 1e-3);
 
         // Publishers
-        odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
+        odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/mcu/odom", 10);
         imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/mcu/imu", 10);
         esc_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/esc_telemetry", 10);
         
@@ -158,6 +160,7 @@ private:
     double manual_linear_max_;
     double manual_yaw_rate_max_;
     double mps_per_rpm_;
+    bool enable_tf_broadcast_;
 
     // State
     bool stop_button_state_ = true;
@@ -325,7 +328,20 @@ private:
                 imu_msg.linear_acceleration.y = imu_data.yacc;
                 imu_msg.linear_acceleration.z = imu_data.zacc;
                 imu_msg.angular_velocity.z = imu_data.zgyro;
-                
+
+                // Covariance
+                for (int i = 0; i < 9; ++i) {
+                    imu_msg.orientation_covariance[i] = 0.0;
+                    imu_msg.angular_velocity_covariance[i] = 0.0;
+                    imu_msg.linear_acceleration_covariance[i] = 0.0;
+                }
+                imu_msg.angular_velocity_covariance[0] = 0.01;
+                imu_msg.angular_velocity_covariance[4] = 0.01;
+                imu_msg.angular_velocity_covariance[8] = 0.01;
+                imu_msg.linear_acceleration_covariance[0] = 0.1;
+                imu_msg.linear_acceleration_covariance[4] = 0.1;
+                imu_msg.linear_acceleration_covariance[8] = 0.1;
+
                 // Fill orientation if we trust integration, or leave empty if we only provide raw data
                 // For now, let's provide orientation based on theta
                 tf2::Quaternion q;
@@ -334,8 +350,10 @@ private:
                 imu_msg.orientation.y = q.y();
                 imu_msg.orientation.z = q.z();
                 imu_msg.orientation.w = q.w();
-                
+                imu_msg.orientation_covariance[8] = 0.05; // Z rotation covariance
+
                 imu_pub_->publish(imu_msg);
+
                 break;
             }
             case MAVLINK_MSG_ID_DISTANCE_SENSOR: {
@@ -415,20 +433,34 @@ private:
                 odom.pose.pose.orientation.w = q.w();
                 
                 odom.twist.twist.linear.x = linear_vel;
-                // odom.twist.twist.angular.z = ...; // update from IMU integration in imu callback
                 
+                // Covariance
+                for (int i = 0; i < 36; ++i) {
+                    odom.pose.covariance[i] = 0.0;
+                    odom.twist.covariance[i] = 0.0;
+                }
+                // Pose: x, y, z, roll, pitch, yaw
+                odom.pose.covariance[0] = 0.1;  // x
+                odom.pose.covariance[7] = 0.1;  // y
+                odom.pose.covariance[35] = 0.2; // yaw
+                // Twist: vx, vy, vz, vr, vp, vy
+                odom.twist.covariance[0] = 0.05; // vx
+                odom.twist.covariance[35] = 0.1; // vyaw
+
                 odom_pub_->publish(odom);
 
                 // TF
-                geometry_msgs::msg::TransformStamped t;
-                t.header.stamp = current_time;
-                t.header.frame_id = odom_frame_id_;
-                t.child_frame_id = base_frame_id_;
-                t.transform.translation.x = x_;
-                t.transform.translation.y = y_;
-                t.transform.translation.z = 0.0;
-                t.transform.rotation = odom.pose.pose.orientation;
-                tf_broadcaster_->sendTransform(t);
+                if (enable_tf_broadcast_) {
+                    geometry_msgs::msg::TransformStamped t;
+                    t.header.stamp = current_time;
+                    t.header.frame_id = odom_frame_id_;
+                    t.child_frame_id = base_frame_id_;
+                    t.transform.translation.x = x_;
+                    t.transform.translation.y = y_;
+                    t.transform.translation.z = 0.0;
+                    t.transform.rotation = odom.pose.pose.orientation;
+                    tf_broadcaster_->sendTransform(t);
+                }
                 
                 break;
             }

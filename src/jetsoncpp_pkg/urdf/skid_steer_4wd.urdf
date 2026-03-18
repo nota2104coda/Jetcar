@@ -173,7 +173,53 @@
     <child link="camera_binoc"/>
     <origin xyz="0.06 -0.01 0.13"/>
   </joint>
+  <!-- RealSense logical frames for TF compatibility -->
+  <link name="camera_link"/>
+  <joint name="joint_camera_link" type="fixed">
+    <parent link="camera_binoc"/>
+    <child link="camera_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
 
+  <link name="camera_depth_frame"/>
+  <joint name="joint_camera_depth_frame" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_depth_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_depth_optical_frame"/>
+  <joint name="joint_camera_depth_optical_frame" type="fixed">
+    <parent link="camera_depth_frame"/>
+    <child link="camera_depth_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+
+  <link name="camera_infra1_frame"/>
+  <joint name="joint_camera_infra1_frame" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_infra1_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_infra1_optical_frame"/>
+  <joint name="joint_camera_infra1_optical_frame" type="fixed">
+    <parent link="camera_infra1_frame"/>
+    <child link="camera_infra1_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+
+  <link name="camera_infra2_frame"/>
+  <joint name="joint_camera_infra2_frame" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_infra2_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_infra2_optical_frame"/>
+  <joint name="joint_camera_infra2_optical_frame" type="fixed">
+    <parent link="camera_infra2_frame"/>
+    <child link="camera_infra2_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+  
   <!-- VL53L5X (front ToF array) -->
   <link name="vl53l5x_front">
     <visual>

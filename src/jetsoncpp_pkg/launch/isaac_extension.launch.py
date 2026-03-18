@@ -40,9 +40,9 @@ def generate_launch_description():
                 name='camera',
                 namespace='camera',
                 parameters=[{
-                    'rgb_camera.color_profile': '640x480x15', 
-                    'depth_module.depth_profile': '424x240x15',
-                    'depth_module.infra_profile': '424x240x15',
+                    'rgb_camera.color_profile': '848x480x30', 
+                    'depth_module.depth_profile': '424x240x30',
+                    'depth_module.infra_profile': '424x240x30',
                     'rgb_camera.color_qos': 'SENSOR_DATA',
                     'depth_module.depth_qos': 'SENSOR_DATA',
                     'align_depth.enable': False, # Processing heavy, disable unless strict RGB-D alignment needed
@@ -63,7 +63,7 @@ def generate_launch_description():
                     #can keep Emitter in auto, but disabled for now. if True, then can cause noisier depth readings in well lit rooms.
                     'emitter_enabled': False, 
                 }],
-                extra_arguments=[{'use_intra_process_comms': True}]
+                extra_arguments=[{'use_intra_process_comms': False}]
             ),
             
             # B. Isaac ROS Visual SLAM Node
@@ -79,6 +79,9 @@ def generate_launch_description():
                     'base_frame': 'base_link',
                     'odom_frame': 'odom',
                     'map_frame': 'map',
+                    'publish_odom_to_base_tf': True,
+                    'publish_map_to_odom_tf': False, # Let slam_toolbox handle map->odom
+                    'invert_odom_to_base_tf': False,
                 }],
                 remappings=[
                     ('visual_slam/image_0', '/camera/camera/infra1/image_rect_raw'),
@@ -87,7 +90,7 @@ def generate_launch_description():
                     ('visual_slam/camera_info_1', '/camera/camera/infra2/camera_info'),
                     ('visual_slam/imu', '/mcu/imu'), 
                 ],
-                extra_arguments=[{'use_intra_process_comms': True}]
+                extra_arguments=[{'use_intra_process_comms': False}]
             ),
 
             # C. Isaac ROS Resize Node
@@ -97,7 +100,7 @@ def generate_launch_description():
                 name='isaac_ros_resize',
                 namespace='camera',
                 parameters=[{
-                    'output_width': 320,
+                    'output_width': 424,
                     'output_height': 240,
                     'num_blocks': 40,# Block tuning for performance
                 }],
@@ -107,8 +110,27 @@ def generate_launch_description():
                     ('resize/image', 'camera/color/image_resized'),
                     ('resize/camera_info', 'camera/color/camera_info_resized'),
                 ],
-                extra_arguments=[{'use_intra_process_comms': True}]
+                extra_arguments=[{'use_intra_process_comms': False}]
             ),
+
+            slam_toolbox_node = Node(
+                package='slam_toolbox',
+                executable='async_slam_toolbox_node',
+                name='slam_toolbox',
+                output='screen',
+                parameters=[{
+                    'use_sim_time': False,
+                    'odom_frame': 'odom',
+                    'base_frame': 'base_link',
+                    'map_frame': 'map',
+                    'scan_topic': '/scan',
+                    'mode': 'mapping', # or 'localization'
+                    # Tuning for Jetson performance
+                    'resolution': 0.05,
+                    'max_laser_range': 12.0,
+                }]
+            )
+
         ]
     )
 

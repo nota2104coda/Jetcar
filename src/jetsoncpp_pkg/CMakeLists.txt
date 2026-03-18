@@ -60,7 +60,7 @@ install(TARGETS hmi_node adaptive_resolution_node hw_mcu_node
 install(PROGRAMS scripts/lidar_pwm.py
   DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch urdf
+install(DIRECTORY launch urdf config
   DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
