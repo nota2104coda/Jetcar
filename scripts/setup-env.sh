@@ -98,8 +98,10 @@ sudo apt install -y \
    ros-$ROS2_DISTRO-slam-toolbox \
    ros-$ROS2_DISTRO-image-transport \
    ros-$ROS2_DISTRO-image-transport-plugins \
-   ros-$ROS2_DISTRO-compressed-image-transport
+   ros-$ROS2_DISTRO-compressed-image-transport \
+   ros-$ROS2_DISTRO-isaac-ros-nvblox
 
+ros2 pkg prefix isaac_ros_nvblox && ros2 pkg prefix isaac_ros_visual_slam
 # Automatically source ROS 2 upon every new terminal login
 echo "source /opt/ros/$ROS2_DISTRO/setup.bash" >> ~/.bashrc
 

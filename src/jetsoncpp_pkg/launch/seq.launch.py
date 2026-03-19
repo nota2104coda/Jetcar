@@ -22,7 +22,7 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description_content}]
     )
 
-    # 1. Isaac ROS Container (Starting with ONLY Realsense)
+    # 1. Isaac ROS Container
     container = ComposableNodeContainer(
         name='isaac_ros_container',
         namespace='',
@@ -30,7 +30,7 @@ def generate_launch_description():
         executable='component_container_mt',
         output='screen',
         composable_node_descriptions=[
-            # A. RealSense Camera Node (Starts immediately)
+            # A. RealSense Camera Node
             ComposableNode(
                 package='realsense2_camera',
                 plugin='realsense2_camera::RealSenseNodeFactory',
@@ -54,8 +54,8 @@ def generate_launch_description():
         ]
     )
 
-    # 2. Delayed Load: Isaac ROS Visual SLAM
-    # We load this node into the existing container after a 5-second delay
+    # 2. Sequential Loading Actions
+    # 2.1 Visual SLAM (Loaded after 5s)
     load_vslam = LoadComposableNodes(
         target_container='isaac_ros_container',
         composable_node_descriptions=[
@@ -86,20 +86,88 @@ def generate_launch_description():
         ]
     )
 
+    # 2.2 Image Format Converter (BGR8 -> RGB8 for nvblox)
+    load_converter = LoadComposableNodes(
+        target_container='isaac_ros_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                name='image_format_converter_node',
+                package='isaac_ros_image_proc',
+                plugin='nvidia::isaac_ros::image_proc::ImageFormatConverterNode',
+                parameters=[{
+                    'encoding_desired': 'rgb8',
+                }],
+                remappings=[
+                    ('image', '/camera/camera/color/image_rgb'), # Output topic
+                    ('image_raw', '/camera/camera/color/image_raw'), # Input topic
+                ]
+            ),
+        ]
+    )
+
+    # 2.3 nvblox (Loaded after 8s - depends on SLAM for odometry and Converter for RGB8)
+    load_nvblox = LoadComposableNodes(
+        target_container='isaac_ros_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                name='nvblox_node',
+                package='nvblox_ros',
+                plugin='nvblox::NvbloxNode',
+                parameters=[{
+                    'global_frame': 'odom',
+                    'voxel_size': 0.05,
+                    'use_static_occupancy_layer': True,
+                    'use_color': True,
+                    'use_depth': True,
+                    'compute_mesh': True,
+                    'mesh_update_period_ms': 200,
+                    'publish_tsdf_marker': True,
+                    'tsdf_marker_update_period_ms': 200,
+                    'publish_color_layer_marker': True,
+                    'color_layer_marker_update_period_ms': 200,
+                    'publish_esdf_distance_slice': True,
+                    'publish_static_map': True,
+                }],
+                remappings=[
+                    ('/camera_0/depth/image', '/camera/camera/depth/image_rect_raw'),
+                    ('/camera_0/depth/camera_info', '/camera/camera/depth/camera_info'),
+                    ('/camera_0/color/image', '/camera/camera/color/image_rgb'),
+                    ('/camera_0/color/camera_info', '/camera/camera/color/camera_info'),
+                    ('pose', '/visual_slam/tracking/vo_pose'),
+                ]
+            ),
+        ]
+    )
+
     delayed_vslam = TimerAction(
         period=5.0,
         actions=[
-            LogInfo(msg='[Sequential Launch] 5 seconds elapsed. Loading Visual SLAM...'),
+            LogInfo(msg='[Sequential Launch] Loading Visual SLAM...'),
             load_vslam
         ]
     )
 
-    # 3. LD06 Lidar Node
+    delayed_converter = TimerAction(
+        period=6.0,
+        actions=[
+            LogInfo(msg='[Sequential Launch] Loading Image Format Converter...'),
+            load_converter
+        ]
+    )
+
+    delayed_nvblox = TimerAction(
+        period=8.0,
+        actions=[
+            LogInfo(msg='[Sequential Launch] Loading nvblox 3D reconstruction...'),
+            load_nvblox
+        ]
+    )
+
+    # 3. Support Nodes
     ld06_node = Node(
         package='ldlidar_ros2',
         executable='ldlidar_ros2_node',
         name='ld06_lidar',
-        output='screen',
         parameters=[
             {'product_name': 'LDLiDAR_LD06'},
             {'laser_scan_topic_name': 'scan'},
@@ -119,26 +187,24 @@ def generate_launch_description():
         name='lidar_pwm_control'
     )
 
-    # 4. Hardware MCU Node
     hw_mcu_node = Node(
         package='jetsoncpp_pkg',
         executable='hw_mcu_node',
         name='hw_mcu_node',
-        output='screen',
         parameters=[{
             'serial_port': '/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_02CZJZRS-if00-port0', 
-            'serial_baud_rate': 921600,
-            'enable_tf_broadcast': False
+            'serial_baud_rate': 1000000,
+            'enable_tf_broadcast': False,
+            'poll_period': 0.005,    # 200Hz for SLAM
+            'control_period': 0.02,  # 50Hz control
         }]
     )
 
-    # 5. EKF and SLAM Toolbox (Could also be delayed if needed)
     ekf_config_path = os.path.join(pkg_jetson_cpp, 'config', 'ekf.yaml')
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
         name='ekf_filter_node',
-        output='screen',
         parameters=[ekf_config_path]
     )
 
@@ -146,7 +212,6 @@ def generate_launch_description():
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
         name='slam_toolbox',
-        output='screen',
         parameters=[{
             'use_sim_time': False,
             'odom_frame': 'odom',
@@ -154,17 +219,13 @@ def generate_launch_description():
             'map_frame': 'map',
             'scan_topic': '/scan',
             'mode': 'mapping',
-            'resolution': 0.05,
-            'max_laser_range': 12.0,
         }]
     )
 
-    # 6. HMI Node and Foxglove Bridge
     hmi_node = Node(
         package='jetsoncpp_pkg',
         executable='hmi_node_nobridge',
-        name='hmi_node',
-        output='screen'
+        name='hmi_node'
     )
 
     foxglove_bridge_node = Node(
@@ -177,6 +238,8 @@ def generate_launch_description():
         robot_state_publisher_node,
         container,
         delayed_vslam,
+        delayed_converter,
+        delayed_nvblox,
         ld06_node,
         lidar_pwm_node,
         hw_mcu_node,
