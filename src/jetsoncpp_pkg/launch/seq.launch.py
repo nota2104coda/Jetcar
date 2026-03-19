@@ -1,9 +1,9 @@
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction, LogInfo
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
-from launch_ros.actions import ComposableNodeContainer, Node
+from launch_ros.actions import ComposableNodeContainer, Node, LoadComposableNodes
 from launch_ros.descriptions import ComposableNode
 from ament_index_python.packages import get_package_share_directory
 
@@ -22,8 +22,7 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description_content}]
     )
 
-    # 1. Isaac ROS Container (Realsense + VSLAM)
-    # Configure VSLAM to publish odometry but NOT map->odom TF (let SLAM toolbox do that)
+    # 1. Isaac ROS Container (Starting with ONLY Realsense)
     container = ComposableNodeContainer(
         name='isaac_ros_container',
         namespace='',
@@ -31,16 +30,16 @@ def generate_launch_description():
         executable='component_container_mt',
         output='screen',
         composable_node_descriptions=[
-            # A. RealSense Camera Node
+            # A. RealSense Camera Node (Starts immediately)
             ComposableNode(
                 package='realsense2_camera',
                 plugin='realsense2_camera::RealSenseNodeFactory',
                 name='camera',
                 namespace='camera',
                 parameters=[{
-                    'rgb_camera.color_profile': '424x240x15', 
-                    'depth_module.depth_profile': '424x240x15',
-                    'depth_module.infra_profile': '424x240x15',
+                    'rgb_camera.color_profile': '424x240x30', 
+                    'depth_module.depth_profile': '424x240x30',
+                    'depth_module.infra_profile': '424x240x30',
                     'rgb_camera.color_format': 'BGR8',
                     'rgb_camera.color_qos': 'SENSOR_DATA',
                     'depth_module.depth_qos': 'SENSOR_DATA',
@@ -48,12 +47,18 @@ def generate_launch_description():
                     'enable_infra2': True, 
                     'enable_depth': True, 
                     'enable_color': True,
-                    'enable_sync': False, # Disable sync to avoid corrupted meta-frames
+                    'enable_sync': False,
                     'frames_queue_size': 2,
                 }]
             ),
-            
-            # B. Isaac ROS Visual SLAM Node
+        ]
+    )
+
+    # 2. Delayed Load: Isaac ROS Visual SLAM
+    # We load this node into the existing container after a 5-second delay
+    load_vslam = LoadComposableNodes(
+        target_container='isaac_ros_container',
+        composable_node_descriptions=[
             ComposableNode(
                 name='visual_slam_node',
                 package='isaac_ros_visual_slam',
@@ -64,11 +69,11 @@ def generate_launch_description():
                     'base_frame': 'base_link',
                     'odom_frame': 'odom',
                     'map_frame': 'map',
-                    'publish_odom_to_base_tf': False, # EKF will publish this
-                    'publish_map_to_odom_tf': False,  # SLAM Toolbox will publish this
+                    'publish_odom_to_base_tf': False,
+                    'publish_map_to_odom_tf': False,
                     'max_delta_frame_time_ms': 100.0,
-                    'input_imu_frame_rate': 200.0, # Match MCU IMU if possible
                     'min_delta_frame_time_ms': 0.0,
+                    'input_imu_frame_rate': 200.0,
                 }],
                 remappings=[
                     ('visual_slam/image_0', '/camera/camera/infra1/image_rect_raw'),
@@ -81,7 +86,15 @@ def generate_launch_description():
         ]
     )
 
-    # 2. LD06 Lidar Node
+    delayed_vslam = TimerAction(
+        period=5.0,
+        actions=[
+            LogInfo(msg='[Sequential Launch] 5 seconds elapsed. Loading Visual SLAM...'),
+            load_vslam
+        ]
+    )
+
+    # 3. LD06 Lidar Node
     ld06_node = Node(
         package='ldlidar_ros2',
         executable='ldlidar_ros2_node',
@@ -100,14 +113,13 @@ def generate_launch_description():
         ]
     )
     
-    # Lidar PWM
     lidar_pwm_node = Node(
         package='jetsoncpp_pkg',
         executable='lidar_pwm.py',
         name='lidar_pwm_control'
     )
 
-    # 3. Hardware MCU Node
+    # 4. Hardware MCU Node
     hw_mcu_node = Node(
         package='jetsoncpp_pkg',
         executable='hw_mcu_node',
@@ -116,11 +128,11 @@ def generate_launch_description():
         parameters=[{
             'serial_port': '/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_02CZJZRS-if00-port0', 
             'serial_baud_rate': 921600,
-            'enable_tf_broadcast': False # Let EKF handle TF
+            'enable_tf_broadcast': False
         }]
     )
 
-    # 4. Robot Localization (EKF)
+    # 5. EKF and SLAM Toolbox (Could also be delayed if needed)
     ekf_config_path = os.path.join(pkg_jetson_cpp, 'config', 'ekf.yaml')
     ekf_node = Node(
         package='robot_localization',
@@ -130,7 +142,6 @@ def generate_launch_description():
         parameters=[ekf_config_path]
     )
 
-    # 5. SLAM Toolbox
     slam_toolbox_node = Node(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
@@ -145,10 +156,6 @@ def generate_launch_description():
             'mode': 'mapping',
             'resolution': 0.05,
             'max_laser_range': 12.0,
-            'minimum_time_interval': 0.1,
-            'transform_timeout': 0.2,
-            'tf_buffer_duration': 30.0,
-            'stack_size_to_use': 40000000,
         }]
     )
 
@@ -169,6 +176,7 @@ def generate_launch_description():
     return LaunchDescription([
         robot_state_publisher_node,
         container,
+        delayed_vslam,
         ld06_node,
         lidar_pwm_node,
         hw_mcu_node,

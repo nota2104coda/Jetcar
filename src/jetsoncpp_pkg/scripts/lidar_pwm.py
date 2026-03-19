@@ -1,5 +1,8 @@
-#!/usr/bin/env python3
-import RPi.GPIO as GPIO
+#!/usr/bin/python3
+try:
+    import Jetson.GPIO as GPIO
+except ImportError:
+    import RPi.GPIO as GPIO
 import time
 import signal
 import sys

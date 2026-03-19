@@ -112,26 +112,25 @@ def generate_launch_description():
                 ],
                 extra_arguments=[{'use_intra_process_comms': False}]
             ),
-
-            slam_toolbox_node = Node(
-                package='slam_toolbox',
-                executable='async_slam_toolbox_node',
-                name='slam_toolbox',
-                output='screen',
-                parameters=[{
-                    'use_sim_time': False,
-                    'odom_frame': 'odom',
-                    'base_frame': 'base_link',
-                    'map_frame': 'map',
-                    'scan_topic': '/scan',
-                    'mode': 'mapping', # or 'localization'
-                    # Tuning for Jetson performance
-                    'resolution': 0.05,
-                    'max_laser_range': 12.0,
-                }]
-            )
-
         ]
+    )
+
+    slam_toolbox_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        output='screen',
+        parameters=[{
+            'use_sim_time': False,
+            'odom_frame': 'odom',
+            'base_frame': 'base_link',
+            'map_frame': 'map',
+            'scan_topic': '/scan',
+            'mode': 'mapping', # or 'localization'
+            # Tuning for Jetson performance
+            'resolution': 0.05,
+            'max_laser_range': 12.0,
+        }]
     )
 
     # 2. LD06 Lidar Node
@@ -184,6 +183,7 @@ def generate_launch_description():
     return LaunchDescription([
         robot_state_publisher_node,
         container,
+        slam_toolbox_node,
         ld06_node,
         hmi_node,
         hw_mcu_node

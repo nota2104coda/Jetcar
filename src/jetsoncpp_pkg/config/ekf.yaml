@@ -1,50 +1,41 @@
 ekf_filter_node:
   ros__parameters:
-    frequency: 30.0
+    frequency: 20.0
     sensor_timeout: 0.1
     two_d_mode: true
     publish_tf: true
 
-    map_frame: map              # Defaults to "map" if unspecified
-    odom_frame: odom            # Defaults to "odom" if unspecified
-    base_link_frame: base_link  # Defaults to "base_link" if unspecified
-    world_frame: odom           # Defaults to the value of odom_frame if unspecified
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
 
-    # Wheel Odometry from MCU
+    # Wheel Odometry (Speed only)
     odom0: /mcu/odom
     odom0_config: [false, false, false,
                   false, false, false,
                   true,  false, false,
-                  false, false, true,
+                  false, false, false,
                   false, false, false]
-    odom0_queue_size: 10
-    odom0_nodelay: true
-    odom0_differential: false
-    odom0_relative: false
+    odom0_queue_size: 2
 
-    # VSLAM Odometry from Isaac ROS
+    # VSLAM Odometry (Pose + Velocity)
     odom1: /visual_slam/tracking/odometry
     odom1_config: [true,  true,  false,
                   false, false, true,
                   true,  false, false,
                   false, false, true,
                   false, false, false]
-    odom1_queue_size: 10
-    odom1_nodelay: true
-    odom1_differential: false
-    odom1_relative: false
+    odom1_queue_size: 2
 
-    # IMU from MCU
+    # IMU (Angular Velocity only - let VSLAM handle orientation)
     imu0: /mcu/imu
     imu0_config: [false, false, false,
-                  false, false, true,
+                  false, false, false,
                   false, false, false,
                   false, false, true,
-                  true,  false, false]
-    imu0_queue_size: 10
-    imu0_nodelay: true
-    imu0_differential: false
-    imu0_relative: false
+                  false, false, false]
+    imu0_queue_size: 5
     imu0_remove_gravitational_acceleration: true
 
     use_control: false

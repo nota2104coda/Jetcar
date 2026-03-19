@@ -41,6 +41,12 @@ target_include_directories(hmi_node PUBLIC
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(hmi_node rclcpp std_msgs geometry_msgs robot_msgs)
 
+add_executable(hmi_node_nobridge src/hmi_node_nobridge.cpp)
+target_include_directories(hmi_node_nobridge PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(hmi_node_nobridge rclcpp std_msgs geometry_msgs robot_msgs)
+
 add_executable(adaptive_resolution_node src/adaptive_resolution_node.cpp)
 target_include_directories(adaptive_resolution_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -54,7 +60,7 @@ target_include_directories(hw_mcu_node PUBLIC
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(hw_mcu_node rclcpp std_msgs geometry_msgs robot_msgs nav_msgs sensor_msgs tf2 tf2_ros)
 
-install(TARGETS hmi_node adaptive_resolution_node hw_mcu_node
+install(TARGETS hmi_node hmi_node_nobridge adaptive_resolution_node hw_mcu_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(PROGRAMS scripts/lidar_pwm.py

@@ -93,6 +93,12 @@ sudo apt install ros-$ROS2_DISTRO-foxglove-bridge
 sudo apt install python3-colcon-common-extensions ros-dev-tools -y
 # Install slam_toolbox for mapping and localization
 sudo apt install ros-$ROS2_DISTRO-slam-toolbox -y
+sudo apt install -y \
+   ros-$ROS2_DISTRO-robot-localization \
+   ros-$ROS2_DISTRO-slam-toolbox \
+   ros-$ROS2_DISTRO-image-transport \
+   ros-$ROS2_DISTRO-image-transport-plugins \
+   ros-$ROS2_DISTRO-compressed-image-transport
 
 # Automatically source ROS 2 upon every new terminal login
 echo "source /opt/ros/$ROS2_DISTRO/setup.bash" >> ~/.bashrc
