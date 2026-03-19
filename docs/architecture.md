@@ -184,3 +184,59 @@ graph LR
 
     class topic_cmd_vel_manual,topic_stop_button,topic_auto_mode,topic_button_states,topic_cmd_wrench topic;
     class topic_imu,topic_range_front,topic_range_rear,topic_cliff_front,topic_cliff_rear,topic_esc,topic_odom topic;
+```
+
+# Navigation 
+
+```mermaid
+---
+config:
+  layout: dagre
+---
+
+graph LR
+    classDef topic fill:#f5f5f5,stroke:#666,color:#111,font-size:12px;
+
+    RS[Realsense D435]
+    VSLAM[visual_slam_node]
+    NvBlox[nvblox_node]
+    LD06[LD06 lidar node]
+    SLAMTB[slam_toolbox]
+    Nav2G[Nav2 global_costmap]
+    Nav2L[Nav2 local_costmap]
+    Planner[Nav2 planner_server]
+    Controller[Nav2 controller_server]
+    Robot[MCU / base_link]
+
+    tInfra0(("visual_slam/image_0\n+ camera_info_0"))
+    tInfra1(("visual_slam/image_1\n+ camera_info_1"))
+    tIMU(("visual_slam/imu"))
+    tOdom(("visual_slam/odom\nnav_msgs/Odometry"))
+    tTF(("TF: map→odom→base"))
+    tTSDF(("nvblox_node/tsdf_layer"))
+    tCostLocal(("nvblox_node/costmap/local"))
+    tCostGlobal(("nvblox_node/costmap/global"))
+    tScan(("/scan"))
+    tMap(("/map\nnav_msgs/OccupancyGrid"))
+    tCmdVel(("/cmd_vel"))
+    tControl(("Actuator cmds\n(mavlink/twist)"))
+
+    RS --> tInfra0 --> VSLAM
+    RS --> tInfra1 --> VSLAM
+    VSLAM --> tIMU --> NvBlox
+    VSLAM --> tOdom --> NvBlox
+    VSLAM --> tTF --> NvBlox
+    NvBlox --> tTSDF --> NvBlox
+    NvBlox --> tCostLocal --> Nav2L
+    NvBlox --> tCostGlobal --> Nav2G
+
+    LD06 --> tScan --> SLAMTB
+    SLAMTB --> tMap --> Nav2G
+    tScan --> Nav2L
+
+    Nav2G --> Planner
+    Nav2L --> Controller
+    Planner --> Controller
+    Controller --> tCmdVel --> Robot
+    Robot --> tControl --> Controller
+```
