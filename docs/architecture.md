@@ -128,62 +128,102 @@ config:
   layout: dagre
 ---
 graph LR
-    classDef topic fill:#f5f5f5,stroke:#808080,stroke-width:1px,color:#000,font-size:11px;
+  classDef topic fill:#f5f5f5,stroke:#808080,stroke-width:1px,color:#000,font-size:11px;
 
+  subgraph UI
     Foxglove[foxglove_bridge]
     HMI[hmi_node]
-    robot_motion_node[robot_motion_node]
-    MCUNode[hw_mcu_node]
-    MCU_UART[USB-UART]
+  end
 
-    topic_cmd_vel_manual(["/cmd_vel/manual::geometry_msgs/Twist"])
-    topic_stop_button(["/stop_button::std_msgs/Bool"])
-    topic_auto_mode(["/auto_mode_button::std_msgs/Bool"])
-    topic_button_states(["/hmi/button_states::robot_msgs/ButtonStates"])
-    topic_cmd_wrench(["/cmd_wrench::geometry_msgs/Wrench"])
-    topic_imu(["/mcu/imu::sensor_msgs/Imu"])
-    topic_range_front(["/mcu/range/front::sensor_msgs/Range"])
-    topic_range_rear(["/mcu/range/rear::sensor_msgs/Range"])
-    topic_cliff_front(["/mcu/cliff/front::sensor_msgs/Range"])
-    topic_cliff_rear(["/mcu/cliff/rear::sensor_msgs/Range"])
-    topic_esc(["/esc_telemetry::std_msgs/Float32MultiArray"])
-    topic_odom(["/odom::nav_msgs/Odometry"])
+  subgraph Sensors
+    Camera[realsense2_camera(camera)]
+    LD06[ld06_lidar]
+    PWM[lidar_pwm_control]
+    MCU[hw_mcu_node]
+  end
 
-    Foxglove --> topic_cmd_vel_manual
-    topic_cmd_vel_manual --> HMI
-    Foxglove --> topic_stop_button
-    topic_stop_button --> HMI
-    Foxglove --> topic_auto_mode
-    topic_auto_mode --> HMI
-    HMI --> topic_button_states
-    topic_button_states --> robot_motion_node
-    robot_motion_node --> topic_cmd_wrench
-    topic_cmd_wrench --> MCUNode
+  subgraph "Isaac ROS Container"
+    VSLAM[visual_slam_node]
+    Converter[image_format_converter_node]
+    NvBlox[nvblox_node]
+  end
 
-    subgraph mcuNode
-    MCUNode -- SET_ACTUATOR_CONTROL_TARGET (mavlink) --> MCU_UART
-    MCU_UART -- HIGHRES_IMU (mavlink) --> MCUNode
-    MCU_UART -- DISTANCE_SENSOR (mavlink) --> MCUNode
-    MCU_UART -- ESC_TELEMETRY_1_TO_4 (mavlink) --> MCUNode
-    end
-    MCUNode --> topic_imu
-    topic_imu --> robot_motion_node
-    MCUNode --> topic_range_front
-    topic_range_front --> robot_motion_node
-    MCUNode --> topic_range_rear
-    topic_range_rear --> robot_motion_node
-    MCUNode --> topic_cliff_front
-    topic_cliff_front --> robot_motion_node
-    MCUNode --> topic_cliff_rear
-    topic_cliff_rear --> robot_motion_node
-    MCUNode --> topic_esc
-    topic_esc --> robot_motion_node
+  subgraph Localization
+    EKF[ekf_filter_node]
+    SlamTB[slam_toolbox]
+    RSP[robot_state_publisher]
+  end
 
-    robot_motion_node --> topic_odom
-    topic_odom --> Foxglove
+  subgraph "Nav2 Stack"
+    Planner[planner_server]
+    Controller[controller_server]
+    PathSmoother[smoother_server]
+    VelSmooth[velocity_smoother]
+    Behaviors[behavior_server]
+    BTN[bt_navigator]
+    Waypoint[waypoint_follower]
+    Lifecycle[lifecycle_manager_navigation]
+  end
 
-    class topic_cmd_vel_manual,topic_stop_button,topic_auto_mode,topic_button_states,topic_cmd_wrench topic;
-    class topic_imu,topic_range_front,topic_range_rear,topic_cliff_front,topic_cliff_rear,topic_esc,topic_odom topic;
+  topicButtons(["/hmi/button_states"])
+  topicGoal(["/goal_pose::geometry_msgs/PoseStamped"])
+  topicInfra(("Infra stereo + info\n/camera/camera/infra{1,2}/image_rect_raw"))
+  topicIMU(["/mcu/imu::sensor_msgs/Imu"])
+  topicDepth(("Depth image + info\n/camera/camera/depth/image_rect_raw"))
+  topicColorRaw(["/camera/camera/color/image_raw"])
+  topicColorRGB(["/camera/camera/color/image_rgb"])
+  topicPose(["/visual_slam/tracking/vo_pose"])
+  topicOdom(["/visual_slam/tracking/odometry"])
+  topicWheelOdom(["/mcu/odom::nav_msgs/Odometry"])
+  topicScan(["/scan::sensor_msgs/LaserScan"])
+  topicCloud(["/pointcloud2d::sensor_msgs/PointCloud2"])
+  topicEKF(["/odometry/filtered::nav_msgs/Odometry"])
+  topicMap(["/map::nav_msgs/OccupancyGrid"])
+  topicCostLocal(("nvblox ESDF + costmaps"))
+  topicTF(("TF map→odom→base_link"))
+  topicCmdVel(["/cmd_vel::geometry_msgs/Twist"])
+
+  Foxglove --> topicGoal
+  HMI --> topicGoal
+  topicGoal --> BTN
+  HMI --> topicButtons --> Foxglove
+
+  Camera --> topicInfra --> VSLAM
+  MCU --> topicIMU --> VSLAM
+  Camera --> topicDepth --> NvBlox
+  Camera --> topicColorRaw --> Converter --> topicColorRGB --> NvBlox
+  VSLAM --> topicPose
+  topicPose --> NvBlox
+  topicPose --> EKF
+  VSLAM --> topicOdom --> EKF
+  MCU --> topicWheelOdom --> EKF
+  EKF --> topicEKF --> Planner
+  topicEKF --> Controller
+  NvBlox --> topicCostLocal --> Planner
+  topicCostLocal --> Controller
+  LD06 --> topicScan --> SlamTB
+  topicScan --> Controller
+  SlamTB --> topicMap --> Planner
+  LD06 --> topicCloud --> Foxglove
+  RSP --> topicTF
+  topicTF --> Planner
+  topicTF --> Controller
+  topicTF --> Foxglove
+
+  BTN --> Planner
+  BTN --> Behaviors
+  BTN --> Waypoint
+  Planner --> PathSmoother --> Controller --> VelSmooth --> topicCmdVel --> MCU
+  Lifecycle -.-> Planner
+  Lifecycle -.-> Controller
+  Lifecycle -.-> PathSmoother
+  Lifecycle -.-> VelSmooth
+  Lifecycle -.-> Behaviors
+  Lifecycle -.-> BTN
+  Lifecycle -.-> Waypoint
+  PWM --> LD06
+
+  class topicButtons,topicGoal,topicInfra,topicIMU,topicDepth,topicColorRaw,topicColorRGB,topicPose,topicOdom,topicWheelOdom,topicScan,topicCloud,topicEKF,topicMap,topicCostLocal,topicTF,topicCmdVel topic;
 ```
 
 # Navigation 
@@ -193,50 +233,98 @@ graph LR
 config:
   layout: dagre
 ---
-
 graph LR
-    classDef topic fill:#f5f5f5,stroke:#666,color:#111,font-size:12px;
+  classDef topic fill:#f5f5f5,stroke:#666,color:#111,font-size:12px;
 
-    RS[Realsense D435]
-    VSLAM[visual_slam_node]
-    NvBlox[nvblox_node]
-    LD06[LD06 lidar node]
-    SLAMTB[slam_toolbox]
-    Nav2G[Nav2 global_costmap]
-    Nav2L[Nav2 local_costmap]
-    Planner[Nav2 planner_server]
-    Controller[Nav2 controller_server]
-    Robot[MCU / base_link]
+  RS[realsense2_camera]
+  Converter[image_format_converter_node]
+  VSLAM[visual_slam_node]
+  NvBlox[nvblox_node]
+  LD06[ld06_lidar]
+  SlamTB[slam_toolbox]
+  EKF[ekf_filter_node]
+  Nav2G[Nav2 global_costmap]
+  Nav2L[Nav2 local_costmap]
+  Planner[planner_server]
+  PathSmoother[smoother_server]
+  Controller[controller_server]
+  VelSmooth[velocity_smoother]
+  Behaviors[behavior_server]
+  BTN[bt_navigator]
+  Waypoint[waypoint_follower]
+  Lifecycle[lifecycle_manager_navigation]
+  MCU[hw_mcu_node]
+  RSP[robot_state_publisher]
+  Foxglove[foxglove_bridge]
+  HMI[hmi_node]
 
-    tInfra0(("visual_slam/image_0\n+ camera_info_0"))
-    tInfra1(("visual_slam/image_1\n+ camera_info_1"))
-    tIMU(("visual_slam/imu"))
-    tOdom(("visual_slam/odom\nnav_msgs/Odometry"))
-    tTF(("TF: map→odom→base"))
-    tTSDF(("nvblox_node/tsdf_layer"))
-    tCostLocal(("nvblox_node/costmap/local"))
-    tCostGlobal(("nvblox_node/costmap/global"))
-    tScan(("/scan"))
-    tMap(("/map\nnav_msgs/OccupancyGrid"))
-    tCmdVel(("/cmd_vel"))
-    tControl(("Actuator cmds\n(mavlink/twist)"))
+  tInfra(("IR stereo + info"))
+  tIMU(("/mcu/imu"))
+  tDepth(("Depth image + info"))
+  tColorRaw(("Color image (raw)"))
+  tColorRGB(("Color image (rgb8)"))
+  tPose(("/visual_slam/tracking/vo_pose"))
+  tOdom(("/visual_slam/tracking/odometry"))
+  tWheelOdom(("/mcu/odom"))
+  tFiltered(("/odometry/filtered"))
+  tScan(("/scan"))
+  tMap(("/map"))
+  tESDF(("nvblox ESDF + meshes"))
+  tGoalPose(("NavigateToPose / FollowWaypoints"))
+  tCmdVelAuto(("/cmd_vel_auto"))
+  tCmdVelManual(("/cmd_vel_manual"))
+  tTF(("TF map→odom→base_link"))
 
-    RS --> tInfra0 --> VSLAM
-    RS --> tInfra1 --> VSLAM
-    VSLAM --> tIMU --> NvBlox
-    VSLAM --> tOdom --> NvBlox
-    VSLAM --> tTF --> NvBlox
-    NvBlox --> tTSDF --> NvBlox
-    NvBlox --> tCostLocal --> Nav2L
-    NvBlox --> tCostGlobal --> Nav2G
+  RS --> tInfra --> VSLAM
+  MCU --> tIMU --> VSLAM
+  RS --> tDepth --> NvBlox
+  RS --> tColorRaw --> Converter --> tColorRGB --> NvBlox
+  VSLAM --> tPose --> NvBlox
+  VSLAM --> tOdom --> EKF
+  MCU --> tWheelOdom --> EKF
+  EKF --> tFiltered
+  tFiltered --> Nav2G
+  tFiltered --> Nav2L
+  tFiltered --> Planner
+  tFiltered --> Controller
 
-    LD06 --> tScan --> SLAMTB
-    SLAMTB --> tMap --> Nav2G
-    tScan --> Nav2L
+  LD06 --> tScan --> SlamTB
+  tScan --> Nav2L
+  SlamTB --> tMap --> Nav2G
 
-    Nav2G --> Planner
-    Nav2L --> Controller
-    Planner --> Controller
-    Controller --> tCmdVel --> Robot
-    Robot --> tControl --> Controller
+  NvBlox --> tESDF --> Nav2L
+  tESDF --> Nav2G
+
+  Foxglove --> tGoalPose
+  HMI --> tGoalPose
+  tGoalPose --> BTN
+  BTN --> Planner
+  BTN --> Behaviors
+  BTN --> Waypoint
+  Waypoint --> BTN
+
+  Nav2G --> Planner
+  Nav2L --> Controller
+  Planner --> PathSmoother --> Controller
+  Controller --> VelSmooth --> tCmdVelAuto --> MCU
+  foxglove_bridge --> tCmdVelManual --> MCU
+  Behaviors --> Controller
+
+  Lifecycle -.-> Nav2G
+  Lifecycle -.-> Nav2L
+  Lifecycle -.-> Planner
+  Lifecycle -.-> PathSmoother
+  Lifecycle -.-> Controller
+  Lifecycle -.-> VelSmooth
+  Lifecycle -.-> Behaviors
+  Lifecycle -.-> BTN
+  Lifecycle -.-> Waypoint
+
+  RSP --> tTF
+  tTF --> Nav2G
+  tTF --> Nav2L
+  tTF --> Planner
+  tTF --> Controller
+
+  class tInfra,tIMU,tDepth,tColorRaw,tColorRGB,tPose,tOdom,tWheelOdom,tFiltered,tScan,tMap,tESDF,tGoalPose,tCmdVelAuto,tTF topic;
 ```

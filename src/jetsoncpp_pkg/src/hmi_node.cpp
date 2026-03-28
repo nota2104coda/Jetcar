@@ -39,9 +39,9 @@ public:
     }
 
     // Initialize subscriptions
-    twist_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-      "/cmd_vel", 10, std::bind(&HMINode::twist_callback, this, std::placeholders::_1));
-    
+     twist_sub_manual_ = this->create_subscription<geometry_msgs::msg::Twist>(
+      "/cmd_vel_manual", 10, std::bind(&HMINode::twist_callback, this, std::placeholders::_1));
+
     stop_button_sub_ = this->create_subscription<std_msgs::msg::Bool>(
       "/stop_button", 10, std::bind(&HMINode::stop_callback, this, std::placeholders::_1));
 
@@ -103,7 +103,7 @@ private:
     publisher_->publish(button_states_);
   }
 
-  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_sub_manual_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_button_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr auto_mode_sub_;
   rclcpp::Publisher<robot_msgs::msg::ButtonStates>::SharedPtr publisher_;

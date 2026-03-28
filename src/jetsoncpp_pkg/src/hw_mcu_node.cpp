@@ -49,8 +49,8 @@ public:
         this->declare_parameter("odom_frame_id", "odom");
         this->declare_parameter("base_frame_id", "base_link");
         this->declare_parameter("imu_frame_id", "base_link");
-        this->declare_parameter("command_topic", "cmd_vel");
-        this->declare_parameter("auto_command_topic", "cmd_vel_auto");
+        this->declare_parameter("command_topic_manual", "cmd_vel_manual");
+        this->declare_parameter("command_topic_nav", "cmd_vel_nav");
         this->declare_parameter("command_mode", "set_actuator_control_target");
         // source/target system/component
         this->declare_parameter("command_target_system", 200);
@@ -75,8 +75,8 @@ public:
         base_frame_id_ = this->get_parameter("base_frame_id").as_string();
         imu_frame_id_ = this->get_parameter("imu_frame_id").as_string();
         
-        command_topic_ = this->get_parameter("command_topic").as_string();
-        auto_command_topic_ = this->get_parameter("auto_command_topic").as_string();
+        command_topic_manual = this->get_parameter("command_topic_manual").as_string();
+        command_topic_nav = this->get_parameter("command_topic_nav").as_string();
         command_mode_ = this->get_parameter("command_mode").as_string();
 
         target_system_ = this->get_parameter("command_target_system").as_int();
@@ -103,11 +103,11 @@ public:
         cliff_rear_pub_ = this->create_publisher<sensor_msgs::msg::Range>("/mcu/cliff/rear", 10);
 
         // Subscribers
-        cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-            command_topic_, 10, std::bind(&HwMcuNode::manual_twist_callback, this, std::placeholders::_1));
+        cmd_vel_sub_manual = this->create_subscription<geometry_msgs::msg::Twist>(
+            command_topic_manual, 10, std::bind(&HwMcuNode::manual_twist_callback, this, std::placeholders::_1));
         
-        auto_cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-            auto_command_topic_, 10, std::bind(&HwMcuNode::auto_twist_callback, this, std::placeholders::_1));
+        cmd_vel_sub_nav = this->create_subscription<geometry_msgs::msg::Twist>(
+            command_topic_nav, 10, std::bind(&HwMcuNode::auto_twist_callback, this, std::placeholders::_1));
 
         stop_button_sub_ = this->create_subscription<std_msgs::msg::Bool>(
             "/stop_button", 10, std::bind(&HwMcuNode::stop_button_callback, this, std::placeholders::_1));
@@ -148,8 +148,8 @@ private:
     std::string odom_frame_id_;
     std::string base_frame_id_;
     std::string imu_frame_id_;
-    std::string command_topic_;
-    std::string auto_command_topic_;
+    std::string command_topic_manual;
+    std::string command_topic_nav;
     std::string command_mode_;
     
     int target_system_;
@@ -185,8 +185,8 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr cliff_front_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr cliff_rear_pub_;
 
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr auto_cmd_vel_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_nav;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_button_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr auto_mode_sub_;
 
