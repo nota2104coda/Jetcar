@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-
+#this script could be used to run the ROS2 system on boot, by adding it to /etc/rc.local or using systemd
 # Download models on first run if not cached
 if [ ! -d "$HF_HOME" ] || [ -z "$(ls -A $HF_HOME)" ]; then
     echo "Downloading VLM model for first time..."
