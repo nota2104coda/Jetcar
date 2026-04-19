@@ -59,6 +59,9 @@ public:
         this->declare_parameter("command_source_component", 191);
         this->declare_parameter("manual_linear_max", 1.0);
         this->declare_parameter("manual_yaw_rate_max", 1.0);
+        this->declare_parameter("manual_scale", 0.4);
+        this->declare_parameter("auto_scale", 1.5);
+        this->declare_parameter("flip_angular", false);
         this->declare_parameter("enable_tf_broadcast", true);
 
         // Get Parameters
@@ -86,6 +89,9 @@ public:
 
         manual_linear_max_ = this->get_parameter("manual_linear_max").as_double();
         manual_yaw_rate_max_ = this->get_parameter("manual_yaw_rate_max").as_double();
+        manual_scale_ = this->get_parameter("manual_scale").as_double();
+        auto_scale_ = this->get_parameter("auto_scale").as_double();
+        flip_angular_ = this->get_parameter("flip_angular").as_bool();
         enable_tf_broadcast_ = this->get_parameter("enable_tf_broadcast").as_bool();
 
         // Derived calculations
@@ -159,12 +165,15 @@ private:
     
     double manual_linear_max_;
     double manual_yaw_rate_max_;
+    double manual_scale_;
+    double auto_scale_;
+    bool flip_angular_;
     double mps_per_rpm_;
     bool enable_tf_broadcast_;
 
     // State
     bool stop_button_state_ = true;
-    bool auto_mode_button_state_ = false;
+    bool auto_mode_button_state_ = true;
     double x_ = 0.0;
     double y_ = 0.0;
     double theta_ = 0.0;
@@ -290,6 +299,11 @@ private:
                 mavlink_message_t msg;
                 mavlink_status_t status;
                 if (mavlink_parse_char(MAVLINK_COMM_0, buf[i], &msg, &status)) {
+                    // Log message ID once every 100 messages to avoid spam
+                    static int msg_count = 0;
+                    if (++msg_count % 100 == 0) {
+                        RCLCPP_INFO(this->get_logger(), "Received MAVLink ID: %d", msg.msgid);
+                    }
                     handle_mavlink_message(msg);
                 }
             }
@@ -316,9 +330,9 @@ private:
                      while (theta_ > M_PI) theta_ -= 2*M_PI;
                      while (theta_ < -M_PI) theta_ += 2*M_PI;
                 }
-                RCLCPP_INFO_THROTTLE(
-                    this->get_logger(), *this->get_clock(), 1000,  // once per second
-                    "theta = %.3f rad", theta_);
+                // RCLCPP_INFO_THROTTLE(
+                //     this->get_logger(), *this->get_clock(), 1000,  // once per second
+                //     "theta = %.3f rad", theta_);
                 last_imu_time = now;
 
                 auto imu_msg = sensor_msgs::msg::Imu();
@@ -390,8 +404,11 @@ private:
             case MAVLINK_MSG_ID_WHEEL_RPM: {
                 mavlink_wheel_rpm_t esc;
                 mavlink_msg_wheel_rpm_decode(&msg, &esc);
-                float rpm[4] = {esc.rpm_fr, esc.rpm_fl, esc.rpm_rr, esc.rpm_rl}; // Map to standard 0:FR, 1:FL, 2:RR, 3:RL if that matches ros message expectation or just raw
+                float rpm[4] = {esc.rpm_fr, esc.rpm_fl, esc.rpm_rr, esc.rpm_rl}; 
                 
+                RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, 
+                    "RPM Data: FR=%.1f, FL=%.1f, RR=%.1f, RL=%.1f", esc.rpm_fr, esc.rpm_fl, esc.rpm_rr, esc.rpm_rl);
+
                 auto msg_arr = std_msgs::msg::Float32MultiArray();
                 msg_arr.data.assign(rpm, rpm + 4);
                 esc_pub_->publish(msg_arr);
@@ -479,10 +496,17 @@ private:
 
     void stop_button_callback(const std_msgs::msg::Bool::SharedPtr msg) {
         stop_button_state_ = msg->data;
+        if (stop_button_state_) {
+            last_manual_twist_ = geometry_msgs::msg::Twist();
+            last_auto_twist_ = geometry_msgs::msg::Twist();
+        }
     }
 
     void auto_mode_callback(const std_msgs::msg::Bool::SharedPtr msg) {
         auto_mode_button_state_ = msg->data;
+        if (!auto_mode_button_state_) {
+            last_auto_twist_ = geometry_msgs::msg::Twist();
+        }
     }
 
     void control_loop() {
@@ -494,9 +518,9 @@ private:
         double linear_x = 0.0;
         double angular_z = 0.0;
 
-        // Timeout (0.5s)
-        bool manual_active = (manual_age < 0.5);
-        bool auto_active = (auto_age < 0.5);
+        // Timeout (2.0s)
+        bool manual_active = (manual_age < 2.0);
+        bool auto_active = (auto_age < 2.0);
 
         if (stop_button_state_) {
             // STOP
@@ -505,15 +529,21 @@ private:
         } else if (auto_mode_button_state_) {
             // AUTO
             if (auto_active) {
-                linear_x = last_auto_twist_.linear.x;
-                angular_z = last_auto_twist_.angular.z;
+                linear_x = last_auto_twist_.linear.x * auto_scale_;
+                angular_z = last_auto_twist_.angular.z * auto_scale_;
+            } else {
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "AUTO mode active but no recent cmd_vel_nav received!");
             }
         } else {
             // MANUAL
             if (manual_active) {
-                linear_x = last_manual_twist_.linear.x;
-                angular_z = last_manual_twist_.angular.z;
+                linear_x = last_manual_twist_.linear.x * manual_scale_;
+                angular_z = last_manual_twist_.angular.z * manual_scale_;
             }
+        }
+
+        if (std::abs(linear_x) > 0.01 || std::abs(angular_z) > 0.01) {
+             RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Sending Command: v=%.2f, w=%.2f (Auto=%d)", linear_x, angular_z, auto_mode_button_state_);
         }
         
         // Clamp (though scaling 0.2 down below makes this generous)
@@ -529,24 +559,32 @@ private:
         
         mavlink_message_t msg;
 
-        // Implement set_actuator_control_target logic from Python
-        // actuators = [0.0] * 8        
-        // vX = max(min(twist.linear.x, 1.0), -1.0)
-        // wZ = max(min(twist.angular.z, 1.0), -1.0)
-        // left = 0.2 * (vX - wZ)
-        // right = 0.2 * (vX + wZ)
-        
         float vX = (float)std::max(std::min(linear_x, 1.0), -1.0);
         float wZ = (float)std::max(std::min(angular_z, 1.0), -1.0);
         
-        float left = 0.2f * (vX - wZ);
-        float right = 0.2f * (vX + wZ);
+        if (flip_angular_) wZ = -wZ;
+
+        // Base gain
+        float left = 0.8f * (vX - wZ);
+        float right = 0.8f * (vX + wZ);
         
-        // Python:
-        // actuators[0] = right  # FR
-        // actuators[1] = left   # FL
-        // actuators[2] = right  # RR
-        // actuators[3] = left   # RL
+        // Refined deadband compensation:
+        // Linearly map [0, 1] to [min_torque, 1] to preserve steering deltas
+        float min_torque = 0.18f;
+        auto apply_deadband = [min_torque](float val) {
+            float abs_val = std::abs(val);
+            if (abs_val < 0.001f) return 0.0f;
+            // Map 0 -> min_torque, 1 -> 1
+            float scaled = abs_val * (1.0f - min_torque) + min_torque;
+            return std::copysign(scaled, val);
+        };
+
+        left = apply_deadband(left);
+        right = apply_deadband(right);
+
+        // Final clamp
+        left = std::max(std::min(left, 1.0f), -1.0f);
+        right = std::max(std::min(right, 1.0f), -1.0f);
         
         float controls[8] = {0.0f};
         controls[0] = right;

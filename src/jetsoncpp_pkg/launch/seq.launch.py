@@ -14,13 +14,15 @@ def generate_launch_description():
     nav2_nav_pose_bt = os.path.join(
         nav2_bt_share,
         'behavior_trees',
-        'navigate_w_replanning_and_recovery.xml'
+        'navigate_to_pose_w_replanning_and_recovery.xml'
     )
     nav2_nav_through_bt = os.path.join(
         nav2_bt_share,
         'behavior_trees',
         'navigate_through_poses_w_replanning_and_recovery.xml'
     )
+    
+    # ... (skipping unchanged code for brevity in instruction, but I must provide full context)
     
     # 0. Robot State Publisher (URDF)
     urdf_path = os.path.join(pkg_jetson_cpp, 'urdf', 'skid_steer_4wd.urdf')
@@ -175,6 +177,24 @@ def generate_launch_description():
         ]
     )
 
+    # 1. Camera Node
+    camera_node = Node(
+        package='realsense2_camera',
+        executable='realsense2_camera_node',
+        name='camera',
+        namespace='camera',
+        parameters=[{
+            'rgb_camera.color_profile': '640x480x15', 
+            'depth_module.depth_profile': '640x480x15',
+            'depth_module.infra_profile': '640x480x15',
+            'rgb_camera.color_format': 'BGR8',
+            'rgb_camera.color_qos': 'RELIABLE',
+            'enable_sync': True,
+            'enable_color': True,
+            'enable_depth': True,
+        }]
+    )
+
     # 3. Support Nodes
     ld06_node = Node(
         package='ldlidar_ros2',
@@ -209,6 +229,7 @@ def generate_launch_description():
             'enable_tf_broadcast': False,
             'poll_period': 0.005,    # 200Hz for SLAM
             'control_period': 0.02,  # 50Hz control
+            'command_topic_nav': 'cmd_vel_nav',
         }]
     )
 
@@ -240,7 +261,10 @@ def generate_launch_description():
         executable='controller_server',
         name='controller_server',
         output='screen',
-        parameters=[nav2_params_path]
+        parameters=[nav2_params_path],
+        remappings=[
+            ('cmd_vel', 'cmd_vel_nav_raw'),
+        ]
     )
 
     nav2_planner_node = Node(
@@ -278,6 +302,9 @@ def generate_launch_description():
                 'default_nav_to_pose_bt_xml': nav2_nav_pose_bt,
                 'default_nav_through_poses_bt_xml': nav2_nav_through_bt,
             }
+        ],
+        remappings=[
+            ('goal_pose', '/move_base_simple/goal'),
         ]
     )
 
@@ -294,7 +321,11 @@ def generate_launch_description():
         executable='velocity_smoother',
         name='velocity_smoother',
         output='screen',
-        parameters=[nav2_params_path]
+        parameters=[nav2_params_path],
+        remappings=[
+            ('cmd_vel', 'cmd_vel_nav_raw'),
+            ('cmd_vel_smoothed', 'cmd_vel_nav'),
+        ]
     )
 
     nav2_lifecycle_manager_node = Node(
@@ -334,21 +365,23 @@ def generate_launch_description():
         robot_state_publisher_node,
         container,
         delayed_vslam,
-        delayed_converter,
-        delayed_nvblox,
-        ld06_node,
-        lidar_pwm_node,
-        hw_mcu_node,
-        ekf_node,
-        slam_toolbox_node,
-        nav2_controller_node,
-        nav2_planner_node,
-        nav2_smoother_node,
-        nav2_behavior_node,
-        nav2_bt_navigator_node,
-        nav2_waypoint_node,
-        nav2_velocity_smoother_node,
-        nav2_lifecycle_manager_node,
-        hmi_node,
-        foxglove_bridge_node
-    ])
+        return LaunchDescription([
+            robot_state_publisher_node,
+            camera_node,
+            ld06_node,
+            lidar_pwm_node,
+            hw_mcu_node,
+            ekf_node,
+            slam_toolbox_node,
+            nav2_controller_node,
+            nav2_planner_node,
+            nav2_smoother_node,
+            nav2_behavior_node,
+            nav2_bt_navigator_node,
+            nav2_waypoint_node,
+            nav2_velocity_smoother_node,
+            nav2_lifecycle_manager_node,
+            hmi_node,
+            foxglove_bridge_node
+        ])
+

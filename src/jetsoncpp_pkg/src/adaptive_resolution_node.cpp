@@ -62,11 +62,11 @@ private:
     if (current_state_ == HIGH_RES && speed > high_speed_limit_) {
       set_decimation(2); // Low Resolution
       current_state_ = LOW_RES;
-      RCLCPP_INFO(this->get_logger(), "Speed %.2f > %.2f: Switching to Low Res (Decimation 2)", speed, high_speed_limit_);
+      // RCLCPP_INFO(this->get_logger(), "Speed %.2f > %.2f: Switching to Low Res (Decimation 2)", speed, high_speed_limit_);
     } else if (current_state_ == LOW_RES && speed < low_speed_limit_) {
       set_decimation(1); // High Resolution
       current_state_ = HIGH_RES;
-      RCLCPP_INFO(this->get_logger(), "Speed %.2f < %.2f: Switching to High Res (Decimation 1)", speed, low_speed_limit_);
+      // RCLCPP_INFO(this->get_logger(), "Speed %.2f < %.2f: Switching to High Res (Decimation 1)", speed, low_speed_limit_);
     }
   }
 

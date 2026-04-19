@@ -49,8 +49,6 @@ private:
     button_states_.backward = msg->linear.x < -0.1;
     button_states_.left_turn = msg->angular.z > 0.1;
     button_states_.right_turn = msg->angular.z < -0.1;
-    // Note: Replicating logic from python script where stop_button state is overwritten by twist callback
-    button_states_.stop_button = (std::abs(msg->linear.x) < 0.1) && (std::abs(msg->linear.y) < 0.1) && (std::abs(msg->angular.z) < 0.1);
   }
 
   void stop_callback(const std_msgs::msg::Bool::SharedPtr msg)

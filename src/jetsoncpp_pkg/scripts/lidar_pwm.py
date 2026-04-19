@@ -9,7 +9,7 @@ import sys
 
 PWM_PIN = 12
 FREQUENCY = 30000 
-DUTY_CYCLE = 65.0 # 65% for approx 10Hz
+DUTY_CYCLE = 45.0 # Lower speed to reduce data rate
 
 def cleanup(sig, frame):
     print("Stopping LIDAR PWM")
