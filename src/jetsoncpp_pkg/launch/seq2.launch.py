@@ -49,9 +49,9 @@ def generate_launch_description():
                 name='camera',
                 namespace='camera',
                 parameters=[{
-                    'rgb_camera.color_profile': '424x240x15', 
-                    'depth_module.depth_profile': '424x240x15',
-                    'depth_module.infra_profile': '424x240x15',
+                    'rgb_camera.color_profile': '424x240x30', 
+                    'depth_module.depth_profile': '424x240x30',
+                    'depth_module.infra_profile': '424x240x30',
                     'rgb_camera.color_format': 'BGR8',
                     'rgb_camera.color_qos': 'RELIABLE', # Changed to RELIABLE for Foxglove
                     'depth_module.depth_qos': 'SENSOR_DATA',
