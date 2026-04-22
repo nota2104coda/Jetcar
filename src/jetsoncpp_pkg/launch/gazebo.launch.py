@@ -38,6 +38,9 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_desc, 'use_sim_time': True}]
     )
 
+    from launch.actions import RegisterEventHandler
+    from launch.event_handlers import OnProcessExit
+
     # 4. Spawn Robot in Gazebo
     spawn_entity = Node(
         package='gazebo_ros',
@@ -46,9 +49,31 @@ def generate_launch_description():
         output='screen'
     )
 
+    # 5. Spawners for the ROS 2 Controllers
+    joint_state_broadcaster_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
+    )
+
+    effort_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["effort_controller", "--controller-manager", "/controller_manager"],
+    )
+
+    # Wait until the robot is spawned before loading the controllers
+    spawn_controllers = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=spawn_entity,
+            on_exit=[joint_state_broadcaster_spawner, effort_controller_spawner]
+        )
+    )
+
     return LaunchDescription([
         gzserver,
         gzclient,
         robot_state_publisher,
-        spawn_entity
+        spawn_entity,
+        spawn_controllers
     ])

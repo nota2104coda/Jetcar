@@ -78,24 +78,9 @@ def generate_launch_description():
         }]
     )
 
-    # 4. ROS 2 Controllers
-    joint_state_broadcaster_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
-    )
-
-    effort_controller_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=["effort_controller", "--controller-manager", "/controller_manager"],
-    )
-
     return LaunchDescription([
         nvblox_container,
         sim_mcu,
         adaptive_node,
-        joint_state_broadcaster_spawner,
-        effort_controller_spawner,
         *nav2_nodes
     ])
