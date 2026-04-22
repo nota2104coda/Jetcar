@@ -60,7 +60,13 @@ target_include_directories(hw_mcu_node PUBLIC
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(hw_mcu_node rclcpp std_msgs geometry_msgs robot_msgs nav_msgs sensor_msgs tf2 tf2_ros)
 
-install(TARGETS hmi_node hmi_node_nobridge adaptive_resolution_node hw_mcu_node
+add_executable(sim_mcu_node src/sim_mcu_node.cpp)
+target_include_directories(sim_mcu_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(sim_mcu_node rclcpp std_msgs geometry_msgs nav_msgs sensor_msgs)
+
+install(TARGETS hmi_node hmi_node_nobridge adaptive_resolution_node hw_mcu_node sim_mcu_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(PROGRAMS scripts/lidar_pwm.py

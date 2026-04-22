@@ -60,23 +60,54 @@
   <link name="ld06_lidar"><inertial><mass value="0.1"/><inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/></inertial></link>
   <joint name="joint_ld06" type="fixed"><parent link="base_link"/><child link="ld06_lidar"/><origin xyz="0.02 0.0 0.18" rpy="0 0 0"/></joint>
 
+  <!-- IMU -->
+  <link name="imu_link"><inertial><mass value="0.01"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial></link>
+  <joint name="joint_imu" type="fixed"><parent link="base_link"/><child link="imu_link"/><origin xyz="0 0.1 0.01" rpy="0 0 0"/></joint>
+
+  <!-- ROS2 Control for Effort Interfaces -->
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <joint name="joint_wheel_fl">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="joint_wheel_fr">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="joint_wheel_rl">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="joint_wheel_rr">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+  </ros2_control>
+
   <!-- GAZEBO PLUGINS -->
   <gazebo>
-    <plugin name="skid_steer_drive" filename="libgazebo_ros_diff_drive.so">
-      <ros><remapping>cmd_vel:=cmd_vel</remapping><remapping>odom:=odom</remapping></ros>
-      <update_rate>50</update_rate>
-      <num_wheel_pairs>2</num_wheel_pairs>
-      <left_joint>joint_wheel_fl</left_joint><left_joint>joint_wheel_rl</left_joint>
-      <right_joint>joint_wheel_fr</right_joint><right_joint>joint_wheel_rr</right_joint>
-      <wheel_separation>0.18</wheel_separation>
-      <wheel_diameter>0.07</wheel_diameter>
-      <max_wheel_torque>20</max_wheel_torque>
-      <max_wheel_acceleration>1.0</max_wheel_acceleration>
-      <publish_odom>true</publish_odom>
-      <publish_odom_tf>true</publish_odom_tf>
-      <publish_wheel_tf>false</publish_wheel_tf>
-      <odometry_frame>odom</odometry_frame>
-      <robot_base_frame>base_link</robot_base_frame>
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+      <parameters>$(find jetsoncpp_pkg)/config/sim_controllers.yaml</parameters>
+    </plugin>
+    
+    <plugin name="gazebo_ros_p3d" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <remapping>odom:=odom</remapping>
+      </ros>
+      <frame_name>odom</frame_name>
+      <body_name>base_link</body_name>
+      <update_rate>50.0</update_rate>
     </plugin>
   </gazebo>
 
@@ -116,5 +147,36 @@
         <frame_name>ld06_lidar</frame_name>
       </plugin>
     </sensor>
+  </gazebo>
+  <gazebo reference="imu_link">
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+        <ros>
+          <remapping>~/out:=imu</remapping>
+        </ros>
+        <initial_orientation_as_reference>false</initial_orientation_as_reference>
+        <frame_name>imu_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- Wheel Friction Parameters -->
+  <gazebo reference="wheel_fl">
+    <mu>1.0</mu>
+    <mu2>0.5</mu2>
+  </gazebo>
+  <gazebo reference="wheel_fr">
+    <mu>1.0</mu>
+    <mu2>0.5</mu2>
+  </gazebo>
+  <gazebo reference="wheel_rl">
+    <mu>1.0</mu>
+    <mu2>0.5</mu2>
+  </gazebo>
+  <gazebo reference="wheel_rr">
+    <mu>1.0</mu>
+    <mu2>0.5</mu2>
   </gazebo>
 </robot>

@@ -41,13 +41,29 @@ def generate_launch_description():
 
     # 2. Nav2 Stack
     nav2_nodes = [
-        Node(package='nav2_controller', executable='controller_server', name='controller_server', parameters=[nav2_params]),
+        Node(
+            package='nav2_controller', 
+            executable='controller_server', 
+            name='controller_server', 
+            parameters=[nav2_params],
+            remappings=[('cmd_vel', 'cmd_vel_nav')]
+        ),
         Node(package='nav2_planner', executable='planner_server', name='planner_server', parameters=[nav2_params]),
         Node(package='nav2_behaviors', executable='behavior_server', name='behavior_server', parameters=[nav2_params]),
         Node(package='nav2_bt_navigator', executable='bt_navigator', name='bt_navigator', parameters=[nav2_params]),
         Node(package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_navigation',
              parameters=[{'use_sim_time': True, 'autostart': True, 'node_names': ['controller_server', 'planner_server', 'behavior_server', 'bt_navigator']}]),
     ]
+
+    # 3. Sim MCU Node
+    sim_mcu = Node(
+        package='jetsoncpp_pkg',
+        executable='sim_mcu_node',
+        name='sim_mcu_node',
+        parameters=[{
+            'use_sim_time': True,
+        }]
+    )
 
     # 3. Your Custom Camera Node (Adaptive Resolution)
     adaptive_node = Node(
@@ -62,8 +78,24 @@ def generate_launch_description():
         }]
     )
 
+    # 4. ROS 2 Controllers
+    joint_state_broadcaster_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
+    )
+
+    effort_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["effort_controller", "--controller-manager", "/controller_manager"],
+    )
+
     return LaunchDescription([
         nvblox_container,
+        sim_mcu,
         adaptive_node,
+        joint_state_broadcaster_spawner,
+        effort_controller_spawner,
         *nav2_nodes
     ])

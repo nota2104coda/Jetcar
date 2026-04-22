@@ -1,0 +1,19 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+    use_sim_time: true
+    
+    effort_controller:
+      type: forward_command_controller/ForwardCommandController
+      
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+effort_controller:
+  ros__parameters:
+    joints:
+      - joint_wheel_fr
+      - joint_wheel_fl
+      - joint_wheel_rr
+      - joint_wheel_rl
+    interface_name: effort
