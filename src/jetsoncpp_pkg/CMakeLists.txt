@@ -95,7 +95,7 @@ add_executable(sim_mcu_node src/sim_mcu_node.cpp)
 target_include_directories(sim_mcu_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(sim_mcu_node rclcpp std_msgs geometry_msgs nav_msgs sensor_msgs)
+ament_target_dependencies(sim_mcu_node rclcpp std_msgs geometry_msgs nav_msgs sensor_msgs tf2 tf2_ros)
 
 if(MAVGEN_EXECUTABLE AND BUILD_HW_NODES)
   set(HW_NODE_TARGET hw_mcu_node)

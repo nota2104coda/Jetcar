@@ -5,6 +5,8 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 
 #include <chrono>
 #include <cmath>
@@ -62,6 +64,8 @@ public:
         gazebo_imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
             "/imu", 10, std::bind(&SimMcuNode::gazebo_imu_callback, this, std::placeholders::_1));
 
+        tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
         // Control loop timer
         control_timer_ = this->create_wall_timer(
             std::chrono::duration<double>(control_period_), std::bind(&SimMcuNode::control_loop, this));
@@ -98,6 +102,8 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr gazebo_scan_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr gazebo_imu_sub_;
 
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+
     rclcpp::TimerBase::SharedPtr control_timer_;
 
     void manual_twist_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
@@ -130,6 +136,17 @@ private:
         auto odom_msg = *msg;
         // Optionally update frame_ids if needed, but Gazebo provides odom->base_link
         mcu_odom_pub_->publish(odom_msg);
+
+        // Broadcast odom -> base_link transform
+        geometry_msgs::msg::TransformStamped t;
+        t.header.stamp = msg->header.stamp;
+        t.header.frame_id = "odom";
+        t.child_frame_id = "base_link";
+        t.transform.translation.x = msg->pose.pose.position.x;
+        t.transform.translation.y = msg->pose.pose.position.y;
+        t.transform.translation.z = msg->pose.pose.position.z;
+        t.transform.rotation = msg->pose.pose.orientation;
+        tf_broadcaster_->sendTransform(t);
     }
 
     void gazebo_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {

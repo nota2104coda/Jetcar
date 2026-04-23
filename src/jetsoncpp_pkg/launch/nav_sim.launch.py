@@ -78,9 +78,17 @@ def generate_launch_description():
         }]
     )
 
+    # 5. Foxglove Bridge
+    foxglove_bridge_node = Node(
+        package='foxglove_bridge',
+        executable='foxglove_bridge',
+        name='foxglove_bridge'
+    )
+
     return LaunchDescription([
         nvblox_container,
         sim_mcu,
         adaptive_node,
+        foxglove_bridge_node,
         *nav2_nodes
     ])

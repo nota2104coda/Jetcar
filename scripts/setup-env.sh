@@ -109,7 +109,12 @@ sudo apt install -y \
    ros-$ROS2_DISTRO-nav2-waypoint-follower \
    ros-$ROS2_DISTRO-nav2-velocity-smoother \
    ros-$ROS2_DISTRO-nvblox-ros \
-   ros-$ROS2_DISTRO-nvblox-nav2 
+   ros-$ROS2_DISTRO-nvblox-nav2 \
+   ros-$ROS2_DISTRO-ros2-control \
+   ros-$ROS2_DISTRO-ros2-controllers \
+   ros-$ROS2_DISTRO-gazebo-ros2-control \
+   
+   
 
 
 ros2 pkg prefix isaac_ros_nvblox && ros2 pkg prefix isaac_ros_visual_slam
