@@ -19,8 +19,7 @@ def generate_launch_description():
     gzserver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
-        ),
-        launch_arguments={'world': os.path.join(pkg_gazebo_ros, 'worlds', 'gazebo_ros_range.world')}.items()
+        )
     )
 
     # 2. Gazebo Client (the UI)
