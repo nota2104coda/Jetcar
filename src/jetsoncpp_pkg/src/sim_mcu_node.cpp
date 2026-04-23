@@ -54,15 +54,13 @@ public:
         auto_mode_sub_ = this->create_subscription<std_msgs::msg::Bool>(
             "/auto_mode_button", 10, std::bind(&SimMcuNode::auto_mode_callback, this, std::placeholders::_1));
 
-        // Sensor subscribers from Gazebo
+        // Sensor subscribers from Gazebo (using SensorDataQoS to match Gazebo plugins)
         gazebo_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "/odom", 10, std::bind(&SimMcuNode::gazebo_odom_callback, this, std::placeholders::_1));
-
+            "/odom", rclcpp::SensorDataQoS(), std::bind(&SimMcuNode::gazebo_odom_callback, this, std::placeholders::_1));
         gazebo_scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-            "/scan", 10, std::bind(&SimMcuNode::gazebo_scan_callback, this, std::placeholders::_1));
-
+            "/scan", rclcpp::SensorDataQoS(), std::bind(&SimMcuNode::gazebo_scan_callback, this, std::placeholders::_1));
         gazebo_imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-            "/imu", 10, std::bind(&SimMcuNode::gazebo_imu_callback, this, std::placeholders::_1));
+            "/imu", rclcpp::SensorDataQoS(), std::bind(&SimMcuNode::gazebo_imu_callback, this, std::placeholders::_1));
 
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
