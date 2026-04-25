@@ -93,13 +93,15 @@ sudo apt install ros-$ROS2_DISTRO-foxglove-bridge
 sudo apt install python3-colcon-common-extensions ros-dev-tools -y
 # Install slam_toolbox for mapping and localization
 sudo apt install ros-$ROS2_DISTRO-slam-toolbox -y
+ARCH=$(uname -m)
+
+echo "--- Installing Common ROS 2 Packages ---"
 sudo apt install -y \
    ros-$ROS2_DISTRO-robot-localization \
    ros-$ROS2_DISTRO-slam-toolbox \
    ros-$ROS2_DISTRO-image-transport \
    ros-$ROS2_DISTRO-image-transport-plugins \
    ros-$ROS2_DISTRO-compressed-image-transport \
-   ros-$ROS2_DISTRO-isaac-ros-nvblox \
    ros-$ROS2_DISTRO-nav2-bringup \
    ros-$ROS2_DISTRO-nav2-controller \
    ros-$ROS2_DISTRO-nav2-planner \
@@ -108,16 +110,31 @@ sudo apt install -y \
    ros-$ROS2_DISTRO-nav2-bt-navigator \
    ros-$ROS2_DISTRO-nav2-waypoint-follower \
    ros-$ROS2_DISTRO-nav2-velocity-smoother \
-   ros-$ROS2_DISTRO-nvblox-ros \
-   ros-$ROS2_DISTRO-nvblox-nav2 \
    ros-$ROS2_DISTRO-ros2-control \
    ros-$ROS2_DISTRO-ros2-controllers \
-   ros-$ROS2_DISTRO-gazebo-ros2-control \
-   
-   
+   ros-$ROS2_DISTRO-realsense2-camera \
+   ros-$ROS2_DISTRO-realsense2-description \
+   ros-$ROS2_DISTRO-realsense2-camera-msgs
 
-
-ros2 pkg prefix isaac_ros_nvblox && ros2 pkg prefix isaac_ros_visual_slam
+if [ "$ARCH" = "x86_64" ]; then
+    echo "--- Installing PC/Simulation Packages (x86_64) ---"
+    sudo apt install -y \
+       ros-$ROS2_DISTRO-gazebo-ros2-control \
+       ros-$ROS2_DISTRO-ros-gz \
+       ros-$ROS2_DISTRO-ros-gz-sim \
+       ros-$ROS2_DISTRO-ros-gz-sim-sensors \
+       ros-$ROS2_DISTRO-ros-gz-sim-plugins
+elif [ "$ARCH" = "aarch64" ]; then
+    echo "--- Installing Jetson/Robot Packages (aarch64) ---"
+    sudo apt install -y \
+       ros-$ROS2_DISTRO-isaac-ros-nvblox \
+       ros-$ROS2_DISTRO-isaac-ros-visual-slam \
+       ros-$ROS2_DISTRO-nvblox-ros \
+       ros-$ROS2_DISTRO-nvblox-nav2
+    
+    # Verify Isaac ROS package installation paths
+    ros2 pkg prefix isaac_ros_nvblox && ros2 pkg prefix isaac_ros_visual_slam
+fi
 # Automatically source ROS 2 upon every new terminal login
 echo "source /opt/ros/$ROS2_DISTRO/setup.bash" >> ~/.bashrc
 
