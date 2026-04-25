@@ -29,9 +29,9 @@
 
 using namespace std::chrono_literals;
 
-class HwMcuNode : public rclcpp::Node {
+class McuNode : public rclcpp::Node {
 public:
-    HwMcuNode() : Node("hw_mcu_node") {
+    McuNode() : Node("hw_mcu_node") {
         RCLCPP_INFO(this->get_logger(), "Hardware MCU node starting (USB serial + MAVLink).");
 
         // Parameters
@@ -52,6 +52,8 @@ public:
         this->declare_parameter("command_topic_manual", "cmd_vel_manual");
         this->declare_parameter("command_topic_nav", "cmd_vel_nav");
         this->declare_parameter("command_mode", "set_actuator_control_target");
+        this->declare_parameter("stop_button_state", true);
+        this->declare_parameter("auto_mode_button_state", true);
         // source/target system/component
         this->declare_parameter("command_target_system", 200);
         this->declare_parameter("command_target_component", 191);
@@ -78,9 +80,12 @@ public:
         base_frame_id_ = this->get_parameter("base_frame_id").as_string();
         imu_frame_id_ = this->get_parameter("imu_frame_id").as_string();
         
-        command_topic_manual = this->get_parameter("command_topic_manual").as_string();
-        command_topic_nav = this->get_parameter("command_topic_nav").as_string();
+        command_topic_manual_ = this->get_parameter("command_topic_manual").as_string();
+        command_topic_nav_ = this->get_parameter("command_topic_nav").as_string();
         command_mode_ = this->get_parameter("command_mode").as_string();
+
+        stop_button_state_ = this->get_parameter("stop_button_state").as_bool();
+        auto_mode_button_state_ = this->get_parameter("auto_mode_button_state").as_bool();
 
         target_system_ = this->get_parameter("command_target_system").as_int();
         target_component_ = this->get_parameter("command_target_component").as_int();
@@ -109,17 +114,17 @@ public:
         cliff_rear_pub_ = this->create_publisher<sensor_msgs::msg::Range>("/mcu/cliff/rear", 10);
 
         // Subscribers
-        cmd_vel_sub_manual = this->create_subscription<geometry_msgs::msg::Twist>(
-            command_topic_manual, 10, std::bind(&HwMcuNode::manual_twist_callback, this, std::placeholders::_1));
+        cmd_vel_sub_manual_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            command_topic_manual_, 10, std::bind(&McuNode::manual_twist_callback, this, std::placeholders::_1));
         
-        cmd_vel_sub_nav = this->create_subscription<geometry_msgs::msg::Twist>(
-            command_topic_nav, 10, std::bind(&HwMcuNode::auto_twist_callback, this, std::placeholders::_1));
+        cmd_vel_sub_nav_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            command_topic_nav_, 10, std::bind(&McuNode::auto_twist_callback, this, std::placeholders::_1));
 
         stop_button_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-            "/stop_button", 10, std::bind(&HwMcuNode::stop_button_callback, this, std::placeholders::_1));
+            "/stop_button", 10, std::bind(&McuNode::stop_button_callback, this, std::placeholders::_1));
             
         auto_mode_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-            "/auto_mode_button", 10, std::bind(&HwMcuNode::auto_mode_callback, this, std::placeholders::_1));
+            "/auto_mode_button", 10, std::bind(&McuNode::auto_mode_callback, this, std::placeholders::_1));
 
         // TF Broadcaster
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -129,13 +134,13 @@ public:
 
         // Timers
         poll_timer_ = this->create_wall_timer(
-            std::chrono::duration<double>(poll_period_), std::bind(&HwMcuNode::poll_mcu, this));
+            std::chrono::duration<double>(poll_period_), std::bind(&McuNode::poll_mcu, this));
             
         control_timer_ = this->create_wall_timer(
-            std::chrono::duration<double>(control_period_), std::bind(&HwMcuNode::control_loop, this));
+            std::chrono::duration<double>(control_period_), std::bind(&McuNode::control_loop, this));
     }
 
-    ~HwMcuNode() {
+    ~McuNode() {
         close_serial();
     }
 
@@ -154,8 +159,8 @@ private:
     std::string odom_frame_id_;
     std::string base_frame_id_;
     std::string imu_frame_id_;
-    std::string command_topic_manual;
-    std::string command_topic_nav;
+    std::string command_topic_manual_;
+    std::string command_topic_nav_;
     std::string command_mode_;
     
     int target_system_;
@@ -194,8 +199,8 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr cliff_front_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr cliff_rear_pub_;
 
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_nav;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_nav_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_button_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr auto_mode_sub_;
 
@@ -559,14 +564,14 @@ private:
         
         mavlink_message_t msg;
 
-        float vX = (float)std::max(std::min(linear_x, 1.0), -1.0);
-        float wZ = (float)std::max(std::min(angular_z, 1.0), -1.0);
+        float vx = (float)std::max(std::min(linear_x, 1.0), -1.0);
+        float wz = (float)std::max(std::min(angular_z, 1.0), -1.0);
         
-        if (flip_angular_) wZ = -wZ;
+        if (flip_angular_) wz = -wz;
 
         // Base gain
-        float left = 0.8f * (vX - wZ);
-        float right = 0.8f * (vX + wZ);
+        float left = 0.8f * (vx - wz);
+        float right = 0.8f * (vx + wz);
         
         // Refined deadband compensation:
         // Linearly map [0, 1] to [min_torque, 1] to preserve steering deltas
@@ -610,7 +615,7 @@ private:
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<HwMcuNode>();
+    auto node = std::make_shared<McuNode>();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

@@ -13,9 +13,9 @@
 
 using namespace std::chrono_literals;
 
-class SimMcuNode : public rclcpp::Node {
+class McuNode : public rclcpp::Node {
 public:
-    SimMcuNode() : Node("sim_mcu_node") {
+    McuNode() : Node("sim_mcu_node") {
         RCLCPP_INFO(this->get_logger(), "Simulation MCU node starting.");
 
         // Parameters (matching hw_mcu_node)
@@ -26,51 +26,59 @@ public:
         this->declare_parameter("manual_yaw_rate_max", 1.0);
         this->declare_parameter("manual_scale", 0.4);
         this->declare_parameter("auto_scale", 1.5);
+        this->declare_parameter("stop_button_state", true);
+        this->declare_parameter("auto_mode_button_state", true);
 
-        double control_period_ = this->get_parameter("control_period").as_double();
-        std::string command_topic_manual = this->get_parameter("command_topic_manual").as_string();
-        std::string command_topic_nav = this->get_parameter("command_topic_nav").as_string();
+        control_period_ = this->get_parameter("control_period").as_double();
+        command_topic_manual_ = this->get_parameter("command_topic_manual").as_string();
+        command_topic_nav_ = this->get_parameter("command_topic_nav").as_string();
         manual_linear_max_ = this->get_parameter("manual_linear_max").as_double();
         manual_yaw_rate_max_ = this->get_parameter("manual_yaw_rate_max").as_double();
         manual_scale_ = this->get_parameter("manual_scale").as_double();
         auto_scale_ = this->get_parameter("auto_scale").as_double();
+        stop_button_state_ = this->get_parameter("stop_button_state").as_bool();
+        auto_mode_button_state_ = this->get_parameter("auto_mode_button_state").as_bool();
 
         // Publishers
         effort_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/effort_controller/commands", 10);
-        mcu_odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/mcu/odom", 10);
-        mcu_scan_pub_ = this->create_publisher<sensor_msgs::msg::LaserScan>("/mcu/scan", 10);
-        mcu_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/mcu/imu", 10);
+        odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/mcu/odom", 10);
+        imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/mcu/imu", 10);
+        scan_pub_ = this->create_publisher<sensor_msgs::msg::LaserScan>("/mcu/scan", 10);
+        
 
         // Subscribers
         cmd_vel_sub_manual_ = this->create_subscription<geometry_msgs::msg::Twist>(
-            command_topic_manual, 10, std::bind(&SimMcuNode::manual_twist_callback, this, std::placeholders::_1));
+            command_topic_manual_, 10, std::bind(&McuNode::manual_twist_callback, this, std::placeholders::_1));
         
         cmd_vel_sub_nav_ = this->create_subscription<geometry_msgs::msg::Twist>(
-            command_topic_nav, 10, std::bind(&SimMcuNode::auto_twist_callback, this, std::placeholders::_1));
+            command_topic_nav_, 10, std::bind(&McuNode::auto_twist_callback, this, std::placeholders::_1));
 
         stop_button_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-            "/stop_button", 10, std::bind(&SimMcuNode::stop_button_callback, this, std::placeholders::_1));
+            "/stop_button", 10, std::bind(&McuNode::stop_button_callback, this, std::placeholders::_1));
             
         auto_mode_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-            "/auto_mode_button", 10, std::bind(&SimMcuNode::auto_mode_callback, this, std::placeholders::_1));
+            "/auto_mode_button", 10, std::bind(&McuNode::auto_mode_callback, this, std::placeholders::_1));
 
         // Sensor subscribers from Gazebo (using SensorDataQoS to match Gazebo plugins)
         gazebo_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "/odom", rclcpp::SensorDataQoS(), std::bind(&SimMcuNode::gazebo_odom_callback, this, std::placeholders::_1));
+            "/odom", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_odom_callback, this, std::placeholders::_1));
         gazebo_scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-            "/scan", rclcpp::SensorDataQoS(), std::bind(&SimMcuNode::gazebo_scan_callback, this, std::placeholders::_1));
+            "/scan", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_scan_callback, this, std::placeholders::_1));
         gazebo_imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-            "/imu", rclcpp::SensorDataQoS(), std::bind(&SimMcuNode::gazebo_imu_callback, this, std::placeholders::_1));
+            "/imu", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_imu_callback, this, std::placeholders::_1));
 
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
         // Control loop timer
         control_timer_ = this->create_wall_timer(
-            std::chrono::duration<double>(control_period_), std::bind(&SimMcuNode::control_loop, this));
+            std::chrono::duration<double>(control_period_), std::bind(&McuNode::control_loop, this));
     }
 
 private:
     // Config
+    double control_period_;
+    std::string command_topic_manual_;
+    std::string command_topic_nav_;
     double manual_linear_max_;
     double manual_yaw_rate_max_;
     double manual_scale_;
@@ -88,9 +96,9 @@ private:
 
     // ROS interfaces
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr effort_pub_;
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr mcu_odom_pub_;
-    rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr mcu_scan_pub_;
-    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr mcu_imu_pub_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr scan_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_nav_;
@@ -133,7 +141,7 @@ private:
         // Republish Gazebo odom to mcu namespace
         auto odom_msg = *msg;
         // Optionally update frame_ids if needed, but Gazebo provides odom->base_link
-        mcu_odom_pub_->publish(odom_msg);
+        odom_pub_->publish(odom_msg);
 
         // Broadcast odom -> base_link transform
         geometry_msgs::msg::TransformStamped t;
@@ -149,12 +157,12 @@ private:
 
     void gazebo_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
         // Republish Gazebo scan to mcu namespace
-        mcu_scan_pub_->publish(*msg);
+        scan_pub_->publish(*msg);
     }
 
     void gazebo_imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) {
         // Republish Gazebo imu to mcu namespace
-        mcu_imu_pub_->publish(*msg);
+        imu_pub_->publish(*msg);
     }
 
     void control_loop() {
@@ -198,12 +206,12 @@ private:
         if (std::abs(angular_z) > manual_yaw_rate_max_) angular_z = std::copysign(manual_yaw_rate_max_, angular_z);
 
         // Compute efforts
-        float vX = (float)std::max(std::min(linear_x, 1.0), -1.0);
-        float wZ = (float)std::max(std::min(angular_z, 1.0), -1.0);
+        float vx = (float)std::max(std::min(linear_x, 1.0), -1.0);
+        float wz = (float)std::max(std::min(angular_z, 1.0), -1.0);
         
         // Base gain
-        float left = 0.8f * (vX - wZ);
-        float right = 0.8f * (vX + wZ);
+        float left = 0.8f * (vx - wz);
+        float right = 0.8f * (vx + wz);
         
         // Refined deadband compensation:
         float min_torque = 0.18f;
@@ -236,7 +244,7 @@ private:
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<SimMcuNode>();
+    auto node = std::make_shared<McuNode>();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

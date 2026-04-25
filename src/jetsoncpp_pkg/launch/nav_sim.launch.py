@@ -1,7 +1,6 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import TimerAction, LogInfo
 from launch_ros.actions import Node, ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
@@ -9,7 +8,7 @@ def generate_launch_description():
     pkg_jetson_cpp = get_package_share_directory('jetsoncpp_pkg')
     nav2_params = os.path.join(pkg_jetson_cpp, 'config', 'nav2_params_sim.yaml')
     
-    # 1. nvblox (Configured for Gazebo sensor topics)
+    # 1. nvblox
     nvblox_container = ComposableNodeContainer(
         name='nvblox_container',
         namespace='',
@@ -29,10 +28,10 @@ def generate_launch_description():
                 }],
                 remappings=[
                     ('/camera_0/depth/image', '/camera/depth/image_rect_raw'),
-                    ('/camera_0/depth/camera_info', '/camera/depth/camera_info'),
+                    ('/camera_0/depth/camera_info', '/camera/color/camera_info'),
                     ('/camera_0/color/image', '/camera/color/image_raw'),
                     ('/camera_0/color/camera_info', '/camera/color/camera_info'),
-                    ('pose', '/odom'), # Using Gazebo Ground Truth Odom for stability
+                    ('pose', '/odom'), 
                 ]
             ),
         ],
@@ -55,40 +54,21 @@ def generate_launch_description():
              parameters=[{'use_sim_time': True, 'autostart': True, 'node_names': ['controller_server', 'planner_server', 'behavior_server', 'bt_navigator']}]),
     ]
 
-    # 3. Sim MCU Node
-    sim_mcu = Node(
-        package='jetsoncpp_pkg',
-        executable='sim_mcu_node',
-        name='sim_mcu_node',
-        parameters=[{
-            'use_sim_time': True,
-        }]
-    )
-
-    # 3. Your Custom Camera Node (Adaptive Resolution)
+    # 3. Adaptive Resolution Node
     adaptive_node = Node(
         package='jetsoncpp_pkg',
         executable='adaptive_resolution_node',
         name='adaptive_resolution',
         parameters=[{
             'use_sim_time': True,
-            'camera_node_name': '/camera/camera', # Note: Gazebo plugin namespace
+            'camera_node_name': '/camera/color', 
             'low_speed_threshold': 0.1,
             'high_speed_threshold': 0.2,
         }]
     )
 
-    # 5. Foxglove Bridge
-    foxglove_bridge_node = Node(
-        package='foxglove_bridge',
-        executable='foxglove_bridge',
-        name='foxglove_bridge'
-    )
-
     return LaunchDescription([
         nvblox_container,
-        sim_mcu,
         adaptive_node,
-        foxglove_bridge_node,
         *nav2_nodes
     ])

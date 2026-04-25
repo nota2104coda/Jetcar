@@ -59,7 +59,17 @@ jl() {
  
 # 3. Shortcut to build the workspace
 cb() {
-   colcon build --symlink-install "$@"
+   curr_dir=$(pwd)
+   cd $HOME/Jetcar
+   if colcon build --symlink-install "$@"; then
+	  source install/setup.bash
+        echo "Build success and sourced"
+   else
+	echo "Build failed"
+   fi
+   # go back to previous dir
+   cd "$curr_dir"
+
 }
 
 # 4. Shortcut to source the system ROS 2 environment
