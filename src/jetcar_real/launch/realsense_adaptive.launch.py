@@ -38,7 +38,7 @@ def generate_launch_description():
 
     # Adaptive Resolution Node
     adaptive_node = Node(
-        package='jetsoncpp_pkg',
+        package='jetcar_real',
         executable='adaptive_resolution_node',
         name='adaptive_resolution',
         output='screen',

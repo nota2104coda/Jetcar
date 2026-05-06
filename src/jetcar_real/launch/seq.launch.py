@@ -8,7 +8,7 @@ from launch_ros.descriptions import ComposableNode
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    pkg_jetson_cpp = get_package_share_directory('jetsoncpp_pkg')
+    pkg_jetson_cpp = get_package_share_directory('jetcar_real')
     nav2_params_path = os.path.join(pkg_jetson_cpp, 'config', 'nav2_params.yaml')
     nav2_bt_share = get_package_share_directory('nav2_bt_navigator')
     nav2_nav_pose_bt = os.path.join(
@@ -22,9 +22,12 @@ def generate_launch_description():
         'navigate_through_poses_w_replanning_and_recovery.xml'
     )
     
+    # ... (skipping unchanged code for brevity in instruction, but I must provide full context)
+    
     # 0. Robot State Publisher (URDF)
-    urdf_path = os.path.join(pkg_jetson_cpp, 'urdf', 'skid_steer_4wd.urdf')
-    robot_description_content = Command(['xacro ', urdf_path])
+    pkg_description = get_package_share_directory('jetcar_description')
+    xacro_path = os.path.join(pkg_description, 'urdf', 'jetcar.urdf.xacro')
+    robot_description_content = Command(['xacro ', xacro_path, ' sim_mode:=false'])
     
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
@@ -53,13 +56,13 @@ def generate_launch_description():
                     'depth_module.depth_profile': '424x240x30',
                     'depth_module.infra_profile': '424x240x30',
                     'rgb_camera.color_format': 'BGR8',
-                    'rgb_camera.color_qos': 'RELIABLE', # Changed to RELIABLE for Foxglove
+                    'rgb_camera.color_qos': 'SENSOR_DATA',
                     'depth_module.depth_qos': 'SENSOR_DATA',
                     'enable_infra1': True,
                     'enable_infra2': True, 
                     'enable_depth': True, 
                     'enable_color': True,
-                    'enable_sync': True,
+                    'enable_sync': False,
                     'frames_queue_size': 2,
                 }]
             ),
@@ -126,7 +129,7 @@ def generate_launch_description():
                 package='nvblox_ros',
                 plugin='nvblox::NvbloxNode',
                 parameters=[{
-                    'global_frame': 'map',
+                    'global_frame': 'odom',
                     'voxel_size': 0.1,
                     'use_static_occupancy_layer': True,
                     'use_color': True,
@@ -175,6 +178,24 @@ def generate_launch_description():
         ]
     )
 
+    # 1. Camera Node
+    camera_node = Node(
+        package='realsense2_camera',
+        executable='realsense2_camera_node',
+        name='camera',
+        namespace='camera',
+        parameters=[{
+            'rgb_camera.color_profile': '640x480x15', 
+            'depth_module.depth_profile': '640x480x15',
+            'depth_module.infra_profile': '640x480x15',
+            'rgb_camera.color_format': 'BGR8',
+            'rgb_camera.color_qos': 'RELIABLE',
+            'enable_sync': True,
+            'enable_color': True,
+            'enable_depth': True,
+        }]
+    )
+
     # 3. Support Nodes
     ld06_node = Node(
         package='ldlidar_ros2',
@@ -194,13 +215,13 @@ def generate_launch_description():
     )
     
     lidar_pwm_node = Node(
-        package='jetsoncpp_pkg',
+        package='jetcar_real',
         executable='lidar_pwm.py',
         name='lidar_pwm_control'
     )
 
     hw_mcu_node = Node(
-        package='jetsoncpp_pkg',
+        package='jetcar_real',
         executable='hw_mcu_node',
         name='hw_mcu_node',
         parameters=[{
@@ -209,7 +230,6 @@ def generate_launch_description():
             'enable_tf_broadcast': False,
             'poll_period': 0.005,    # 200Hz for SLAM
             'control_period': 0.02,  # 50Hz control
-            'command_topic_manual': 'cmd_vel_manual',
             'command_topic_nav': 'cmd_vel_nav',
         }]
     )
@@ -331,7 +351,7 @@ def generate_launch_description():
     )
 
     hmi_node = Node(
-        package='jetsoncpp_pkg',
+        package='jetcar_real',
         executable='hmi_node_nobridge',
         name='hmi_node'
     )
@@ -346,21 +366,23 @@ def generate_launch_description():
         robot_state_publisher_node,
         container,
         delayed_vslam,
-        delayed_converter,
-        delayed_nvblox,
-        ld06_node,
-        lidar_pwm_node,
-        hw_mcu_node,
-        ekf_node,
-        slam_toolbox_node,
-        nav2_controller_node,
-        nav2_planner_node,
-        nav2_smoother_node,
-        nav2_behavior_node,
-        nav2_bt_navigator_node,
-        nav2_waypoint_node,
-        nav2_velocity_smoother_node,
-        nav2_lifecycle_manager_node,
-        hmi_node,
-        foxglove_bridge_node
-    ])
+        return LaunchDescription([
+            robot_state_publisher_node,
+            camera_node,
+            ld06_node,
+            lidar_pwm_node,
+            hw_mcu_node,
+            ekf_node,
+            slam_toolbox_node,
+            nav2_controller_node,
+            nav2_planner_node,
+            nav2_smoother_node,
+            nav2_behavior_node,
+            nav2_bt_navigator_node,
+            nav2_waypoint_node,
+            nav2_velocity_smoother_node,
+            nav2_lifecycle_manager_node,
+            hmi_node,
+            foxglove_bridge_node
+        ])
+

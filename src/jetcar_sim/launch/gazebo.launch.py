@@ -1,4 +1,5 @@
 import os
+from launch.substitutions import Command
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, RegisterEventHandler
@@ -8,13 +9,14 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
-    pkg_jetson_cpp = get_package_share_directory('jetsoncpp_pkg')
+    pkg_jetcar_sim = get_package_share_directory('jetcar_sim')
+    pkg_jetcar_real = get_package_share_directory('jetcar_real')
+    pkg_description = get_package_share_directory('jetcar_description')
 
-    urdf_path = os.path.join(pkg_jetson_cpp, 'urdf', 'skid_steer_4wd_sim.urdf')
-    with open(urdf_path, 'r') as infp:
-        robot_desc = infp.read()
+    xacro_path = os.path.join(pkg_description, 'urdf', 'jetcar.urdf.xacro')
+    robot_description_content = Command(['xacro ', xacro_path, ' sim_mode:=true'])
 
-    world_path = os.path.join(pkg_jetson_cpp, 'worlds', 'room_with_obstacles.sdf')
+    world_path = os.path.join(pkg_jetcar_sim, 'worlds', 'room_with_obstacles.sdf')
 
     # 1. Gazebo Harmonic
     gz_sim = IncludeLaunchDescription(
@@ -29,7 +31,10 @@ def generate_launch_description():
         package='robot_state_publisher',
         executable='robot_state_publisher',
         output='screen',
-        parameters=[{'robot_description': robot_desc, 'use_sim_time': True}]
+        parameters=[{
+            'robot_description': robot_description_content,
+            'use_sim_time': True
+        }]
     )
 
     # 3. Spawn Robot
@@ -77,7 +82,7 @@ def generate_launch_description():
     
     # 6. Simulation MCU Node
     sim_mcu_node = Node(
-        package='jetsoncpp_pkg',
+        package='jetcar_real',
         executable='sim_mcu_node',
         output='screen',
         parameters=[{
@@ -88,7 +93,7 @@ def generate_launch_description():
 
     # 7. HMI Node (Also starts Foxglove Bridge)
     hmi_node = Node(
-        package='jetsoncpp_pkg',
+        package='jetcar_real',
         executable='hmi_node',
         name='hmi_node',
         output='screen'

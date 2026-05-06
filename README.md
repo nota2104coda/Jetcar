@@ -18,6 +18,7 @@ when the user asks to navigate to the red football, it scans the room by spinnin
 -Learn to configure a robot in ROS2 Humble. 
 -Learn to apply LLM/VLM for mobile robots. 
 -Learn to test unit/integration/system level using test frameworks and Isaac Sim, without having to actually drive the robot
+-Learn to apply industrial functional safety standards and cybersecurity standard(IEC62443) to this robot
 
 ## Hardware 
 **Jetson Orin Nano 8GB**: runs ROS2 nodes, web server, connects to MCU via USB-UART, reads Realsense D435 camera, reads LD06 Lidar via USB-UART. USB-UART is via CP2104 adapters. Comm between MCU and Jetson uses mavlink protocol.
@@ -32,16 +33,19 @@ Can be dockerised in future
 2. **Clone the repo**
 see scripts/setup-repo.sh
 
-3. **Develop ROS2 python nodes for Rpi5/Jetson in** `src/python_pkg/`
-  **Develop ROS2 C++ nodes for Jetson in** `src/jetsoncpp_pkg/`
-  **Develop ROS2 nodes for PC in** `src/pc_pkg`
+3.**Use this pacakge for bringup**  `src/jetcar_bringup/`
+  **Develop ROS2 python nodes for Rpi5/Jetson in** `src/python_pkg/`
+  **Develop ROS2 C++ nodes for Jetson in** `src/jetcar_real/`
+  **Develop ROS2 nodes for PC simulation in** `src/jetcar_sim/`
+  **Manage navigation parameters and logic in** `src/jetcar_nav`
+  **Manage the robot URDF in** `src/jetcar_description/`
   **Develop Pi Pico W code in** `src/mcu/pico-PlatformIO/`
   **Develop ESP32S3-Pico code in** `src/mcu/esp32-PlatformIO/`
-  **Common microcontroller include files** `src/mcu/include/`
+  **Common microcontroller library files** `src/mcu/include/`
   **Define custom ROS messages in** `src/robot_msgs/msg/` and build with `colcon build`
   **Access foxglove visualisation** `ws://192.168.50.177:8765` or your chosen IP address. configure this in the foxglove node. You can use docs/jetcar-foxglove-layout.json in foxglove as a layout import
-  **Define pins for Pi Pico W** in `libs/arduino/RobotCarPinDefinitionsAndMore.h`
-  **Define robot urdf** in `src/jetsoncpp_pkg/urdf`
+  **Define pins for MCU in** `libs/arduino/RobotCarPinDefinitionsAndMore.h`
+  **Define robot urdf** in `src/jetcar_real/urdf`
 
 4. **to launch**
 At prompt, enter 
@@ -51,7 +55,7 @@ REPO_DIR="/home/$USERNAME/Jetcar"
 cd $REPODIR
 
 source install/setup.bash
-ros2 launch jetsoncpp_pkg isaac_extension.launch.py
+ros2 launch jetcar_bringup real_robot.launch.py
 ```
 
 ## Diagrams
