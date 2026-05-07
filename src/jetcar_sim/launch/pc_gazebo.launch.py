@@ -62,7 +62,7 @@ def generate_launch_description():
             ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
             ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
             ('/model/jetcar/odometry', '/odom'),
-            ('/model/jetcar/sensor/camera/camera_info', '/camera/color/camera_info')
+            ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info')
         ],
         output='screen'
     )
@@ -73,8 +73,8 @@ def generate_launch_description():
         executable='image_bridge',
         arguments=['/model/jetcar/sensor/camera/image', '/model/jetcar/sensor/camera/depth_image'],
         remappings=[
-            ('/model/jetcar/sensor/camera/image', '/camera/color/image_raw'),
-            ('/model/jetcar/sensor/camera/depth_image', '/camera/depth/image_rect_raw')
+            ('/model/jetcar/sensor/camera/image', '/camera/camera/color/image_raw'),
+            ('/model/jetcar/sensor/camera/depth_image', '/camera/camera/depth/image_rect_raw')
         ],
         output='screen'
     )
