@@ -47,15 +47,28 @@ see scripts/setup-repo.sh
   **Define pins for MCU in** `libs/arduino/RobotCarPinDefinitionsAndMore.h`
   **Define robot urdf** in `src/jetcar_real/urdf`
 
-4. **to launch**
+4. **To launch the real robot**
 At prompt, enter 
-```
+```bash
 USERNAME="xyz" # CHANGE THIS to your computer's username
 REPO_DIR="/home/$USERNAME/Jetcar"
-cd $REPODIR
+cd $REPO_DIR
 
 source install/setup.bash
 ros2 launch jetcar_bringup real_robot.launch.py
+```
+
+5. **To launch the distributed simulation**
+For a distributed setup (Gazebo physics on PC, Nav2/HMI on Jetson):
+**On PC:**
+```bash
+source install/setup.bash
+ros2 launch jetcar_sim pc_gazebo.launch.py
+```
+**On Jetson Orin Nano:**
+```bash
+source install/setup.bash
+ros2 launch jetcar_bringup jetson_sim_nav.launch.py
 ```
 
 ## Diagrams

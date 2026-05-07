@@ -90,6 +90,7 @@ flowchart TB
   end
  subgraph jetcar_sim["jetcar_sim (Sim Config)"]
         gazebo_launch["gazebo.launch.py"]
+        pc_gazebo_launch["pc_gazebo.launch.py (PC side)"]
         sim_params["sim_controllers.yaml"]
   end
  subgraph jetcar_nav["jetcar_nav (Navigation)"]
@@ -102,6 +103,7 @@ flowchart TB
  subgraph jetcar_bringup["jetcar_bringup (Integration)"]
         RealLaunch["real_robot.launch.py"]
         SimLaunch["sim_robot.launch.py"]
+        JetsonSimLaunch["jetson_sim_nav.launch.py (Jetson side)"]
   end
  subgraph IsaacROS["Isaac ROS (Vision Stack)"]
         SLAM["vslam_node"]
