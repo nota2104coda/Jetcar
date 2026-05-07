@@ -25,10 +25,10 @@ public:
         this->declare_parameter("manual_linear_max", 1.0);
         this->declare_parameter("manual_yaw_rate_max", 1.0);
         this->declare_parameter("manual_scale", 0.4);
-        this->declare_parameter("manual_scale", 0.4);
         this->declare_parameter("auto_scale", 1.5);
         this->declare_parameter("flip_angular", false);
         this->declare_parameter("stop_button_state", true);
+        this->declare_parameter("auto_mode_button_state", true);
 
         control_period_ = this->get_parameter("control_period").as_double();
         command_topic_manual_ = this->get_parameter("command_topic_manual").as_string();
