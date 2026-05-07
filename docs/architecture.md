@@ -77,254 +77,58 @@ config:
   layout: dagre
 ---
 flowchart TB
- subgraph ROS2Nodes["ROS 2 Nodes on Jetson"]
-        Vision["vision_node::Camera, ld06_lidar"]
-        Recognition["yolo_node"]
-        LLM["llm_node"]
+ subgraph jetcar_nodes["jetcar_nodes (Source Code)"]
+        hw_mcu_node["hw_mcu_node (MAVLink)"]
+        hmi_node["hmi_node (Buttons/LCD)"]
+        lidar_pwm["lidar_pwm.py"]
+        sim_mcu["sim_mcu_node"]
+        adaptive["adaptive_resolution_node"]
+  end
+ subgraph jetcar_real["jetcar_real (Real Config)"]
+        hardware_launch["hardware.launch.py"]
+        loc_launch["localization.launch.py"]
+  end
+ subgraph jetcar_sim["jetcar_sim (Sim Config)"]
+        gazebo_launch["gazebo.launch.py"]
+        sim_params["sim_controllers.yaml"]
+  end
+ subgraph jetcar_nav["jetcar_nav (Navigation)"]
+        Navigation["nav2_nodes (Planner, Controller, BT)"]
+        nav_params["nav2_params.yaml"]
+  end
+ subgraph jetcar_description["jetcar_description (Body)"]
+        RSP["robot_state_publisher (Xacro)"]
+  end
+ subgraph jetcar_bringup["jetcar_bringup (Integration)"]
+        RealLaunch["real_robot.launch.py"]
+        SimLaunch["sim_robot.launch.py"]
+  end
+ subgraph IsaacROS["Isaac ROS (Vision Stack)"]
         SLAM["vslam_node"]
-        Navigation["nav2_node::Path Planning"]
-        Control["control_node"]
-        hw_mcu_node["hw_mcu_node CP2104 mavlink"]
-        hmi_node["Foxglove bridge"]
+        NvBlox["nvblox_node"]
   end
- subgraph Core0["Core0"]
-        MotionArb["Motion arbitration"]
-        mcu_mavlink["comms with Jetson"]
-        MotorDriver["motorDriver"]
-        LD2450["uart LD2450"]
-        I2CSensors["Encoders, MPU6050, VL53L5X"]
+
+ subgraph MCU["MCU (Pico W / ESP32S3-Pico)"]
+        direction TB
+        Core0["Core0: Motion, MAVLink, Motors"]
+        Core1["Core1: Sonar, Cliff"]
   end
- subgraph Core1["Core1"]
-        Sonar["Sonar"]
-        CliffSensor["Cliffsensor"]
-  end
- subgraph MCU["Pico W / ESP32S3-Pico"]
-        Core0
-        Core1
-  end
-    Vision -- Sensor Data --> SLAM
-    SLAM -->Navigation
-    Navigation --Twist--> Control
-    Control -- [motor commands[] --> hw_mcu_node
-    hw_mcu_node -- Sensor Data --> Control
-    hw_mcu_node -- [motor cmds]--> mcu_mavlink
-    hmi_node -- Commands --> Control
-    Vision -- Visualization --> hmi_node
-    Sonar --> MotionArb
-    CliffSensor --> MotionArb
-    LD2450 --> MotionArb
-    mcu_mavlink --[sensor data]--> hw_mcu_node
-    mcu_mavlink --> MotionArb
-    MotionArb --> MotorDriver
-    I2CSensors --> mcu_mavlink
-    LD2450 --> mcu_mavlink
+
+    hardware_launch -- Starts --> hw_mcu_node
+    hardware_launch -- Starts --> hmi_node
+    gazebo_launch -- Starts --> sim_mcu
+    
+    SLAM --> Navigation
+    Navigation --Twist--> hw_mcu_node
+    hw_mcu_node -- [motor cmds]--> MCU
+    hmi_node -- Commands --> Navigation
+    MCU --[sensor data]--> hw_mcu_node
+    RSP -- TF Tree --> SLAM
+    RSP -- TF Tree --> Navigation
 ```
 
-# Node + Topic Graph
+# Node + Topic Graph (Partial)
+Refer to code for full details.
 
-```mermaid
----
-config:
-  layout: dagre
----
-graph LR
-  classDef topic fill:#f5f5f5,stroke:#808080,stroke-width:1px,color:#000,font-size:11px;
-
-  subgraph UI
-    Foxglove[foxglove_bridge]
-    HMI[hmi_node]
-  end
-
-  subgraph Sensors
-    Camera[realsense2_camera(camera)]
-    LD06[ld06_lidar]
-    PWM[lidar_pwm_control]
-    MCU[hw_mcu_node]
-  end
-
-  subgraph "Isaac ROS Container"
-    VSLAM[visual_slam_node]
-    Converter[image_format_converter_node]
-    NvBlox[nvblox_node]
-  end
-
-  subgraph Localization
-    EKF[ekf_filter_node]
-    SlamTB[slam_toolbox]
-    RSP[robot_state_publisher]
-  end
-
-  subgraph "Nav2 Stack"
-    Planner[planner_server]
-    Controller[controller_server]
-    PathSmoother[smoother_server]
-    VelSmooth[velocity_smoother]
-    Behaviors[behavior_server]
-    BTN[bt_navigator]
-    Waypoint[waypoint_follower]
-    Lifecycle[lifecycle_manager_navigation]
-  end
-
-  topicButtons(["/hmi/button_states"])
-  topicGoal(["/goal_pose::geometry_msgs/PoseStamped"])
-  topicInfra(("Infra stereo + info\n/camera/camera/infra{1,2}/image_rect_raw"))
-  topicIMU(["/mcu/imu::sensor_msgs/Imu"])
-  topicDepth(("Depth image + info\n/camera/camera/depth/image_rect_raw"))
-  topicColorRaw(["/camera/camera/color/image_raw"])
-  topicColorRGB(["/camera/camera/color/image_rgb"])
-  topicPose(["/visual_slam/tracking/vo_pose"])
-  topicOdom(["/visual_slam/tracking/odometry"])
-  topicWheelOdom(["/mcu/odom::nav_msgs/Odometry"])
-  topicScan(["/scan::sensor_msgs/LaserScan"])
-  topicCloud(["/pointcloud2d::sensor_msgs/PointCloud2"])
-  topicEKF(["/odometry/filtered::nav_msgs/Odometry"])
-  topicMap(["/map::nav_msgs/OccupancyGrid"])
-  topicCostLocal(("nvblox ESDF + costmaps"))
-  topicTF(("TF map→odom→base_link"))
-  topicCmdVel(["/cmd_vel::geometry_msgs/Twist"])
-
-  Foxglove --> topicGoal
-  HMI --> topicGoal
-  topicGoal --> BTN
-  HMI --> topicButtons --> Foxglove
-
-  Camera --> topicInfra --> VSLAM
-  MCU --> topicIMU --> VSLAM
-  Camera --> topicDepth --> NvBlox
-  Camera --> topicColorRaw --> Converter --> topicColorRGB --> NvBlox
-  VSLAM --> topicPose
-  topicPose --> NvBlox
-  topicPose --> EKF
-  VSLAM --> topicOdom --> EKF
-  MCU --> topicWheelOdom --> EKF
-  EKF --> topicEKF --> Planner
-  topicEKF --> Controller
-  NvBlox --> topicCostLocal --> Planner
-  topicCostLocal --> Controller
-  LD06 --> topicScan --> SlamTB
-  topicScan --> Controller
-  SlamTB --> topicMap --> Planner
-  LD06 --> topicCloud --> Foxglove
-  RSP --> topicTF
-  topicTF --> Planner
-  topicTF --> Controller
-  topicTF --> Foxglove
-
-  BTN --> Planner
-  BTN --> Behaviors
-  BTN --> Waypoint
-  Planner --> PathSmoother --> Controller --> VelSmooth --> topicCmdVel --> MCU
-  Lifecycle -.-> Planner
-  Lifecycle -.-> Controller
-  Lifecycle -.-> PathSmoother
-  Lifecycle -.-> VelSmooth
-  Lifecycle -.-> Behaviors
-  Lifecycle -.-> BTN
-  Lifecycle -.-> Waypoint
-  PWM --> LD06
-
-  class topicButtons,topicGoal,topicInfra,topicIMU,topicDepth,topicColorRaw,topicColorRGB,topicPose,topicOdom,topicWheelOdom,topicScan,topicCloud,topicEKF,topicMap,topicCostLocal,topicTF,topicCmdVel topic;
-```
-
-# Navigation 
-
-```mermaid
----
-config:
-  layout: dagre
----
-graph LR
-  classDef topic fill:#f5f5f5,stroke:#666,color:#111,font-size:12px;
-
-  RS[realsense2_camera]
-  Converter[image_format_converter_node]
-  VSLAM[visual_slam_node]
-  NvBlox[nvblox_node]
-  LD06[ld06_lidar]
-  SlamTB[slam_toolbox]
-  EKF[ekf_filter_node]
-  Nav2G[Nav2 global_costmap]
-  Nav2L[Nav2 local_costmap]
-  Planner[planner_server]
-  PathSmoother[smoother_server]
-  Controller[controller_server]
-  VelSmooth[velocity_smoother]
-  Behaviors[behavior_server]
-  BTN[bt_navigator]
-  Waypoint[waypoint_follower]
-  Lifecycle[lifecycle_manager_navigation]
-  MCU[hw_mcu_node]
-  RSP[robot_state_publisher]
-  Foxglove[foxglove_bridge]
-  HMI[hmi_node]
-
-  tInfra(("IR stereo + info"))
-  tIMU(("/mcu/imu"))
-  tDepth(("Depth image + info"))
-  tColorRaw(("Color image (raw)"))
-  tColorRGB(("Color image (rgb8)"))
-  tPose(("/visual_slam/tracking/vo_pose"))
-  tOdom(("/visual_slam/tracking/odometry"))
-  tWheelOdom(("/mcu/odom"))
-  tFiltered(("/odometry/filtered"))
-  tScan(("/scan"))
-  tMap(("/map"))
-  tESDF(("nvblox ESDF + meshes"))
-  tGoalPose(("NavigateToPose / FollowWaypoints"))
-  tCmdVelAuto(("/cmd_vel_auto"))
-  tCmdVelManual(("/cmd_vel_manual"))
-  tTF(("TF map→odom→base_link"))
-
-  RS --> tInfra --> VSLAM
-  MCU --> tIMU --> VSLAM
-  RS --> tDepth --> NvBlox
-  RS --> tColorRaw --> Converter --> tColorRGB --> NvBlox
-  VSLAM --> tPose --> NvBlox
-  VSLAM --> tOdom --> EKF
-  MCU --> tWheelOdom --> EKF
-  EKF --> tFiltered
-  tFiltered --> Nav2G
-  tFiltered --> Nav2L
-  tFiltered --> Planner
-  tFiltered --> Controller
-
-  LD06 --> tScan --> SlamTB
-  tScan --> Nav2L
-  SlamTB --> tMap --> Nav2G
-
-  NvBlox --> tESDF --> Nav2L
-  tESDF --> Nav2G
-
-  Foxglove --> tGoalPose
-  HMI --> tGoalPose
-  tGoalPose --> BTN
-  BTN --> Planner
-  BTN --> Behaviors
-  BTN --> Waypoint
-  Waypoint --> BTN
-
-  Nav2G --> Planner
-  Nav2L --> Controller
-  Planner --> PathSmoother --> Controller
-  Controller --> VelSmooth --> tCmdVelAuto --> MCU
-  foxglove_bridge --> tCmdVelManual --> MCU
-  Behaviors --> Controller
-
-  Lifecycle -.-> Nav2G
-  Lifecycle -.-> Nav2L
-  Lifecycle -.-> Planner
-  Lifecycle -.-> PathSmoother
-  Lifecycle -.-> Controller
-  Lifecycle -.-> VelSmooth
-  Lifecycle -.-> Behaviors
-  Lifecycle -.-> BTN
-  Lifecycle -.-> Waypoint
-
-  RSP --> tTF
-  tTF --> Nav2G
-  tTF --> Nav2L
-  tTF --> Planner
-  tTF --> Controller
-
-  class tInfra,tIMU,tDepth,tColorRaw,tColorRGB,tPose,tOdom,tWheelOdom,tFiltered,tScan,tMap,tESDF,tGoalPose,tCmdVelAuto,tTF topic;
-```
+# Navigation Flow
+Refer to code for full details.

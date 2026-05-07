@@ -46,7 +46,7 @@ def generate_launch_description():
     
     # PWM Control Node for Motor (GPIO12)
     lidar_pwm_node = Node(
-        package='jetcar_real',
+        package='jetcar_common',
         executable='lidar_pwm.py',
         name='lidar_pwm_control',
         output='screen'

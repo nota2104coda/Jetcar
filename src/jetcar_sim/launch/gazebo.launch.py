@@ -10,7 +10,6 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
     pkg_jetcar_sim = get_package_share_directory('jetcar_sim')
-    pkg_jetcar_real = get_package_share_directory('jetcar_real')
     pkg_description = get_package_share_directory('jetcar_description')
 
     xacro_path = os.path.join(pkg_description, 'urdf', 'jetcar.urdf.xacro')
@@ -80,9 +79,9 @@ def generate_launch_description():
         output='screen'
     )
     
-    # 6. Simulation MCU Node
+    # 6. Simulation MCU Node (Sim-specific version)
     sim_mcu_node = Node(
-        package='jetcar_real',
+        package='jetcar_sim',
         executable='sim_mcu_node',
         output='screen',
         parameters=[{
@@ -91,9 +90,9 @@ def generate_launch_description():
         }]
     )
 
-    # 7. HMI Node (Also starts Foxglove Bridge)
+    # 7. HMI Node (Common)
     hmi_node = Node(
-        package='jetcar_real',
+        package='jetcar_common',
         executable='hmi_node',
         name='hmi_node',
         output='screen'

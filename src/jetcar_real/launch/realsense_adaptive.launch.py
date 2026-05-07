@@ -38,7 +38,7 @@ def generate_launch_description():
 
     # Adaptive Resolution Node
     adaptive_node = Node(
-        package='jetcar_real',
+        package='jetcar_common',
         executable='adaptive_resolution_node',
         name='adaptive_resolution',
         output='screen',

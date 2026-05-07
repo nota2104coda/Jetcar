@@ -32,7 +32,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(pkg_real, 'launch', 'realsense_optimized.launch.py'))
     )
 
-    # 3. MCU Node
+    # 3. MCU Node (Hardware version)
     hw_mcu_node = Node(
         package='jetcar_real',
         executable='hw_mcu_node',
@@ -48,9 +48,9 @@ def generate_launch_description():
         }]
     )
 
-    # 4. HMI Node
+    # 4. HMI Node (Common)
     hmi_node = Node(
-        package='jetcar_real',
+        package='jetcar_common',
         executable='hmi_node_nobridge',
         name='hmi_node'
     )

@@ -215,13 +215,13 @@ def generate_launch_description():
     )
     
     lidar_pwm_node = Node(
-        package='jetcar_real',
+        package='jetcar_common',
         executable='lidar_pwm.py',
         name='lidar_pwm_control'
     )
 
     hw_mcu_node = Node(
-        package='jetcar_real',
+        package='jetcar_common',
         executable='hw_mcu_node',
         name='hw_mcu_node',
         parameters=[{
@@ -351,7 +351,7 @@ def generate_launch_description():
     )
 
     hmi_node = Node(
-        package='jetcar_real',
+        package='jetcar_common',
         executable='hmi_node_nobridge',
         name='hmi_node'
     )
