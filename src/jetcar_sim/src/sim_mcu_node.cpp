@@ -143,17 +143,6 @@ private:
         // Republish Gazebo odom to mcu namespace
         auto odom_msg = *msg;
         odom_pub_->publish(odom_msg);
-
-        // Broadcast odom -> base_link transform
-        geometry_msgs::msg::TransformStamped t;
-        t.header.stamp = msg->header.stamp;
-        t.header.frame_id = "odom";
-        t.child_frame_id = "base_link";
-        t.transform.translation.x = msg->pose.pose.position.x;
-        t.transform.translation.y = msg->pose.pose.position.y;
-        t.transform.translation.z = msg->pose.pose.position.z;
-        t.transform.rotation = msg->pose.pose.orientation;
-        tf_broadcaster_->sendTransform(t);
     }
 
     void gazebo_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {

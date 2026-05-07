@@ -45,26 +45,27 @@ def generate_launch_description():
     )
 
     # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop, TF)
-    # Using direct arguments for reliability
+    # Using full paths for Ignition/GZ Sim reliability
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-            '/model/jetcar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-            '/model/jetcar/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
-            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-            '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
-            '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-            '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
+            '/world/jetcar_world/model/jetcar/link/ld06_lidar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/world/jetcar_world/model/jetcar/link/imu_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
+            '/world/jetcar_world/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            '/world/jetcar_world/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+            '/world/jetcar_world/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
+            '/world/jetcar_world/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            '/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
-            ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
-            ('/model/jetcar/odometry', '/odom'),
-            ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
-            ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
-            ('/model/jetcar/tf', '/tf'),
-            ('/model/jetcar/sensor/camera/camera_info', '/camera/color/camera_info')
+            ('/world/jetcar_world/model/jetcar/link/ld06_lidar/sensor/ld06_lidar/scan', '/scan'),
+            ('/world/jetcar_world/model/jetcar/link/imu_link/sensor/imu_sensor/imu', '/imu'),
+            ('/world/jetcar_world/clock', '/clock'),
+            ('/world/jetcar_world/model/jetcar/odometry', '/odom'),
+            ('/world/jetcar_world/model/jetcar/cmd_vel', '/cmd_vel_manual'),
+            ('/world/jetcar_world/model/jetcar/tf', '/tf'),
+            ('/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/camera_info', '/camera/color/camera_info')
         ],
         output='screen'
     )
@@ -73,10 +74,13 @@ def generate_launch_description():
     camera_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/model/jetcar/sensor/camera/image', '/model/jetcar/sensor/camera/depth_image'],
+        arguments=[
+            '/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/image',
+            '/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/depth_image'
+        ],
         remappings=[
-            ('/model/jetcar/sensor/camera/image', '/camera/color/image_raw'),
-            ('/model/jetcar/sensor/camera/depth_image', '/camera/depth/image_rect_raw')
+            ('/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/image', '/camera/color/image_raw'),
+            ('/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/depth_image', '/camera/depth/image_rect_raw')
         ],
         output='screen'
     )
