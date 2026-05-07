@@ -15,14 +15,16 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'use_sim_time': True,
-            'stop_button_state': False
+            'stop_button_state': False,
+            'manual_scale': 1.0,
+            'auto_scale': 1.0,
         }]
     )
 
     # 2. HMI Node
     hmi_node = Node(
         package='jetcar_common',
-        executable='hmi_node',
+        executable='hmi_node_nobridge',
         name='hmi_node',
         output='screen',
         parameters=[{'use_sim_time': True}]
@@ -52,9 +54,18 @@ def generate_launch_description():
         }.items()
     )
 
+    # 5. Foxglove Bridge (for visualization)
+    foxglove_bridge = Node(
+        package='foxglove_bridge',
+        executable='foxglove_bridge',
+        name='foxglove_bridge',
+        parameters=[{'use_sim_time': True}]
+    )
+
     return LaunchDescription([
         sim_mcu_node,
         hmi_node,
         slam_toolbox_node,
-        navigation_launch
+        navigation_launch,
+        foxglove_bridge
     ])

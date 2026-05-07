@@ -25,9 +25,10 @@ public:
         this->declare_parameter("manual_linear_max", 1.0);
         this->declare_parameter("manual_yaw_rate_max", 1.0);
         this->declare_parameter("manual_scale", 0.4);
+        this->declare_parameter("manual_scale", 0.4);
         this->declare_parameter("auto_scale", 1.5);
+        this->declare_parameter("flip_angular", false);
         this->declare_parameter("stop_button_state", true);
-        this->declare_parameter("auto_mode_button_state", true);
 
         control_period_ = this->get_parameter("control_period").as_double();
         command_topic_manual_ = this->get_parameter("command_topic_manual").as_string();
@@ -36,6 +37,8 @@ public:
         manual_yaw_rate_max_ = this->get_parameter("manual_yaw_rate_max").as_double();
         manual_scale_ = this->get_parameter("manual_scale").as_double();
         auto_scale_ = this->get_parameter("auto_scale").as_double();
+        flip_angular_ = this->get_parameter("flip_angular").as_bool();
+
         stop_button_state_ = this->get_parameter("stop_button_state").as_bool();
         auto_mode_button_state_ = this->get_parameter("auto_mode_button_state").as_bool();
 
@@ -84,6 +87,7 @@ private:
     double manual_yaw_rate_max_;
     double manual_scale_;
     double auto_scale_;
+    bool flip_angular_;
 
     // State
     bool stop_button_state_ = true;
@@ -163,9 +167,9 @@ private:
         double linear_x = 0.0;
         double angular_z = 0.0;
 
-        // Timeout (2.0s)
-        bool manual_active = (manual_age < 2.0);
-        bool auto_active = (auto_age < 2.0);
+        // Timeout (0.5s)
+        bool manual_active = (manual_age < 0.5);
+        bool auto_active = (auto_age < 0.5);
 
         if (stop_button_state_) {
             // STOP
@@ -184,6 +188,10 @@ private:
             if (manual_active) {
                 linear_x = last_manual_twist_.linear.x * manual_scale_;
                 angular_z = last_manual_twist_.angular.z * manual_scale_;
+                if (flip_angular_) angular_z = -angular_z;
+            } else {
+                linear_x = 0.0;
+                angular_z = 0.0;
             }
         }
 
