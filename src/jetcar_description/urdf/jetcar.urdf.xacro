@@ -114,7 +114,7 @@
   <!-- Simulation Specific Tags -->
   <xacro:if value="$(arg sim_mode)">
     <ros2_control name="GazeboSimSystem" type="system">
-      <hardware><plugin>ign_ros2_control/IgnitionSystem</plugin></hardware>
+      <hardware><plugin>gz_ros2_control/GazeboSimSystem</plugin></hardware>
       <joint name="joint_wheel_fl"><command_interface name="effort"/><state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/></joint>
       <joint name="joint_wheel_fr"><command_interface name="effort"/><state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/></joint>
       <joint name="joint_wheel_rl"><command_interface name="effort"/><state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/></joint>
@@ -122,7 +122,7 @@
     </ros2_control>
 
     <gazebo>
-      <plugin filename="ign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">
+      <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
         <parameters>$(find jetcar_sim)/config/sim_controllers.yaml</parameters>
       </plugin>
       <plugin filename="libignition-gazebo-odometry-publisher-system.so" name="ignition::gazebo::systems::OdometryPublisher">

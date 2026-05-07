@@ -63,6 +63,14 @@ private:
 
   void publish_states()
   {
+    // Reset buttons if cmd_vel times out
+    auto now = this->now();
+    if ((now - last_twist_time_).seconds() > 1.0) {
+      button_states_.forward = false;
+      button_states_.backward = false;
+      button_states_.left_turn = false;
+      button_states_.right_turn = false;
+    }
     publisher_->publish(button_states_);
   }
 

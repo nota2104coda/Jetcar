@@ -90,7 +90,7 @@ private:
     bool flip_angular_;
 
     // State
-    bool stop_button_state_ = true;
+    bool stop_button_state_ = false;
     bool auto_mode_button_state_ = true;
     
     // Command state
@@ -147,6 +147,17 @@ private:
         // Republish Gazebo odom to mcu namespace
         auto odom_msg = *msg;
         odom_pub_->publish(odom_msg);
+
+        // Broadcast odom -> base_link transform
+        geometry_msgs::msg::TransformStamped t;
+        t.header.stamp = msg->header.stamp;
+        t.header.frame_id = "odom";
+        t.child_frame_id = "base_link";
+        t.transform.translation.x = msg->pose.pose.position.x;
+        t.transform.translation.y = msg->pose.pose.position.y;
+        t.transform.translation.z = msg->pose.pose.position.z;
+        t.transform.rotation = msg->pose.pose.orientation;
+        tf_broadcaster_->sendTransform(t);
     }
 
     void gazebo_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -167,9 +178,9 @@ private:
         double linear_x = 0.0;
         double angular_z = 0.0;
 
-        // Timeout (0.5s)
-        bool manual_active = (manual_age < 0.5);
-        bool auto_active = (auto_age < 0.5);
+        // Timeout (1.0s)
+        bool manual_active = (manual_age < 1.0);
+        bool auto_active = (auto_age < 1.0);
 
         if (stop_button_state_) {
             // STOP
@@ -233,10 +244,14 @@ private:
         double right_torque = right * max_torque_nm;
 
         // Publish efforts to Gazebo
-        // Order must match joints in yaml: fr, fl, rr, rl
         auto effort_msg = std_msgs::msg::Float64MultiArray();
         effort_msg.data = {right_torque, left_torque, right_torque, left_torque};
         effort_pub_->publish(effort_msg);
+
+        if (std::abs(left_torque) > 0.01 || std::abs(right_torque) > 0.01) {
+             RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, 
+                "Effort Sent: L=%.3f, R=%.3f", left_torque, right_torque);
+        }
     }
 };
 

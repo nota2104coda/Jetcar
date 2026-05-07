@@ -44,8 +44,8 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop, TF)
-    # Using full paths for Ignition/GZ Sim reliability
+    # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop)
+    # Using model-based paths which are standard for Harmonic/Sim plugins
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -53,18 +53,16 @@ def generate_launch_description():
             '/world/jetcar_world/model/jetcar/link/ld06_lidar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             '/world/jetcar_world/model/jetcar/link/imu_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/world/jetcar_world/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-            '/world/jetcar_world/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-            '/world/jetcar_world/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
-            '/world/jetcar_world/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
             '/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
             ('/world/jetcar_world/model/jetcar/link/ld06_lidar/sensor/ld06_lidar/scan', '/scan'),
             ('/world/jetcar_world/model/jetcar/link/imu_link/sensor/imu_sensor/imu', '/imu'),
             ('/world/jetcar_world/clock', '/clock'),
-            ('/world/jetcar_world/model/jetcar/odometry', '/odom'),
-            ('/world/jetcar_world/model/jetcar/cmd_vel', '/cmd_vel_manual'),
-            ('/world/jetcar_world/model/jetcar/tf', '/tf'),
+            ('/model/jetcar/odometry', '/odom'),
+            ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
             ('/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/camera_info', '/camera/color/camera_info')
         ],
         output='screen'
