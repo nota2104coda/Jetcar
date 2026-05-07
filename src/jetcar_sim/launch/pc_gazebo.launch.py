@@ -55,6 +55,7 @@ def generate_launch_description():
             '/world/jetcar_world/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
+            '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
@@ -63,6 +64,7 @@ def generate_launch_description():
             ('/world/jetcar_world/clock', '/clock'),
             ('/model/jetcar/odometry', '/odom'),
             ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
+            ('/model/jetcar/tf', '/tf'),
             ('/world/jetcar_world/model/jetcar/link/camera_binoc/sensor/camera/camera_info', '/camera/color/camera_info')
         ],
         output='screen'
