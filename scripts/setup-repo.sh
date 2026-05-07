@@ -41,11 +41,11 @@ cat << 'EOF' >> "$BASHRC"
 # 1. Shortcut to source the workspace (sdev)
 alias sdev='source ~/Jetcar/install/setup.bash && echo "sourced install/setup.bash" '
 
-# 2. Shortcut to launch from jetcar_bringup (jbl)
-# Usage: jbl gazebo.launch.py
-jbl() {
+# 2. Shortcut to launch from jetcar_bringup (jl)
+# Usage: jl gazebo.launch.py
+jl() {
    if [ -z "$1" ]; then
-       echo "Usage: jbl <launch_file>"
+       echo "Usage: jl <launch_file>"
        return 1
    # Check if the specific file exists in the package launch directory
    elif [ ! -f "$HOME/Jetcar/src/jetcar_bringup/launch/$1" ]; then

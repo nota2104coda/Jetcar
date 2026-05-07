@@ -24,7 +24,7 @@ class HMINode(Node):
         self.foxglove_process = subprocess.Popen(["ros2", "launch", "foxglove_bridge", "foxglove_bridge_launch.xml"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.get_logger().info("Foxglove bridge launched.")
         self.button_states = ButtonStates()
-        self.create_subscription(Twist, '/cmd_vel', self.twist_callback, 10)
+        self.create_subscription(Twist, '/cmd_vel_manual', self.twist_callback, 10)
         self.create_subscription(Bool, '/stop_button', self.stop_callback, 10)
         self.create_subscription(Bool, '/auto_mode_button', self.auto_mode_callback, 10)
         self.publisher_ = self.create_publisher(ButtonStates, '/hmi/button_states', 10)

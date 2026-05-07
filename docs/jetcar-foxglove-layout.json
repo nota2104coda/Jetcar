@@ -217,7 +217,7 @@
       "datatype": "std_msgs/msg/Bool"
     },
     "Teleop!4dtcxcp": {
-      "topic": "/cmd_vel",
+      "topic": "/cmd_vel_manual",
       "publishRate": 1,
       "upButton": {
         "field": "linear-x",

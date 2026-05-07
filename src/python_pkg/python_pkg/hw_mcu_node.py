@@ -303,8 +303,8 @@ class HwMcuNode(Node):
             if self._auto_mode_button:
                 # Auto mode: check if we have a fresh auto command
                 if (now - self._last_auto_received_time) < timeout_duration:
-                target_twist = self._last_auto_twist
-                source = "AUTO"
+                    target_twist = self._last_auto_twist
+                    source = "AUTO"
             else:
                 # Manual mode: check if we have a fresh manual command
                 # if (now - self._last_manual_received_time) < timeout_duration:

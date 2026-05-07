@@ -16,7 +16,7 @@ public:
   {
     // Initialize subscriptions
     twist_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-      "/cmd_vel", 10, std::bind(&HMINodeNoBridge::twist_callback, this, std::placeholders::_1));
+      "/cmd_vel_manual", 10, std::bind(&HMINodeNoBridge::twist_callback, this, std::placeholders::_1));
     
     stop_button_sub_ = this->create_subscription<std_msgs::msg::Bool>(
       "/stop_button", 10, std::bind(&HMINodeNoBridge::stop_callback, this, std::placeholders::_1));
