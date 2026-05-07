@@ -60,12 +60,13 @@ public:
             "/auto_mode_button", 10, std::bind(&McuNode::auto_mode_callback, this, std::placeholders::_1));
 
         // Sensor subscribers from Gazebo (using SensorDataQoS to match Gazebo plugins)
+        // Subscribing to native GZ names as fallback/reliability if remapped /odom is missing
         gazebo_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "/odom", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_odom_callback, this, std::placeholders::_1));
+            "/model/jetcar/odometry", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_odom_callback, this, std::placeholders::_1));
         gazebo_scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-            "/scan", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_scan_callback, this, std::placeholders::_1));
+            "/model/jetcar/sensor/ld06_lidar/scan", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_scan_callback, this, std::placeholders::_1));
         gazebo_imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-            "/imu", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_imu_callback, this, std::placeholders::_1));
+            "/model/jetcar/sensor/imu_sensor/imu", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_imu_callback, this, std::placeholders::_1));
 
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -138,9 +139,9 @@ private:
     }
 
     void gazebo_odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+        RCLCPP_INFO_ONCE(this->get_logger(), "Received first odometry message from Gazebo.");
         // Republish Gazebo odom to mcu namespace
         auto odom_msg = *msg;
-        // Optionally update frame_ids if needed, but Gazebo provides odom->base_link
         odom_pub_->publish(odom_msg);
 
         // Broadcast odom -> base_link transform

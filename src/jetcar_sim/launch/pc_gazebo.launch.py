@@ -45,11 +45,25 @@ def generate_launch_description():
     )
 
     # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop)
-    bridge_params = os.path.join(pkg_jetcar_sim, 'config', 'bridge_params.yaml')
+    # Using direct arguments for reliability (works without rebuild if file is missing in share)
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['--config-file', bridge_params],
+        arguments=[
+            '/model/jetcar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/model/jetcar/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
+            '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
+        ],
+        remappings=[
+            ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
+            ('/model/jetcar/odometry', '/odom'),
+            ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
+            ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
+            ('/model/jetcar/sensor/camera/camera_info', '/camera/color/camera_info')
+        ],
         output='screen'
     )
     
