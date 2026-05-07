@@ -44,8 +44,8 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop)
-    # Using direct arguments for reliability (works without rebuild if file is missing in share)
+    # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop, TF)
+    # Using direct arguments for reliability
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -55,6 +55,7 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
+            '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
@@ -62,6 +63,7 @@ def generate_launch_description():
             ('/model/jetcar/odometry', '/odom'),
             ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
             ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
+            ('/model/jetcar/tf', '/tf'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/color/camera_info')
         ],
         output='screen'
