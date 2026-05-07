@@ -49,20 +49,20 @@ def generate_launch_description():
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-            '/model/jetcar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-            '/model/jetcar/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
+            '/model/jetcar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/model/jetcar/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
-            '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
+            '/model/jetcar/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
             ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
-            ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
-            ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
+            ('/model/jetcar/scan', '/scan'),
+            ('/model/jetcar/imu', '/imu'),
             ('/model/jetcar/odometry', '/odom'),
-            ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info')
+            ('/model/jetcar/camera/camera_info', '/camera/camera/color/camera_info')
         ],
         output='screen'
     )
@@ -71,10 +71,10 @@ def generate_launch_description():
     camera_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/model/jetcar/sensor/camera/image', '/model/jetcar/sensor/camera/depth_image'],
+        arguments=['/model/jetcar/camera/image', '/model/jetcar/camera/depth_image'],
         remappings=[
-            ('/model/jetcar/sensor/camera/image', '/camera/camera/color/image_raw'),
-            ('/model/jetcar/sensor/camera/depth_image', '/camera/camera/depth/image_rect_raw')
+            ('/model/jetcar/camera/image', '/camera/camera/color/image_raw'),
+            ('/model/jetcar/camera/depth_image', '/camera/camera/depth/image_rect_raw')
         ],
         output='screen'
     )
