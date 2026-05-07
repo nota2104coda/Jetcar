@@ -28,7 +28,22 @@ def generate_launch_description():
         parameters=[{'use_sim_time': True}]
     )
 
-    # 3. Navigation Stack (Nav2)
+    # 3. SLAM Toolbox (for map -> odom TF)
+    slam_toolbox_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        parameters=[{
+            'use_sim_time': True,
+            'odom_frame': 'odom',
+            'base_frame': 'base_link',
+            'map_frame': 'map',
+            'scan_topic': '/scan',
+            'mode': 'mapping',
+        }]
+    )
+
+    # 4. Navigation Stack (Nav2)
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py')),
         launch_arguments={
@@ -40,5 +55,6 @@ def generate_launch_description():
     return LaunchDescription([
         sim_mcu_node,
         hmi_node,
+        slam_toolbox_node,
         navigation_launch
     ])

@@ -2,7 +2,7 @@ import os
 from launch.substitutions import Command
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import IncludeLaunchDescription, RegisterEventHandler, TimerAction
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
@@ -45,25 +45,11 @@ def generate_launch_description():
     )
 
     # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop)
+    bridge_params = os.path.join(pkg_jetcar_sim, 'config', 'bridge_params.yaml')
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=[
-            '/model/jetcar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-            '/model/jetcar/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
-            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-            '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-            '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
-            '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
-        ],
-        remappings=[
-            ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
-            ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
-            ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
-            ('/model/jetcar/odometry', '/odom'),
-            ('/model/jetcar/sensor/camera/camera_info', '/camera/color/camera_info')
-        ],
+        arguments=['--config-file', bridge_params],
         output='screen'
     )
     
@@ -92,10 +78,19 @@ def generate_launch_description():
         arguments=["effort_controller"],
     )
 
+    # Added delay to ensure Gazebo is fully loaded before spawning controllers
     spawn_controllers = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=spawn_entity,
-            on_exit=[joint_state_broadcaster_spawner, effort_controller_spawner]
+            on_exit=[
+                TimerAction(
+                    period=5.0,
+                    actions=[
+                        joint_state_broadcaster_spawner,
+                        effort_controller_spawner
+                    ]
+                )
+            ]
         )
     )
 
