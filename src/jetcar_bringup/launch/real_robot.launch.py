@@ -11,6 +11,12 @@ def generate_launch_description():
     pkg_real = get_package_share_directory('jetcar_real')
     pkg_nav = get_package_share_directory('jetcar_nav')
 
+    # 0. HMI Node (Common)
+    hmi_node = Node(
+        package='jetcar_common',
+        executable='hmi_node_nobridge',
+        name='hmi_node'
+    )
     # 1. Hardware Layer (Lidar, Camera, MCU, HMI, URDF)
     hardware_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_real, 'launch', 'hardware.launch.py'))
@@ -109,6 +115,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        hmi_node,
         hardware_launch,
         isaac_container,
         TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),

@@ -48,17 +48,9 @@ def generate_launch_description():
         }]
     )
 
-    # 4. HMI Node (Common)
-    hmi_node = Node(
-        package='jetcar_common',
-        executable='hmi_node_nobridge',
-        name='hmi_node'
-    )
-
     return LaunchDescription([
         robot_state_publisher_node,
         ld06_launch,
         realsense_launch,
         hw_mcu_node,
-        hmi_node
     ])
