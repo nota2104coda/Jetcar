@@ -81,7 +81,6 @@ def generate_launch_description():
         ],
         output='screen'
     )
-    
     # 6. Simulation MCU Node (Sim-specific version)
     sim_mcu_node = Node(
         package='jetcar_sim',
@@ -92,16 +91,7 @@ def generate_launch_description():
             'stop_button_state': False
         }]
     )
-
-    # 7. HMI Node (Common)
-    hmi_node = Node(
-        package='jetcar_common',
-        executable='hmi_node',
-        name='hmi_node',
-        output='screen'
-    )
-
-    # 8. Controller Spawners
+    # 7. Controller Spawners
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
@@ -128,6 +118,5 @@ def generate_launch_description():
         bridge,
         camera_bridge,
         sim_mcu_node,
-        hmi_node,
         spawn_controllers
     ])

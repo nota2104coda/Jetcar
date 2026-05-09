@@ -10,6 +10,7 @@ def generate_launch_description():
     pkg_bringup = get_package_share_directory('jetcar_bringup')
     pkg_real = get_package_share_directory('jetcar_real')
     pkg_nav = get_package_share_directory('jetcar_nav')
+    pkg_common = get_package_share_directory('jetcar_common')
 
     # 0. HMI Node (Common)
     hmi_node = Node(
@@ -17,7 +18,7 @@ def generate_launch_description():
         executable='hmi_node_nobridge',
         name='hmi_node'
     )
-    # 1. Hardware Layer (Lidar, Camera, MCU, HMI, URDF)
+    # 1. Hardware Layer (Lidar, Camera, MCU, URDF)
     hardware_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_real, 'launch', 'hardware.launch.py'))
     )
@@ -103,6 +104,7 @@ def generate_launch_description():
     )
 
     # 6. Navigation Stack (Nav2)
+    # Using the sim params for Nav2
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py'))
     )

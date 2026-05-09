@@ -1,22 +1,100 @@
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     pkg_bringup = get_package_share_directory('jetcar_bringup')
     pkg_sim = get_package_share_directory('jetcar_sim')
     pkg_nav = get_package_share_directory('jetcar_nav')
-
-    # 1. Gazebo Simulation (Gazebo, Robot State Publisher, World)
-    gazebo_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_sim, 'launch', 'gazebo.launch.py'))
+    pkg_common = get_package_share_directory('jetcar_common')
+    # 0. HMI Node (Common)
+    hmi_node = Node(
+        package='jetcar_common',
+        executable='hmi_node_nobridge',
+        name='hmi_node'
     )
 
-    # 2. Navigation Stack (Nav2)
-    # Use the simulation params
+    # 1. Isaac ROS Container (Zero-Copy Vision Stack)
+    isaac_container = ComposableNodeContainer(
+        name='isaac_ros_container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container_mt',
+        output='screen',
+    )
+
+    # 2. Visual SLAM (Delayed 5s)
+    load_vslam = LoadComposableNodes(
+        target_container='isaac_ros_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                name='visual_slam_node',
+                package='isaac_ros_visual_slam',
+                plugin='nvidia::isaac_ros::visual_slam::VisualSlamNode',
+                parameters=[{
+                    'enable_imu_fusion': True, 
+                    'imu_frame': 'base_link',
+                    'base_frame': 'base_link',
+                    'odom_frame': 'odom',
+                    'map_frame': 'map',
+                    'publish_odom_to_base_tf': False,
+                    'publish_map_to_odom_tf': False,
+                    'input_imu_frame_rate': 200.0,
+                }],
+                remappings=[
+                    ('visual_slam/image_0', '/camera/camera/infra1/image_rect_raw'),
+                    ('visual_slam/camera_info_0', '/camera/camera/infra1/camera_info'),
+                    ('visual_slam/image_1', '/camera/camera/infra2/image_rect_raw'),
+                    ('visual_slam/camera_info_1', '/camera/camera/infra2/camera_info'),
+                    ('visual_slam/imu', '/imu'), # Gazebo outputs IMU on /imu
+                ]
+            ),
+        ]
+    )
+
+    # 3. Image Format Converter & nvblox (Delayed)
+    load_nvblox = LoadComposableNodes(
+        target_container='isaac_ros_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                name='image_format_converter_node',
+                package='isaac_ros_image_proc',
+                plugin='nvidia::isaac_ros::image_proc::ImageFormatConverterNode',
+                parameters=[{'encoding_desired': 'rgb8'}],
+                remappings=[
+                    ('image', '/camera/camera/color/image_rgb'),
+                    ('image_raw', '/camera/camera/color/image_raw'),
+                ]
+            ),
+            ComposableNode(
+                name='nvblox_node',
+                package='nvblox_ros',
+                plugin='nvblox::NvbloxNode',
+                parameters=[{
+                    'global_frame': 'map',
+                    'voxel_size': 0.1,
+                    'use_static_occupancy_layer': True,
+                }],
+                remappings=[
+                    ('/camera_0/depth/image', '/camera/camera/depth/image_rect_raw'),
+                    ('/camera_0/depth/camera_info', '/camera/camera/depth/camera_info'),
+                    ('/camera_0/color/image', '/camera/camera/color/image_rgb'),
+                    ('/camera_0/color/camera_info', '/camera/camera/color/camera_info'),
+                    ('pose', '/visual_slam/tracking/vo_pose'),
+                ]
+            ),
+        ]
+    )
+
+    # 4. Localization & Mapping (SLAM Toolbox, EKF)
+    localization_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(pkg_real, 'launch', 'localization.launch.py'))
+    )
+
+    # 5. Navigation Stack (Nav2)
+    # Using the sim params for Nav2
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py')),
         launch_arguments={
@@ -25,7 +103,22 @@ def generate_launch_description():
         }.items()
     )
 
+    # 6. Utils
+    foxglove_bridge = Node(
+        package='foxglove_bridge',
+        executable='foxglove_bridge',
+        name='foxglove_bridge'
+    )
+
     return LaunchDescription([
-        gazebo_launch,
-        navigation_launch
+        # CRITICAL: This globally sets use_sim_time=True for all nodes in this launch file!
+        SetParameter('use_sim_time', True),
+        
+        hmi_node,
+        isaac_container,
+        TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
+        TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
+        localization_launch,
+        navigation_launch,
+        foxglove_bridge
     ])
