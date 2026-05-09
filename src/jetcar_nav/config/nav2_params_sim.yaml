@@ -2,9 +2,9 @@ controller_server:
   ros__parameters:
     use_sim_time: true
     controller_frequency: 10.0
-    min_x_velocity_threshold: 0.05
-    min_y_velocity_threshold: 0.05
-    min_theta_velocity_threshold: 0.05
+    min_x_velocity_threshold: 0.02
+    min_y_velocity_threshold: 0.02
+    min_theta_velocity_threshold: 0.02
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["simple_goal_checker"]
     controller_plugins: ["FollowPath"]
@@ -19,8 +19,8 @@ controller_server:
       stateful: true
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      desired_linear_vel: 0.5
-      max_linear_accel: 1.5
+      desired_linear_vel: 0.1
+      max_linear_accel: 0.5
       max_rotational_vel: 1.2
       min_lookahead_dist: 0.3
       max_lookahead_dist: 1.2

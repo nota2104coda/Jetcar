@@ -76,7 +76,7 @@
 
   <!-- Camera -->
   <link name="camera_binoc"><visual><geometry><box size="0.025 0.10 0.02"/></geometry><origin xyz="0 0 0.06"/><material name="green"/></visual></link>
-  <joint name="joint_camera_binoc" type="fixed"><parent link="base_link"/><child link="camera_binoc"/><origin xyz="0.06 -0.01 0.13"/></joint>
+  <joint name="joint_camera_binoc" type="fixed"><parent link="base_link"/><child link="camera_binoc"/><origin xyz="0.06 -0.01 0.18"/></joint>
 
   <link name="camera_link"/>
   <joint name="joint_camera_link" type="fixed"><parent link="camera_binoc"/><child link="camera_link"/><origin xyz="0 0 0"/></joint>
@@ -88,21 +88,21 @@
   <joint name="joint_camera_depth_optical_frame" type="fixed"><parent link="camera_depth_frame"/><child link="camera_depth_optical_frame"/><origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/></joint>
   
   <link name="camera_infra1_frame"/>
-  <joint name="joint_camera_infra1_frame" type="fixed"><parent link="camera_link"/><child link="camera_infra1_frame"/><origin xyz="0 0 0"/></joint>
+  <joint name="joint_camera_infra1_frame" type="fixed"><parent link="camera_link"/><child link="camera_infra1_frame"/><origin xyz="0 0.025 0"/></joint>
   <link name="camera_infra1_optical_frame"/>
   <joint name="joint_camera_infra1_optical_frame" type="fixed"><parent link="camera_infra1_frame"/><child link="camera_infra1_optical_frame"/><origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/></joint>
 
   <link name="camera_infra2_frame"/>
-  <joint name="joint_camera_infra2_frame" type="fixed"><parent link="camera_link"/><child link="camera_infra2_frame"/><origin xyz="0 0 0"/></joint>
+  <joint name="joint_camera_infra2_frame" type="fixed"><parent link="camera_link"/><child link="camera_infra2_frame"/><origin xyz="0 -0.025 0"/></joint>
   <link name="camera_infra2_optical_frame"/>
   <joint name="joint_camera_infra2_optical_frame" type="fixed"><parent link="camera_infra2_frame"/><child link="camera_infra2_optical_frame"/><origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/></joint>
 
   <!-- Lidar & Other Sensors -->
   <link name="ld06_lidar"><visual><geometry><cylinder length="0.015" radius="0.02"/></geometry><material name="purple"/></visual><inertial><mass value="0.1"/><inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/></inertial></link>
-  <joint name="joint_ld06" type="fixed"><parent link="base_link"/><child link="ld06_lidar"/><origin xyz="0.02 0.0 0.18" rpy="0 0 -1.5708"/></joint>
+  <joint name="joint_ld06" type="fixed"><parent link="base_link"/><child link="ld06_lidar"/><origin xyz="0.02 0.0 0.22" rpy="0 0 -1.5708"/></joint>
 
   <link name="imu_link"><visual><geometry><box size="0.02 0.02 0.01"/></geometry><material name="blue"/></visual><inertial><mass value="0.01"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial></link>
-  <joint name="joint_imu" type="fixed"><parent link="base_link"/><child link="imu_link"/><origin xyz="0 0.1 0.01"/></joint>
+  <joint name="joint_imu" type="fixed"><parent link="base_link"/><child link="imu_link"/><origin xyz="0 0.1 0.07"/></joint>
 
   <!-- ToF & Radar (Visuals only) -->
   <link name="vl53l5x_front"><visual><geometry><box size="0.01 0.02 0.01"/></geometry><origin xyz="0 0 0.06"/><material name="yellow"/></visual></link>
@@ -139,6 +139,32 @@
         <camera>
           <horizontal_fov>1.204</horizontal_fov>
           <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <clip><near>0.1</near><far>10.0</far></clip>
+        </camera>
+      </sensor>
+    </gazebo>
+
+    <!-- Left IR (Infra1) -->
+    <gazebo reference="camera_infra1_frame">
+      <sensor name="camera_infra1" type="camera">
+        <gz_frame_id>camera_infra1_frame</gz_frame_id>
+        <update_rate>15</update_rate>
+        <camera>
+          <horizontal_fov>1.204</horizontal_fov>
+          <image><width>640</width><height>480</height><format>L8</format></image>
+          <clip><near>0.1</near><far>10.0</far></clip>
+        </camera>
+      </sensor>
+    </gazebo>
+
+    <!-- Right IR (Infra2) -->
+    <gazebo reference="camera_infra2_frame">
+      <sensor name="camera_infra2" type="camera">
+        <gz_frame_id>camera_infra2_frame</gz_frame_id>
+        <update_rate>15</update_rate>
+        <camera>
+          <horizontal_fov>1.204</horizontal_fov>
+          <image><width>640</width><height>480</height><format>L8</format></image>
           <clip><near>0.1</near><far>10.0</far></clip>
         </camera>
       </sensor>

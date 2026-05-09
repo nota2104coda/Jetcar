@@ -100,7 +100,7 @@ def generate_launch_description():
 
     # 5. Localization & Mapping (SLAM Toolbox, EKF)
     localization_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_real, 'launch', 'localization.launch.py'))
+        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'localization.launch.py'))
     )
 
     # 6. Navigation Stack (Nav2)

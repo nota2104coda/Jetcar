@@ -48,7 +48,7 @@ def generate_launch_description():
                     ('visual_slam/camera_info_0', '/camera/camera/infra1/camera_info'),
                     ('visual_slam/image_1', '/camera/camera/infra2/image_rect_raw'),
                     ('visual_slam/camera_info_1', '/camera/camera/infra2/camera_info'),
-                    ('visual_slam/imu', '/imu'), # Gazebo outputs IMU on /imu
+                    ('visual_slam/imu', '/mcu/imu'), 
                 ]
             ),
         ]
@@ -90,7 +90,7 @@ def generate_launch_description():
 
     # 4. Localization & Mapping (SLAM Toolbox, EKF)
     localization_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_real, 'launch', 'localization.launch.py'))
+        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'localization.launch.py'))
     )
 
     # 5. Navigation Stack (Nav2)
