@@ -31,8 +31,8 @@ def generate_launch_description():
 
     #alternative, more pixels per image but higher latency and CPU usage:
     launch_args = {
-        'rgb_camera.color_profile': '640x480x15',
-        'depth_module.depth_profile': '640x480x15',
+        'rgb_camera.color_profile': '424x240x15',
+        'depth_module.depth_profile': '424x240x15',
         'rgb_camera.color_qos': 'SENSOR_DATA',
         'depth_module.depth_qos': 'SENSOR_DATA',
         'align_depth.enable': 'true',
@@ -43,7 +43,7 @@ def generate_launch_description():
         'spatial_filter.enable': 'true',    # Smooths depth
         'temporal_filter.enable': 'true',   # Stabilizes depth
         # Fix MIPI error by lowering infra resolution or matching profiles
-        'depth_module.infra_profile': '640x480x15',
+        'depth_module.infra_profile': '424x240x15',
     }
 
     # Include the official launch file with our overrides

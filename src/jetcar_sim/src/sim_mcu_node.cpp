@@ -229,8 +229,8 @@ private:
         left = std::max(std::min(left, 1.0f), -1.0f);
         right = std::max(std::min(right, 1.0f), -1.0f);
 
-        // Scale to actual physical motor torque (100% duty cycle = 0.2 Nm)
-        float max_torque_nm = 0.2f;
+        // Scale to actual physical motor torque (Simulation needs a bit more punch to overcome 2kg mass instantly)
+        float max_torque_nm = 2.0f;
         double left_torque = left * max_torque_nm;
         double right_torque = right * max_torque_nm;
 
