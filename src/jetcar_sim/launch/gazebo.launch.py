@@ -65,6 +65,7 @@ def generate_launch_description():
             ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
             ('/model/jetcar/odometry', '/odom'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
+            ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
             ('/model/jetcar/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
             ('/model/jetcar/sensor/camera_infra2/camera_info', '/camera/camera/infra2/camera_info')
         ],
