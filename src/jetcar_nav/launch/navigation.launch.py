@@ -78,6 +78,20 @@ def generate_launch_description():
             ]
         ),
         Node(
+            package='nav2_costmap_2d',
+            executable='nav2_costmap_2d',
+            name='local_costmap',
+            output='screen',
+            parameters=[params_file, {'use_sim_time': use_sim_time}],
+        ),
+        Node(
+            package='nav2_costmap_2d',
+            executable='nav2_costmap_2d',
+            name='global_costmap',
+            output='screen',
+            parameters=[params_file, {'use_sim_time': use_sim_time}],
+        ),
+        Node(
             package='nav2_lifecycle_manager',
             executable='lifecycle_manager',
             name='lifecycle_manager_navigation',
