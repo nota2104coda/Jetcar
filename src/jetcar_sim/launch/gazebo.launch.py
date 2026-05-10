@@ -68,6 +68,7 @@ def generate_launch_description():
             ('/model/jetcar/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
             ('/model/jetcar/sensor/camera_infra2/camera_info', '/camera/camera/infra2/camera_info')
         ],
+        parameters=[{'use_sim_time': True}],
         output='screen'
     )
     
@@ -87,6 +88,7 @@ def generate_launch_description():
             ('/model/jetcar/sensor/camera_infra1/image', '/camera/camera/infra1/image_rect_raw'),
             ('/model/jetcar/sensor/camera_infra2/image', '/camera/camera/infra2/image_rect_raw')
         ],
+        parameters=[{'use_sim_time': True}],
         output='screen'
     )
     # 6. Simulation MCU Node (Sim-specific version)

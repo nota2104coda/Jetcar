@@ -1,7 +1,9 @@
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, TimerAction, LogInfo
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.actions import Node, ComposableNodeContainer, LoadComposableNodes, SetParameter
+from launch_ros.descriptions import ComposableNode
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
@@ -14,6 +16,22 @@ def generate_launch_description():
         package='jetcar_common',
         executable='hmi_node_nobridge',
         name='hmi_node'
+    )
+
+    # Robot State Publisher (Required locally for tf_static across network)
+    pkg_description = get_package_share_directory('jetcar_description')
+    from launch.substitutions import Command
+    xacro_path = os.path.join(pkg_description, 'urdf', 'jetcar.urdf.xacro')
+    robot_description_content = Command(['xacro ', xacro_path, ' sim_mode:=true'])
+
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_description_content,
+            'use_sim_time': True
+        }]
     )
 
     # 1. Isaac ROS Container (Zero-Copy Vision Stack)
@@ -90,7 +108,8 @@ def generate_launch_description():
 
     # 4. Localization & Mapping (SLAM Toolbox, EKF)
     localization_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'localization.launch.py'))
+        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'localization.launch.py')),
+        launch_arguments={'use_sim_time': 'true'}.items()
     )
 
     # 5. Navigation Stack (Nav2)
@@ -107,7 +126,8 @@ def generate_launch_description():
     foxglove_bridge = Node(
         package='foxglove_bridge',
         executable='foxglove_bridge',
-        name='foxglove_bridge'
+        name='foxglove_bridge',
+        parameters=[{'use_sim_time': True}]
     )
 
     return LaunchDescription([
@@ -115,6 +135,7 @@ def generate_launch_description():
         SetParameter('use_sim_time', True),
         
         hmi_node,
+        robot_state_publisher,
         isaac_container,
         TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
         TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
