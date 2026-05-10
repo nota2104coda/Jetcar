@@ -138,21 +138,13 @@ private:
     }
 
     void gazebo_odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
-        // Republish Gazebo odom to mcu namespace
+        // Republish Gazebo odom to mcu namespace for EKF to consume
         auto odom_msg = *msg;
-        // Optionally update frame_ids if needed, but Gazebo provides odom->base_link
+        // The frame_ids are generally correct from Gazebo (odom -> base_link)
         odom_pub_->publish(odom_msg);
 
-        // Broadcast odom -> base_link transform
-        geometry_msgs::msg::TransformStamped t;
-        t.header.stamp = msg->header.stamp;
-        t.header.frame_id = "odom";
-        t.child_frame_id = "base_link";
-        t.transform.translation.x = msg->pose.pose.position.x;
-        t.transform.translation.y = msg->pose.pose.position.y;
-        t.transform.translation.z = msg->pose.pose.position.z;
-        t.transform.rotation = msg->pose.pose.orientation;
-        tf_broadcaster_->sendTransform(t);
+        // DO NOT broadcast TF here. We leave that to the robot_localization EKF node
+        // which will fuse this odom with IMU and publish the smoothed odom->base_link TF.
     }
 
     void gazebo_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
