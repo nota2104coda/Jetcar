@@ -54,7 +54,7 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist',
+            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
             '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/sensor/camera_infra1/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
