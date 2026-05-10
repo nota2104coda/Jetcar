@@ -174,7 +174,7 @@ private:
         double angular_z = 0.0;
 
         // Timeout (0.2s for safety, prevents long coasting)
-        bool manual_active = (manual_age < 0.2);
+        bool manual_active = (manual_age < 0.5);
         bool auto_active = (auto_age < 0.5);
 
         if (stop_button_state_) {
