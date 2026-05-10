@@ -173,9 +173,9 @@ private:
         double linear_x = 0.0;
         double angular_z = 0.0;
 
-        // Timeout (2.0s)
-        bool manual_active = (manual_age < 2.0);
-        bool auto_active = (auto_age < 2.0);
+        // Timeout (0.2s for safety, prevents long coasting)
+        bool manual_active = (manual_age < 0.2);
+        bool auto_active = (auto_age < 0.5);
 
         if (stop_button_state_) {
             // STOP
