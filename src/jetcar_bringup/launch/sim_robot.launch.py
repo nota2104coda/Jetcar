@@ -109,23 +109,18 @@ def generate_launch_description():
         ]
     )
 
-    # 4. Localization & Mapping (SLAM Toolbox, EKF)
-    localization_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'localization.launch.py')),
-        launch_arguments={'use_sim_time': 'true'}.items()
-    )
-
-    # 5. Navigation Stack (Nav2)
-    # Using the sim params for Nav2
+    # 4. Navigation & Localization (Unified)
+    # This handles EKF, Nav2, and SLAM (because slam:=true)
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py')),
         launch_arguments={
             'use_sim_time': 'true',
-            'params_file': os.path.join(pkg_nav, 'config', 'nav2_params_sim.yaml')
+            'params_file': os.path.join(pkg_nav, 'config', 'nav2_params_sim.yaml'),
+            'slam': 'true'
         }.items()
     )
 
-    # 6. Utils
+    # 5. Utils
     foxglove_bridge = Node(
         package='foxglove_bridge',
         executable='foxglove_bridge',
@@ -142,7 +137,6 @@ def generate_launch_description():
         isaac_container,
         TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
         TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
-        localization_launch,
         navigation_launch,
         foxglove_bridge
     ])
