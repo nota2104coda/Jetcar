@@ -103,8 +103,8 @@ def generate_launch_description():
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py')),
         launch_arguments={
-            'use_sim_time': 'false',
-            'slam': 'true'
+            'use_sim_time': 'False',
+            'slam': 'True'
         }.items()
     )
 

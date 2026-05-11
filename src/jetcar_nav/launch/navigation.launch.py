@@ -45,7 +45,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'use_sim_time',
-            default_value='false',
+            default_value='False',
             description='Use simulation (Gazebo) clock if true'),
         
         DeclareLaunchArgument(
@@ -65,7 +65,7 @@ def generate_launch_description():
             
         DeclareLaunchArgument(
             'autostart',
-            default_value='true',
+            default_value='True',
             description='Automatically startup the nav2 stack'),
 
         ekf_node,
