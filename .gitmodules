@@ -4,3 +4,5 @@
 [submodule "src/vendor_packages/ldlidar_ros2"]
 	path = src/vendor_packages/ldlidar_ros2
 	url = https://github.com/ldrobotSensorTeam/ldlidar_ros2.git
+	ignore = untracked
+	branch = master
