@@ -40,7 +40,7 @@ def generate_launch_description():
         target_container='isaac_ros_container',
         composable_node_descriptions=[
             ComposableNode(
-                name='visual_slam_node',
+                name='visual_slam',
                 package='isaac_ros_visual_slam',
                 plugin='nvidia::isaac_ros::visual_slam::VisualSlamNode',
                 parameters=[{

@@ -64,7 +64,7 @@ public:
         this->declare_parameter("manual_scale", 0.4);
         this->declare_parameter("auto_scale", 1.5);
         this->declare_parameter("flip_angular", false);
-        this->declare_parameter("enable_tf_broadcast", true);
+        this->declare_parameter("enable_tf_broadcast", false);
 
         // Get Parameters
         serial_port_ = this->get_parameter("serial_port").as_string();
@@ -112,7 +112,6 @@ public:
         range_rear_pub_ = this->create_publisher<sensor_msgs::msg::Range>("/mcu/range/rear", 10);
         cliff_front_pub_ = this->create_publisher<sensor_msgs::msg::Range>("/mcu/cliff/front", 10);
         cliff_rear_pub_ = this->create_publisher<sensor_msgs::msg::Range>("/mcu/cliff/rear", 10);
-
         // Subscribers
         cmd_vel_sub_manual_ = this->create_subscription<geometry_msgs::msg::Twist>(
             command_topic_manual_, 10, std::bind(&McuNode::manual_twist_callback, this, std::placeholders::_1));

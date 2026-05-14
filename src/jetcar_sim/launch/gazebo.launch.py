@@ -54,13 +54,11 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
             '/model/jetcar/link/camera_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/link/camera_infra1_frame/sensor/camera_infra1/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/link/camera_infra2_frame/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
-            ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
             ('/model/jetcar/link/ld06_lidar/sensor/ld06_lidar/scan', '/scan'),
             ('/model/jetcar/link/imu_link/sensor/imu_sensor/imu', '/mcu/imu'),
             ('/model/jetcar/odometry', '/mcu/odom'),

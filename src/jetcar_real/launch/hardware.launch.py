@@ -39,7 +39,7 @@ def generate_launch_description():
         name='hw_mcu_node',
         parameters=[{
             'serial_port': '/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_02CZJZRS-if00-port0', 
-            'serial_baud_rate': 1000000,
+            'serial_baud_rate': 921600,
             'enable_tf_broadcast': False,
             'poll_period': 0.005,
             'control_period': 0.02,

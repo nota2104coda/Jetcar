@@ -1,12 +1,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/laser_scan.hpp>
-#include <sensor_msgs/msg/imu.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
-#include <tf2_ros/transform_broadcaster.h>
-#include <geometry_msgs/msg/transform_stamped.hpp>
+// #include <tf2_ros/transform_broadcaster.h>
+// #include <geometry_msgs/msg/transform_stamped.hpp>
 
 #include <chrono>
 #include <cmath>
@@ -41,10 +38,6 @@ public:
 
         // Publishers
         effort_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/effort_controller/commands", 10);
-        odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/mcu/odom", 10);
-        imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/mcu/imu", 10);
-        scan_pub_ = this->create_publisher<sensor_msgs::msg::LaserScan>("/mcu/scan", 10);
-        
 
         // Subscribers
         cmd_vel_sub_manual_ = this->create_subscription<geometry_msgs::msg::Twist>(
@@ -59,15 +52,7 @@ public:
         auto_mode_sub_ = this->create_subscription<std_msgs::msg::Bool>(
             "/auto_mode_button", 10, std::bind(&McuNode::auto_mode_callback, this, std::placeholders::_1));
 
-        // Sensor subscribers from Gazebo (using SensorDataQoS to match Gazebo plugins)
-        gazebo_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "/odom", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_odom_callback, this, std::placeholders::_1));
-        gazebo_scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-            "/scan", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_scan_callback, this, std::placeholders::_1));
-        gazebo_imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-            "/imu", rclcpp::SensorDataQoS(), std::bind(&McuNode::gazebo_imu_callback, this, std::placeholders::_1));
-
-        tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+        // tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
         // Control loop timer
         control_timer_ = this->create_wall_timer(
@@ -96,19 +81,13 @@ private:
 
     // ROS interfaces
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr effort_pub_;
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
-    rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr scan_pub_;
-    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_nav_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_button_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr auto_mode_sub_;
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr gazebo_odom_sub_;
-    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr gazebo_scan_sub_;
-    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr gazebo_imu_sub_;
 
-    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+    // std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     rclcpp::TimerBase::SharedPtr control_timer_;
 
@@ -135,26 +114,6 @@ private:
         if (!auto_mode_button_state_) {
             last_auto_twist_ = geometry_msgs::msg::Twist();
         }
-    }
-
-    void gazebo_odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
-        // Republish Gazebo odom to mcu namespace for EKF to consume
-        auto odom_msg = *msg;
-        // The frame_ids are generally correct from Gazebo (odom -> base_link)
-        odom_pub_->publish(odom_msg);
-
-        // DO NOT broadcast TF here. We leave that to the robot_localization EKF node
-        // which will fuse this odom with IMU and publish the smoothed odom->base_link TF.
-    }
-
-    void gazebo_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
-        // Republish Gazebo scan to mcu namespace
-        scan_pub_->publish(*msg);
-    }
-
-    void gazebo_imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) {
-        // Republish Gazebo imu to mcu namespace
-        imu_pub_->publish(*msg);
     }
 
     void control_loop() {

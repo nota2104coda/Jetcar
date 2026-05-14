@@ -8,6 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     pkg_nav = get_package_share_directory('jetcar_nav')
+    pkg_common = get_package_share_directory('jetcar_common')
     pkg_real = get_package_share_directory('jetcar_real')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
     
@@ -19,12 +20,13 @@ def generate_launch_description():
     autostart = LaunchConfiguration('autostart')
 
     # 1. EKF Node for Odometry Filtering
-    ekf_config_path = os.path.join(pkg_real, 'config', 'ekf.yaml')
+    ekf_config_path = os.path.join(pkg_common, 'config', 'ekf.yaml')
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
         name='ekf_filter_node',
         parameters=[ekf_config_path, {'use_sim_time': use_sim_time}],
+        remappings=[('/odometry/filtered','/odom')],
         output='screen'
     )
 
