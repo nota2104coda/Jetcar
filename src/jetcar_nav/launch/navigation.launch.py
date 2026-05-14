@@ -9,7 +9,6 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     pkg_nav = get_package_share_directory('jetcar_nav')
     pkg_common = get_package_share_directory('jetcar_common')
-    pkg_real = get_package_share_directory('jetcar_real')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
     
     # Launch Configurations
@@ -31,7 +30,6 @@ def generate_launch_description():
     )
 
     # 2. Standard Nav2 Bringup (handles Planner, Controller, BT, etc.)
-    # This also handles SLAM if slam:=true is passed
     nav2_bringup_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')),
         launch_arguments={
@@ -41,7 +39,16 @@ def generate_launch_description():
             'map': map_yaml_file,
             'autostart': autostart,
             'use_composition': 'False',
-        }.items()
+        }.items(),
+    )
+
+    # Relay Foxglove goals (/move_base_simple/goal) to Nav2 (/goal_pose)
+    goal_pose_relay = Node(
+        package='topic_tools',
+        executable='relay',
+        name='goal_pose_relay',
+        arguments=['/move_base_simple/goal', '/goal_pose'],
+        parameters=[{'use_sim_time': use_sim_time}]
     )
 
     return LaunchDescription([
@@ -71,5 +78,6 @@ def generate_launch_description():
             description='Automatically startup the nav2 stack'),
 
         ekf_node,
-        nav2_bringup_launch
+        nav2_bringup_launch,
+        goal_pose_relay
     ])
