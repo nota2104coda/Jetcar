@@ -27,6 +27,7 @@ def generate_launch_description():
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
+        name='robot_state_publisher_jetson',
         output='screen',
         parameters=[{
             'robot_description': robot_description_content,
@@ -94,9 +95,9 @@ def generate_launch_description():
                     'global_frame': 'map',
                     'voxel_size': 0.1,
                     'use_static_occupancy_layer': True,
-                    'use_depth': True,
-                    'use_lidar': False,
-                    'use_color': True,
+                    # 'use_depth': True,
+                    # 'use_lidar': False,
+                    # 'use_color': True,
                 }],
                 remappings=[
                     ('depth/image', '/camera/camera/depth/image_rect_raw'),

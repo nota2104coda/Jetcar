@@ -49,23 +49,23 @@ def generate_launch_description():
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-            '/model/jetcar/link/ld06_lidar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-            '/model/jetcar/link/imu_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
+            '/model/jetcar/sensor/ld06_lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/model/jetcar/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-            '/model/jetcar/link/camera_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-            '/model/jetcar/link/camera_infra1_frame/sensor/camera_infra1/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-            '/model/jetcar/link/camera_infra2_frame/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
+            '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/model/jetcar/sensor/camera_infra1/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/model/jetcar/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
-            ('/model/jetcar/link/ld06_lidar/sensor/ld06_lidar/scan', '/scan'),
-            ('/model/jetcar/link/imu_link/sensor/imu_sensor/imu', '/mcu/imu'),
+            ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
+            ('/model/jetcar/sensor/imu_sensor/imu', '/mcu/imu'),
             ('/model/jetcar/odometry', '/mcu/odom'),
-            ('/model/jetcar/link/camera_link/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
-            ('/model/jetcar/link/camera_link/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
-            ('/model/jetcar/link/camera_infra1_frame/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
-            ('/model/jetcar/link/camera_infra2_frame/sensor/camera_infra2/camera_info', '/camera/camera/infra2/camera_info')
+            ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
+            ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
+            ('/model/jetcar/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
+            ('/model/jetcar/sensor/camera_infra2/camera_info', '/camera/camera/infra2/camera_info')
         ],
         parameters=[{'use_sim_time': True}],
         output='screen'
@@ -76,16 +76,16 @@ def generate_launch_description():
         package='ros_gz_image',
         executable='image_bridge',
         arguments=[
-            '/model/jetcar/link/camera_link/sensor/camera/image', 
-            '/model/jetcar/link/camera_link/sensor/camera/depth_image',
-            '/model/jetcar/link/camera_infra1_frame/sensor/camera_infra1/image',
-            '/model/jetcar/link/camera_infra2_frame/sensor/camera_infra2/image'
+            '/model/jetcar/sensor/camera/image', 
+            '/model/jetcar/sensor/camera/depth_image',
+            '/model/jetcar/sensor/camera_infra1/image',
+            '/model/jetcar/sensor/camera_infra2/image'
         ],
         remappings=[
-            ('/model/jetcar/link/camera_link/sensor/camera/image', '/camera/camera/color/image_raw'),
-            ('/model/jetcar/link/camera_link/sensor/camera/depth_image', '/camera/camera/depth/image_rect_raw'),
-            ('/model/jetcar/link/camera_infra1_frame/sensor/camera_infra1/image', '/camera/camera/infra1/image_rect_raw'),
-            ('/model/jetcar/link/camera_infra2_frame/sensor/camera_infra2/image', '/camera/camera/infra2/image_rect_raw')
+            ('/model/jetcar/sensor/camera/image', '/camera/camera/color/image_raw'),
+            ('/model/jetcar/sensor/camera/depth_image', '/camera/camera/depth/image_rect_raw'),
+            ('/model/jetcar/sensor/camera_infra1/image', '/camera/camera/infra1/image_rect_raw'),
+            ('/model/jetcar/sensor/camera_infra2/image', '/camera/camera/infra2/image_rect_raw')
         ],
         parameters=[{'use_sim_time': True}],
         output='screen'
