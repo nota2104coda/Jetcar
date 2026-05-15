@@ -62,6 +62,7 @@ def generate_launch_description():
             ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
             ('/model/jetcar/sensor/imu_sensor/imu', '/mcu/imu'),
             ('/model/jetcar/odometry', '/mcu/odom'),
+            ('/model/jetcar/tf', '/tf'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
             ('/model/jetcar/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
