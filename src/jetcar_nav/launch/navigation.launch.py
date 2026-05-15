@@ -42,12 +42,11 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Relay Foxglove goals (/move_base_simple/goal) to Nav2 (/goal_pose)
+    # Goal Fixer Relay (Fixes 0 timestamps from Foxglove and avoids topic_tools dependency)
     goal_pose_relay = Node(
-        package='topic_tools',
-        executable='relay',
+        package='jetcar_common',
+        executable='goal_fixer.py',
         name='goal_pose_relay',
-        arguments=['/move_base_simple/goal', '/goal_pose'],
         parameters=[{'use_sim_time': use_sim_time}]
     )
 
