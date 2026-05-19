@@ -126,7 +126,10 @@ def generate_launch_description():
         package='foxglove_bridge',
         executable='foxglove_bridge',
         name='foxglove_bridge',
-        parameters=[{'use_sim_time': True}]
+        parameters=[{
+            'use_sim_time': True,
+            'address': '0.0.0.0'
+        }]
     )
 
     return LaunchDescription([

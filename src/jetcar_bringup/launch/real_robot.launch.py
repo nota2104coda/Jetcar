@@ -112,7 +112,8 @@ def generate_launch_description():
     foxglove_bridge = Node(
         package='foxglove_bridge',
         executable='foxglove_bridge',
-        name='foxglove_bridge'
+        name='foxglove_bridge',
+        parameters=[{'address': '0.0.0.0'}]
     )
 
     return LaunchDescription([
