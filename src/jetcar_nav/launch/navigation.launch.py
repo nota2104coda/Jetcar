@@ -1,9 +1,9 @@
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetRemap
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
@@ -30,16 +30,23 @@ def generate_launch_description():
     )
 
     # 2. Standard Nav2 Bringup (handles Planner, Controller, BT, etc.)
-    nav2_bringup_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')),
-        launch_arguments={
-            'use_sim_time': use_sim_time,
-            'params_file': params_file,
-            'slam': slam,
-            'map': map_yaml_file,
-            'autostart': autostart,
-            'use_composition': 'False',
-        }.items(),
+    # We remap the final output topics to /cmd_vel_nav
+    nav2_bringup_launch = GroupAction(
+        actions=[
+            SetRemap(src='cmd_vel', dst='/cmd_vel_nav'),
+            SetRemap(src='cmd_vel_smoothed', dst='/cmd_vel_nav'),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')),
+                launch_arguments={
+                    'use_sim_time': use_sim_time,
+                    'params_file': params_file,
+                    'slam': slam,
+                    'map': map_yaml_file,
+                    'autostart': autostart,
+                    'use_composition': 'False',
+                }.items(),
+            )
+        ]
     )
 
     # Goal Fixer Relay (Fixes 0 timestamps from Foxglove and avoids topic_tools dependency)

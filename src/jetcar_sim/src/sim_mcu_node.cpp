@@ -17,8 +17,8 @@ public:
 
         // Parameters (matching hw_mcu_node)
         this->declare_parameter("control_period", 0.05);
-        this->declare_parameter("command_topic_manual", "cmd_vel_manual");
-        this->declare_parameter("command_topic_nav", "cmd_vel_nav");
+        this->declare_parameter("command_topic_manual", "/cmd_vel_manual");
+        this->declare_parameter("command_topic_nav", "/cmd_vel_nav");
         this->declare_parameter("manual_linear_max", 1.0);
         this->declare_parameter("manual_yaw_rate_max", 1.0);
         this->declare_parameter("manual_scale", 0.4);

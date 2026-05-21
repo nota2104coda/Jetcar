@@ -43,8 +43,8 @@ def generate_launch_description():
             'enable_tf_broadcast': False,
             'poll_period': 0.005,
             'control_period': 0.02,
-            'command_topic_manual': 'cmd_vel_manual',
-            'command_topic_nav': 'cmd_vel_nav',
+            'command_topic_manual': '/cmd_vel_manual',
+            'command_topic_nav': '/cmd_vel_nav',
         }]
     )
 

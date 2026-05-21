@@ -49,8 +49,8 @@ public:
         this->declare_parameter("odom_frame_id", "odom");
         this->declare_parameter("base_frame_id", "base_link");
         this->declare_parameter("imu_frame_id", "base_link");
-        this->declare_parameter("command_topic_manual", "cmd_vel_manual");
-        this->declare_parameter("command_topic_nav", "cmd_vel_nav");
+        this->declare_parameter("command_topic_manual", "/cmd_vel_manual");
+        this->declare_parameter("command_topic_nav", "/cmd_vel_nav");
         this->declare_parameter("command_mode", "set_actuator_control_target");
         this->declare_parameter("stop_button_state", true);
         this->declare_parameter("auto_mode_button_state", true);
