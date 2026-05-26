@@ -26,14 +26,19 @@ def generate_launch_description():
     )
 
     # 2. Robot State Publisher
-    robot_state_publisher = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        output='screen',
-        parameters=[{
-            'robot_description': robot_description_content,
-            'use_sim_time': True
-        }]
+    robot_state_publisher = TimerAction(
+        period = 3.0,
+        actions = [
+            Node(
+                package='robot_state_publisher',
+                executable='robot_state_publisher',
+                output='screen',
+                parameters=[{
+                    'robot_description': robot_description_content,
+                    'use_sim_time': True
+                }]
+            )
+        ]
     )
 
     # 3. Spawn Robot
@@ -62,7 +67,7 @@ def generate_launch_description():
             ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
             ('/model/jetcar/sensor/imu_sensor/imu', '/mcu/imu'),
             ('/model/jetcar/odometry', '/mcu/odom'),
-            ('/model/jetcar/tf', '/tf'),
+            # ('/model/jetcar/tf', '/tf'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
             ('/model/jetcar/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
