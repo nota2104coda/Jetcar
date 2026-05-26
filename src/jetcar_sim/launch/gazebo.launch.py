@@ -53,7 +53,7 @@ def generate_launch_description():
             '/model/jetcar/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-            '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            # '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/sensor/camera_infra1/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
