@@ -59,3 +59,73 @@ Phase 1: SOA Decomposition & Safety Analysis (The "Architect" Piece)
   2. Build the Test for it (from Phase 2).
   3. Repeat.
 
+------------------------------------------------------------------
+
+Here is a step-by-step plan to systematically diagnose why Nav2 is failing to output motor commands, why nodes might be disappearing, and how to track down the /cmd_vel_nav remapping issue. 
+
+  You will need to open several terminal windows. Start your simulation and Nav2 stack as you normally would:
+   1. Terminal 1: ros2 launch jetcar_sim gazebo.launch.py
+   2. Terminal 2: ros2 launch jetcar_bringup sim_robot.launch.py
+
+  Once everything is seemingly running, proceed through these steps in order.
+
+  Step 1: Verify the Output Topic (cmd_vel_nav)
+  First, let's see if Nav2 is actually generating commands and if they are going to the right place.
+
+   1. List all topics:
+   1     ros2 topic list -t
+      Look for /cmd_vel, /cmd_vel_nav, and /cmd_vel_smoothed. Note their types (usually geometry_msgs/msg/Twist).
+
+   2. Check who is talking and listening on the target topic:
+   1     ros2 topic info /cmd_vel_nav --verbose
+      This is crucial. You should see controller_server or nav2_smoother as a publisher, and your sim_mcu_node (or whatever drives the wheels) as a subscriber. If the publisher count is 0, Nav2 isn't outputting.
+  If the subscriber count is 0, your motor controller isn't listening to the remapped topic.
+
+   3. Echo the topic while sending a goal:
+      Send a goal via Foxglove. In a terminal, run:
+   1     ros2 topic echo /cmd_vel_nav
+      If it prints data, the problem is your motor node. If it prints nothing, the problem is inside Nav2.
+
+  Step 2: Check Node Lifecycles (Why nodes "go missing")
+  Nav2 uses a strict state machine. If nodes encounter an error (like missing TF or sensor data), the lifecycle_manager might downgrade them from active to inactive, making them appear unresponsive.
+
+   1. Check the state of the controller server:
+   1     ros2 lifecycle get /controller_server
+      If it says unconfigured or inactive, Nav2 has halted. It must say active to publish velocity commands.
+
+   2. Check all Nav2 nodes:
+   1     ros2 node list | grep server
+      Verify planner_server, controller_server, behavior_server, and bt_navigator are all present.
+
+  Step 3: Investigate Node Timeouts and Crashes
+  If nodes are actively disappearing from ros2 node list over time, they are crashing. We need to find out why.
+
+   1. Check the Nav2 Bringup logs directly:
+      Look at Terminal 2 (where you launched sim_robot.launch.py). Scroll up. You are looking for:
+       * Red text (Errors): Especially lines mentioning bond broken, timer callback exceptions, or segmentation faults.
+       * Yellow text (Warnings): Look for warnings about "Extrapolation into the past" or "Transform timeout."
+
+   2. Use ros2 doctor to find networking/QoS drops:
+      Open a new terminal and run:
+   1     ros2 doctor --report
+      This will tell you if topics are dropping messages or if there are Quality of Service (QoS) mismatches (e.g., Nav2 publishing "Reliable" but your node subscribing "Best Effort").
+
+  Step 4: Verify the Transform (TF) Tree
+  Nav2 requires a perfect, unbroken chain of transforms from the map down to the wheels. If this breaks, Nav2 stops outputting cmd_vel immediately.
+
+   1. Check the critical path:
+   1     ros2 run tf2_ros tf2_echo map base_link
+      If this errors out saying "Exception thrown," your localization (SLAM or AMCL) or your odometry (EKF) has failed.
+
+   2. Monitor transform rates:
+   1     ros2 run tf2_ros tf2_monitor
+      Look at the "Net delay" and "Frames." If the delay between odom and base_link gets too high, Nav2 will timeout and nodes may deactivate.
+
+  How to proceed:
+  Run through these four steps. 
+   * If Step 1 fails (no publisher), move to Step 2.
+   * If Step 2 reveals nodes are inactive, the logs in Step 3 or the TF tree in Step 4 will usually tell you why they deactivated.
+
+  Once you identify the specific failure (e.g., "The controller_server is crashing due to a TF timeout after 30 seconds"), let me know. We can fix it, and then immediately write a launch_testing script to
+  automatically check that specific TF rate on every future run.
+

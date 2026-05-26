@@ -25,7 +25,7 @@ controller_server:
       min_lookahead_dist: 0.3
       max_lookahead_dist: 1.2
       lookahead_time: 1.5
-      transform_tolerance: 1.0
+      transform_tolerance: 0.1
       use_velocity_scaled_lookahead_dist: true
       lookahead_dist: 0.3
       enable_overshoot_handling: true
@@ -45,7 +45,7 @@ local_costmap:
       robot_base_frame: base_link
       update_frequency: 5.0
       publish_frequency: 2.0
-      transform_tolerance: 1.0
+      transform_tolerance: 0.3
       rolling_window: true
       width: 10
       height: 10
@@ -75,7 +75,7 @@ planner_server:
     planner_plugins: ["GridBased"]
     GridBased:
       plugin: "nav2_navfn_planner/NavfnPlanner"
-      tolerance: 0.5
+      tolerance: 0.05
       use_astar: false
       allow_unknown: true
 
@@ -87,7 +87,7 @@ global_costmap:
       robot_base_frame: base_link
       update_frequency: 1.0
       publish_frequency: 1.0
-      transform_tolerance: 1.0
+      transform_tolerance: 0.1
       resolution: 0.05
       robot_radius: 0.28
       rolling_window: true
@@ -220,7 +220,7 @@ slam_toolbox:
     mode: mapping
     debug_logging: false
     throttle_scans: 1
-    transform_publish_period: 0.02
+    transform_publish_period: 0.05
     map_update_interval: 5.0
     resolution: 0.05
     max_laser_range: 12.0

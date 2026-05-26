@@ -119,9 +119,9 @@ def generate_launch_description():
     return LaunchDescription([
         hmi_node,
         hardware_launch,
-        isaac_container,
-        TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
-        TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
+        # isaac_container,
+        # TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
+        # TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
         navigation_launch,
         foxglove_bridge
     ])

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
-from rclcpp.node import Node
+from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 
 class GoalFixer(Node):

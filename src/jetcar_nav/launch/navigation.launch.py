@@ -33,7 +33,7 @@ def generate_launch_description():
     # We remap the final output topics to /cmd_vel_nav
     nav2_bringup_launch = GroupAction(
         actions=[
-            SetRemap(src='cmd_vel', dst='/cmd_vel_nav'),
+            SetRemap(src='cmd_vel', dst='/cmd_vel_raw'),
             SetRemap(src='cmd_vel_smoothed', dst='/cmd_vel_nav'),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')),
