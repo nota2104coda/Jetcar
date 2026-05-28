@@ -111,12 +111,14 @@ def generate_launch_description():
         package="controller_manager",
         executable="spawner",
         arguments=["joint_state_broadcaster"],
+        parameters=[{'use_sim_time': True}]
     )
 
     effort_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=["effort_controller"],
+        parameters=[{'use_sim_time': True}]
     )
 
     spawn_controllers = RegisterEventHandler(
