@@ -24,16 +24,16 @@ def generate_launch_description():
     xacro_path = os.path.join(pkg_description, 'urdf', 'jetcar.urdf.xacro')
     robot_description_content = Command(['xacro ', xacro_path, ' sim_mode:=true'])
 
-    # robot_state_publisher = Node(
-    #     package='robot_state_publisher',
-    #     executable='robot_state_publisher',
-    #     name='robot_state_publisher_jetson',
-    #     output='screen',
-    #     parameters=[{
-    #         'robot_description': robot_description_content,
-    #         'use_sim_time': True
-    #     }]
-    # )
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher_jetson',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_description_content,
+            'use_sim_time': True
+        }]
+    )
 
     # 1. Isaac ROS Container (Zero-Copy Vision Stack)
     isaac_container = ComposableNodeContainer(
@@ -137,7 +137,7 @@ def generate_launch_description():
         SetParameter('use_sim_time', True),
         
         hmi_node,
-        robot_state_publisher,
+        robot_state_publisher_node,
         # isaac_container,
         # TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
         # TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),

@@ -606,26 +606,3 @@ int main(int argc, char **argv) {
     rclcpp::shutdown();
     return 0;
 }
- source_system_, source_component_, &msg,
-            time_usec,
-            0, // group_mlx (0 = default)
-            target_system_, target_component_,
-            controls
-        );
-        
-        uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-        uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
-        write(serial_fd_, buf, len);
-    }
-};
-
-int main(int argc, char **argv) {
-    rclcpp::init(argc, argv);
-    auto node = std::make_shared<McuNode>();
-    rclcpp::spin(node);
-    rclcpp::shutdown();
-    return 0;
-}
- rclcpp::shutdown();
-    return 0;
-}
