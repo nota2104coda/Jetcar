@@ -134,7 +134,7 @@
       </plugin>
     </gazebo>
 
-    <gazebo reference="camera_binoc">
+<!--     <gazebo reference="camera_binoc">
       <sensor name="camera" type="rgbd">
         <gz_frame_id>camera_binoc</gz_frame_id>
         <topic>/model/jetcar/sensor/camera</topic>
@@ -146,10 +146,10 @@
           <clip><near>0.1</near><far>10.0</far></clip>
         </camera>
       </sensor>
-    </gazebo>
+    </gazebo> -->
 
     <!-- Left IR (Infra1) -->
-    <gazebo reference="camera_infra1_frame">
+<!--     <gazebo reference="camera_infra1_frame">
       <sensor name="camera_infra1" type="camera">
         <gz_frame_id>camera_infra1_frame</gz_frame_id>
         <topic>/model/jetcar/sensor/camera_infra1</topic>
@@ -161,10 +161,10 @@
           <clip><near>0.1</near><far>10.0</far></clip>
         </camera>
       </sensor>
-    </gazebo>
+    </gazebo> -->
 
     <!-- Right IR (Infra2) -->
-    <gazebo reference="camera_infra2_frame">
+<!--     <gazebo reference="camera_infra2_frame">
       <sensor name="camera_infra2" type="camera">
         <gz_frame_id>camera_infra2_frame</gz_frame_id>
         <topic>/model/jetcar/sensor/camera_infra2</topic>
@@ -176,7 +176,7 @@
           <clip><near>0.1</near><far>10.0</far></clip>
         </camera>
       </sensor>
-    </gazebo>
+    </gazebo> -->
 
     <gazebo reference="ld06_lidar">
       <sensor name="ld06_lidar" type="gpu_lidar">
@@ -196,7 +196,7 @@
         <gz_frame_id>imu_link</gz_frame_id>
         <topic>/model/jetcar/sensor/imu_sensor/imu</topic>
         <always_on>true</always_on>
-        <update_rate>50</update_rate>
+        <update_rate>100</update_rate>
       </sensor>
     </gazebo>
 

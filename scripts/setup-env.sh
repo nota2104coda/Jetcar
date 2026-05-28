@@ -115,7 +115,9 @@ sudo apt install -y \
    ros-$ROS2_DISTRO-realsense2-camera \
    ros-$ROS2_DISTRO-realsense2-description \
    ros-$ROS2_DISTRO-realsense2-camera-msgs \
-   ros-$ROS2_DISTRO-topic-tools 
+   ros-$ROS2_DISTRO-topic-tools \
+   ros-$ROS2_DISTRO-rmw-zenoh-cpp 
+   
 
 if [ "$ARCH" = "x86_64" ]; then
     echo "--- Installing PC/Simulation Packages (x86_64) ---"

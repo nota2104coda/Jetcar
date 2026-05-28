@@ -469,19 +469,6 @@ private:
                 odom.twist.covariance[35] = 0.1; // vyaw
 
                 odom_pub_->publish(odom);
-
-                // TF
-                if (enable_tf_broadcast_) {
-                    geometry_msgs::msg::TransformStamped t;
-                    t.header.stamp = current_time;
-                    t.header.frame_id = odom_frame_id_;
-                    t.child_frame_id = base_frame_id_;
-                    t.transform.translation.x = x_;
-                    t.transform.translation.y = y_;
-                    t.transform.translation.z = 0.0;
-                    t.transform.rotation = odom.pose.pose.orientation;
-                    tf_broadcaster_->sendTransform(t);
-                }
                 
                 break;
             }
@@ -617,5 +604,28 @@ int main(int argc, char **argv) {
     auto node = std::make_shared<McuNode>();
     rclcpp::spin(node);
     rclcpp::shutdown();
+    return 0;
+}
+ source_system_, source_component_, &msg,
+            time_usec,
+            0, // group_mlx (0 = default)
+            target_system_, target_component_,
+            controls
+        );
+        
+        uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+        uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+        write(serial_fd_, buf, len);
+    }
+};
+
+int main(int argc, char **argv) {
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<McuNode>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
+    return 0;
+}
+ rclcpp::shutdown();
     return 0;
 }

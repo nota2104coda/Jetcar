@@ -133,7 +133,7 @@ def generate_launch_description():
         robot_state_publisher,
         spawn_entity,
         bridge,
-        camera_bridge,
+        # camera_bridge,
         sim_mcu_node,
         spawn_controllers
     ])

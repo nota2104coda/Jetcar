@@ -137,7 +137,7 @@ def generate_launch_description():
         SetParameter('use_sim_time', True),
         
         hmi_node,
-        # robot_state_publisher,
+        robot_state_publisher,
         # isaac_container,
         # TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
         # TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),

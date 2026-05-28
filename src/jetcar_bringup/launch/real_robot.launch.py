@@ -118,6 +118,26 @@ def generate_launch_description():
 
     return LaunchDescription([
         hmi_node,
+        robot_state_publisher_node,
+        hardware_launch,
+        # isaac_container,
+        # TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
+        # TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
+        navigation_launch,
+        foxglove_bridge
+    ])
+)
+
+    # 6. Utils
+    foxglove_bridge = Node(
+        package='foxglove_bridge',
+        executable='foxglove_bridge',
+        name='foxglove_bridge',
+        parameters=[{'address': '0.0.0.0'}]
+    )
+
+    return LaunchDescription([
+        hmi_node,
         hardware_launch,
         # isaac_container,
         # TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
