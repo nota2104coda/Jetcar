@@ -27,8 +27,8 @@ def generate_launch_description():
         parameters=[{
             'serial_port': '/dev/serial/by-id/usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_02CZJZRS-if00-port0', 
             'serial_baud_rate': 921600,
-            'poll_period': 0.01,
-            'control_period': 0.02,
+            'poll_period': 0.005,
+            'control_period': 0.05,
             'command_topic_manual': '/cmd_vel_manual',
             'command_topic_nav': '/cmd_vel_nav',
         }]

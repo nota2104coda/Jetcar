@@ -196,11 +196,11 @@
   #define ROBOTCAR_PLATFORM_CONSTANTS_DEFINED
   //system constants
   static constexpr float kGearRatio = 46.0;
-  static constexpr uint32_t kLoopPeriodMs = 200;
+  static constexpr uint32_t kLoopPeriodMs = 20; // 50Hz control and telemetry rate
   static constexpr uint32_t kSerialBaud = 115200;
   static constexpr uint32_t kSerialWaitMs = 500; // Wait up to 500ms for Serial to start
   static constexpr uint32_t kPwmFreqHz = 1600;
-  static constexpr uint32_t kSonarPollIntervalMs = 500;
+  static constexpr uint32_t kSonarPollIntervalMs = 200;
   static constexpr uint32_t kSonarMaxWaitMs = 50; // Max wait per sonar reading. if its beyond, it should default to kMaxSonarRangecm
   static constexpr uint32_t kWatchdogTimeoutMs = 2000; // 2 second watchdog timeout
   static constexpr uint32_t kMotorSafetyTimeoutMs = 1000; // 1 second motor command timeout

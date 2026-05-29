@@ -26,27 +26,28 @@ def generate_launch_description():
     )
 
     # 2. Robot State Publisher
-    robot_state_publisher = TimerAction(
-        period = 3.0,
-        actions = [
-            Node(
-                package='robot_state_publisher',
-                executable='robot_state_publisher',
-                output='screen',
-                parameters=[{
-                    'robot_description': robot_description_content,
-                    'use_sim_time': True
-                }]
-            )
-        ]
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_description_content,
+            'use_sim_time': True
+        }]
     )
 
-    # 3. Spawn Robot
-    spawn_entity = Node(
+    # 3. Spawn Robot (Delayed to ensure robot_description and Gazebo are ready)
+    spawn_entity_node = Node(
         package='ros_gz_sim',
         executable='create',
         arguments=['-topic', 'robot_description', '-name', 'jetcar', '-z', '0.1'],
         output='screen'
+    )
+    # actually should be depdendet on brngup completion of robot_state_publisher
+    # for now, just using a timer
+    spawn_entity = TimerAction(
+        period = 5.0,
+        actions = [spawn_entity_node]
     )
 
     # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop)
@@ -65,8 +66,8 @@ def generate_launch_description():
         ],
         remappings=[
             ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
-            ('/model/jetcar/sensor/imu_sensor/imu', '/mcu/imu'),
-            ('/model/jetcar/odometry', '/mcu/odom'),
+            ('/model/jetcar/sensor/imu_sensor/imu', '/gz/imu'),
+            ('/model/jetcar/odometry', '/gz/odom'),
             # ('/model/jetcar/tf', '/tf'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
@@ -123,7 +124,7 @@ def generate_launch_description():
 
     spawn_controllers = RegisterEventHandler(
         event_handler=OnProcessExit(
-            target_action=spawn_entity,
+            target_action=spawn_entity_node,
             on_exit=[joint_state_broadcaster_spawner, effort_controller_spawner]
         )
     )

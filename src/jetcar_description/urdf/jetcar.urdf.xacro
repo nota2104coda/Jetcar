@@ -196,7 +196,7 @@
         <gz_frame_id>imu_link</gz_frame_id>
         <topic>/model/jetcar/sensor/imu_sensor/imu</topic>
         <always_on>true</always_on>
-        <update_rate>100</update_rate>
+        <update_rate>50</update_rate>
       </sensor>
     </gazebo>
 
