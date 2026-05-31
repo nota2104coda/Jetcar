@@ -36,8 +36,13 @@ def run_mavgen():
         base_cmd = [python_exe, mavgen_py]
         print(f"[MAVGEN] Using mavgen.py at {mavgen_py}")
     else:
-        base_cmd = [python_exe, "-m", "pymavlink.tools.mavgen"]
-        print("[MAVGEN] Falling back to 'python -m pymavlink.tools.mavgen'")
+        user_mavgen_py = os.path.expanduser("~/.local/bin/mavgen.py")
+        if os.path.exists(user_mavgen_py):
+            base_cmd = [python_exe, user_mavgen_py]
+            print(f"[MAVGEN] Using mavgen.py at {user_mavgen_py}")
+        else:
+            base_cmd = [python_exe, "-m", "pymavlink.tools.mavgen"]
+            print("[MAVGEN] Falling back to 'python -m pymavlink.tools.mavgen'")
 
     # --- C Generation (MCU) ---
     output_dir_c = os.path.join(project_dir, "lib", "mavlink-arduino", "mavlink")
@@ -73,13 +78,8 @@ def run_mavgen():
     except subprocess.CalledProcessError as e:
         print(f"[MAVGEN] Python Error:\n{e.stderr}")
 
-def _pio_pre_build(target=None, source=None, env=None, **_):
-    # SCons may pass keyword arguments like target/source; ignore what we don't need.
-    run_mavgen()
-
-
 if RUNNING_IN_PIO:
-    # Generate headers right before linking the firmware image so normal builds trigger it
-    env.AddPreAction("$BUILD_DIR/${PROGNAME}.elf", _pio_pre_build)
+    # Run immediately so headers are generated BEFORE compilation begins
+    run_mavgen()
 else:
     run_mavgen()

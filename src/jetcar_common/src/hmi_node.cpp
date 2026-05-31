@@ -30,7 +30,7 @@ public:
       // Redirect stdout/stderr to /dev/null
       freopen("/dev/null", "w", stdout);
       freopen("/dev/null", "w", stderr);
-      execlp("ros2", "ros2", "launch", "foxglove_bridge", "foxglove_bridge_launch.xml", nullptr);
+      execlp("ros2", "ros2", "launch", "foxglove_bridge", "foxglove_bridge_launch.xml", "address:=0.0.0.0", nullptr);
       exit(1); // Should not reach here
     } else if (foxglove_pid_ > 0) {
        RCLCPP_INFO(this->get_logger(), "Foxglove bridge launched with PID: %d", foxglove_pid_);

@@ -78,6 +78,8 @@ sudo apt install curl gnupg lsb-release software-properties-common -y
 sudo add-apt-repository universe
 sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+# For Zenoh middleware dependencies
+echo "deb [trusted=yes] https://pkg.zenoh.io/debian all main" | sudo tee /etc/apt/sources.list.d/zenoh.list
 
 # Update package cache
 sudo apt update
@@ -94,6 +96,7 @@ sudo apt install python3-colcon-common-extensions ros-dev-tools -y
 # Install slam_toolbox for mapping and localization
 sudo apt install ros-$ROS2_DISTRO-slam-toolbox -y
 ARCH=$(uname -m)
+
 
 echo "--- Installing Common ROS 2 Packages ---"
 sudo apt install -y \
@@ -114,7 +117,11 @@ sudo apt install -y \
    ros-$ROS2_DISTRO-ros2-controllers \
    ros-$ROS2_DISTRO-realsense2-camera \
    ros-$ROS2_DISTRO-realsense2-description \
-   ros-$ROS2_DISTRO-realsense2-camera-msgs
+   ros-$ROS2_DISTRO-realsense2-camera-msgs \
+   ros-$ROS2_DISTRO-topic-tools \
+   libzenohc \
+   ros-$ROS2_DISTRO-rmw-zenoh-cpp 
+   
 
 if [ "$ARCH" = "x86_64" ]; then
     echo "--- Installing PC/Simulation Packages (x86_64) ---"

@@ -1,35 +1,27 @@
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    pkg_real = get_package_share_directory('jetcar_real')
-    ekf_config_path = os.path.join(pkg_real, 'config', 'ekf.yaml')
+    """
+    This launch file is now a wrapper around navigation.launch.py 
+    specifically configured for SLAM (Mapping) mode.
+    """
+    pkg_nav = get_package_share_directory('jetcar_nav')
     
     use_sim_time = LaunchConfiguration('use_sim_time')
+    params_file = LaunchConfiguration('params_file')
 
-    ekf_node = Node(
-        package='robot_localization',
-        executable='ekf_node',
-        name='ekf_filter_node',
-        parameters=[ekf_config_path, {'use_sim_time': use_sim_time}]
-    )
-
-    slam_toolbox_node = Node(
-        package='slam_toolbox',
-        executable='async_slam_toolbox_node',
-        name='slam_toolbox',
-        parameters=[{
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py')),
+        launch_arguments={
             'use_sim_time': use_sim_time,
-            'odom_frame': 'odom',
-            'base_frame': 'base_link',
-            'map_frame': 'map',
-            'scan_topic': '/scan',
-            'mode': 'mapping',
-        }]
+            'params_file': params_file,
+            'slam': 'True',
+        }.items()
     )
 
     return LaunchDescription([
@@ -37,6 +29,9 @@ def generate_launch_description():
             'use_sim_time',
             default_value='false',
             description='Use simulation (Gazebo) clock if true'),
-        ekf_node,
-        slam_toolbox_node
+        DeclareLaunchArgument(
+            'params_file',
+            default_value=os.path.join(pkg_nav, 'config', 'nav2_params.yaml'),
+            description='Full path to the ROS2 parameters file to use'),
+        navigation_launch
     ])

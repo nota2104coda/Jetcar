@@ -1,6 +1,8 @@
-[submodule "src/realsense-ros"]
+[submodule "src/vendor_packages/realsense-ros"]
 	path = src/vendor_packages/realsense-ros
 	url = https://github.com/IntelRealSense/realsense-ros.git
-[submodule "src/ldlidar_ros2"]
+[submodule "src/vendor_packages/ldlidar_ros2"]
 	path = src/vendor_packages/ldlidar_ros2
 	url = https://github.com/ldrobotSensorTeam/ldlidar_ros2.git
+	ignore = untracked
+	branch = master

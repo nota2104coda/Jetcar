@@ -2,7 +2,7 @@ import os
 from launch.substitutions import Command
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import IncludeLaunchDescription, RegisterEventHandler , TimerAction
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
@@ -36,12 +36,18 @@ def generate_launch_description():
         }]
     )
 
-    # 3. Spawn Robot
-    spawn_entity = Node(
+    # 3. Spawn Robot (Delayed to ensure robot_description and Gazebo are ready)
+    spawn_entity_node = Node(
         package='ros_gz_sim',
         executable='create',
         arguments=['-topic', 'robot_description', '-name', 'jetcar', '-z', '0.1'],
         output='screen'
+    )
+    # actually should be depdendet on brngup completion of robot_state_publisher
+    # for now, just using a timer
+    spawn_entity = TimerAction(
+        period = 5.0,
+        actions = [spawn_entity_node]
     )
 
     # 4. Standard Bridge (Lidar, IMU, Odom, Clock, Teleop)
@@ -53,17 +59,16 @@ def generate_launch_description():
             '/model/jetcar/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/model/jetcar/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-            '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-            '/model/jetcar/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
+            # '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/sensor/camera_infra1/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
         ],
         remappings=[
-            ('/model/jetcar/cmd_vel', '/cmd_vel_manual'),
             ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
-            ('/model/jetcar/sensor/imu_sensor/imu', '/imu'),
-            ('/model/jetcar/odometry', '/odom'),
+            ('/model/jetcar/sensor/imu_sensor/imu', '/gz/imu'),
+            ('/model/jetcar/odometry', '/gz/odom'),
+            # ('/model/jetcar/tf', '/tf'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
             ('/model/jetcar/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
@@ -107,17 +112,19 @@ def generate_launch_description():
         package="controller_manager",
         executable="spawner",
         arguments=["joint_state_broadcaster"],
+        parameters=[{'use_sim_time': True}]
     )
 
     effort_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=["effort_controller"],
+        parameters=[{'use_sim_time': True}]
     )
 
     spawn_controllers = RegisterEventHandler(
         event_handler=OnProcessExit(
-            target_action=spawn_entity,
+            target_action=spawn_entity_node,
             on_exit=[joint_state_broadcaster_spawner, effort_controller_spawner]
         )
     )
@@ -127,7 +134,7 @@ def generate_launch_description():
         robot_state_publisher,
         spawn_entity,
         bridge,
-        camera_bridge,
+        # camera_bridge,
         sim_mcu_node,
         spawn_controllers
     ])

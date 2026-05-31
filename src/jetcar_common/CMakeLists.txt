@@ -21,7 +21,12 @@ ament_target_dependencies(adaptive_resolution_node rclcpp nav_msgs rcl_interface
 install(TARGETS hmi_node hmi_node_nobridge adaptive_resolution_node
   DESTINATION lib/${PROJECT_NAME})
 
-install(PROGRAMS scripts/lidar_pwm.py
+install(PROGRAMS 
+  scripts/lidar_pwm.py
+  scripts/goal_fixer.py
   DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME})
+  
 ament_package()

@@ -23,6 +23,23 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(pkg_real, 'launch', 'hardware.launch.py'))
     )
 
+    # Robot State Publisher (Required locally for tf_static across network)
+    pkg_description = get_package_share_directory('jetcar_description')
+    from launch.substitutions import Command
+    xacro_path = os.path.join(pkg_description, 'urdf', 'jetcar.urdf.xacro')
+    robot_description_content = Command(['xacro ', xacro_path, ' sim_mode:=false'])
+
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher_jetson',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_description_content,
+            'use_sim_time': False
+        }]
+    )
+
     # 2. Isaac ROS Container (Zero-Copy Vision Stack)
     isaac_container = ComposableNodeContainer(
         name='isaac_ros_container',
@@ -40,7 +57,7 @@ def generate_launch_description():
         target_container='isaac_ros_container',
         composable_node_descriptions=[
             ComposableNode(
-                name='visual_slam_node',
+                name='visual_slam',
                 package='isaac_ros_visual_slam',
                 plugin='nvidia::isaac_ros::visual_slam::VisualSlamNode',
                 parameters=[{
@@ -86,6 +103,9 @@ def generate_launch_description():
                     'global_frame': 'map',
                     'voxel_size': 0.1,
                     'use_static_occupancy_layer': True,
+                    # 'use_depth': True,
+                    # 'use_lidar': False,
+                    # 'use_color': True,
                 }],
                 remappings=[
                     ('/camera_0/depth/image', '/camera/camera/depth/image_rect_raw'),
@@ -98,31 +118,32 @@ def generate_launch_description():
         ]
     )
 
-    # 5. Localization & Mapping (SLAM Toolbox, EKF)
-    localization_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'localization.launch.py'))
-    )
-
-    # 6. Navigation Stack (Nav2)
-    # Using the sim params for Nav2
+    # 5. Navigation & Localization (Unified)
+    # This handles EKF, Nav2, and SLAM (because slam:=true)
     navigation_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py'))
+        PythonLaunchDescriptionSource(os.path.join(pkg_nav, 'launch', 'navigation.launch.py')),
+        launch_arguments={
+            'use_sim_time': 'False',
+            'params_file': os.path.join(pkg_nav, 'config', 'nav2_params.yaml'),
+            'slam': 'True'
+        }.items()
     )
 
-    # 7. Utils
+    # 6. Utils
     foxglove_bridge = Node(
         package='foxglove_bridge',
         executable='foxglove_bridge',
-        name='foxglove_bridge'
+        name='foxglove_bridge',
+        parameters=[{'address': '0.0.0.0'}]
     )
 
     return LaunchDescription([
         hmi_node,
+        robot_state_publisher_node,
         hardware_launch,
-        isaac_container,
-        TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
-        TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
-        localization_launch,
+        # isaac_container,
+        # TimerAction(period=5.0, actions=[LogInfo(msg='Loading Visual SLAM...'), load_vslam]),
+        # TimerAction(period=8.0, actions=[LogInfo(msg='Loading nvblox...'), load_nvblox]),
         navigation_launch,
         foxglove_bridge
     ])
