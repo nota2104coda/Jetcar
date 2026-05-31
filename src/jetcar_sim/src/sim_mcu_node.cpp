@@ -23,7 +23,7 @@ public:
         this->declare_parameter("command_topic_nav", "/cmd_vel_nav");
         this->declare_parameter("stop_button_state", true);
         this->declare_parameter("auto_mode_button_state", true);
-        this->declare_parameter("manual_scale", 0.4);
+        this->declare_parameter("manual_scale", 1.0);
         this->declare_parameter("auto_scale", 1.5);
         this->declare_parameter("flip_angular", false);
 
@@ -141,7 +141,7 @@ private:
         float left = 0.8f * (vx - wz);
         float right = 0.8f * (vx + wz);
 
-        float max_torque = 2.0f;
+        float max_torque = 5.0f;
         auto effort_msg = std_msgs::msg::Float64MultiArray();
         effort_msg.data = {right * max_torque, left * max_torque, right * max_torque, left * max_torque};
         effort_pub_->publish(effort_msg);
