@@ -1,122 +1,136 @@
 # System Architecture Diagram
 
+# Budgets
+**RAM for Jetson Orin Nano 8GB**
+Current state: 1.6GB with Isaaac, Ld06, Realsense,gnome display, MCU bridge and foxglove bridge all running. Isaac 
+Need to manage Yolo/other recognition framework and an llm/VLA model in remaining space. Keep 0.8GB spare at all times. 
+
+estimates from chatgpt
+Realsense
+depth resolution: 640×480
+fps: 15
+decimation filter ON
+pointcloud OFF
+Saves 200–300 MB.
+
+RTAB-Map
+Mem/IncrementalMemory = true
+Kp/MaxFeatures = 400
+RGBD/OptimizeFromGraphEnd = true
+RGBD/LinearUpdate = 0.1
+Reg/Strategy = 0 (visual odom only)
+RGBD/MaxRange = 4.0
+Grid/FromDepth = false (use external costmap)
+Saves ~1 GB.
+
+Nav2
+reduce global costmap resolution to 0.1 or 0.12 m
+Voxel layer:
+max_z = robot_height + 10 cm
+z_voxels = 8–12
+Use only local 3D info if possible
+Saves ~150 MB.
+
+⭐ Recommended “safe mode” loadout
+If you want reliability and smooth operation:
+
+Run these simultaneously:
+Realsense depth 640×480 @ 15 fps
+RTAB-Map tuned
+Nav2 costmap (voxel layer on)
+RPLidar
+Foxglove bridge
+
+
+Avoid:
+Running YOLO inference constantly on CPU
+Storing large pointcloud histories
+Uncompressed rear camera streams
+This mode runs in 3.8–4.5 GB comfortably.
+**Timing for Jetson Orin Nano**
+**timing for ESP32S3-Pico**
+Core0
+Core1
+
 ```mermaid
 graph TD
     PC[PC Ubuntu 22.04] <-- WiFi for Gazebo sim--> Jetson[Jetson Orin Nano]
-    Jetson -- USB-UART(USB-UART-USB2) --> PicoW[Pico W]
+    Jetson -- USB-UART(CP2104 USB-UART1 of MCU) --> MCU[Pico W/ESP32S3-Pico]
     Realsense[Realsense D435 binocular camera] -- USB#1 --> Jetson
-    PicoW -- I2C0: 4x wheel torque --> PCA9685_AWDDriver[4 Wheels]
-    PCA9685_AWDDriver[4 Wheels] -- Hall Encoder Pins --> PicoW
+    MCU -- I2C0: 4x wheel torque --> PCA9685_AWDDriver[4 Wheels]
+    PCA9685_AWDDriver[4 Wheels] -- Hall Encoder Pins --> MCU
     Jetson -- Foxglove Bridge Server --> Web[Foxglove in Web Browser]
     Web[Foxglove in Web Browser] --User commands--> Jetson
-    Radar[LD2450 Radar] -- UART0 --> PicoW
-    Lidar2D[LD06] -- UART0 --> Jetson
-    Lidar[VL53L5X front 8x8 Lidar] -- I2C0 --> PicoW
-    IMU[IMU-MPU6050] -- I2C0 --> PicoW
-    USensors[HC SR04 Ultrasonic Sensors] -- voltage level shifter --> PicoW
-    IRSensors[IR Cliff Sensors] -- voltage level shifter --> PicoW
+    Radar[LD2450 Radar] -- UART0 --> MCU
+    Lidar2D[LD06 2D Lidar] --USB-UART(CP2104 to UART0 of Jetson) --> Jetson
+    Lidar[VL53L5X front 8x8 Lidar] -- I2C0 --> MCU
+    IMU[IMU-MPU6050] -- I2C0 --> MCU
+    USensors[HC SR04 Ultrasonic Sensors] -- voltage level shifter --> MCU
+    IRSensors[IR Cliff Sensors] -- voltage level shifter --> MCU
 ```
 
 # Software Architecture Diagram
 
 ```mermaid
-flowchart TD
-    subgraph ROS2Nodes[ROS 2 Nodes on Jetson]
-        Vision[vision_node::Camera, ld06_lidar]
-        Recognition[yolo_node]
-        LLM[llm_node]
-        SLAM[vslam_node]
-        Navigation[nav2_node::Path Planning]
-        Control[control_node]
-        Comms[UART comms to PicoW]
-        WebServer[web_server_node::Foxglove Web Interface]
-    end
-    subgraph PicoW_Arduino[Pico W / PlatformIO]
-        subgraph Core0
-            MotionArbitrator
-            PicoWMotors[motorDriver]
-            PicoWComms[sensor/actuator I2C+UART]
-            PicoWSerial[UART with Jetson]
-            PicoWSensors[Encoders, MPU6050, VL53L5X]
-        end
-        subgraph Core1
-            WebServer_override
-            Sonar
-            CliffSensor
-            LD2450Radar
-        end
-    end
-    Vision -- Sensor Data --> Navigation
-    Navigation -- Motor Commands --> Control
-    Control -- Serial Data --> PicoWSerial
-    PicoWSerial -- Sensor Data --> Control
-    WebServer -- Commands --> Navigation
-    Vision -- Visualization --> WebServer
-    WebServer_override --> MotionArbitrator
-    Sonar --> MotionArbitrator
-    CliffSensor --> MotionArbitrator
-    LD2450Radar --> MotionArbitrator
-    PicoWSensors --> MotionArbitrator
-    MotionArbitrator --> PicoWMotors
+---
+config:
+  layout: dagre
+---
+flowchart TB
+ subgraph jetcar_nodes["jetcar_nodes (Source Code)"]
+        hw_mcu_node["hw_mcu_node (MAVLink)"]
+        hmi_node["hmi_node (Buttons/LCD)"]
+        lidar_pwm["lidar_pwm.py"]
+        sim_mcu["sim_mcu_node"]
+        adaptive["adaptive_resolution_node"]
+  end
+ subgraph jetcar_real["jetcar_real (Real Config)"]
+        hardware_launch["hardware.launch.py"]
+        loc_launch["localization.launch.py"]
+  end
+ subgraph jetcar_sim["jetcar_sim (Sim Config)"]
+        gazebo_launch["gazebo.launch.py"]
+        pc_gazebo_launch["pc_gazebo.launch.py (PC side)"]
+        sim_params["sim_controllers.yaml"]
+  end
+ subgraph jetcar_nav["jetcar_nav (Navigation)"]
+        Navigation["nav2_nodes (Planner, Controller, BT)"]
+        nav_params["nav2_params.yaml"]
+  end
+ subgraph jetcar_description["jetcar_description (Body)"]
+        RSP["robot_state_publisher (Xacro)"]
+  end
+ subgraph jetcar_bringup["jetcar_bringup (Integration)"]
+        RealLaunch["real_robot.launch.py"]
+        SimLaunch["sim_robot.launch.py"]
+        JetsonSimLaunch["jetson_sim_nav.launch.py (Jetson side)"]
+  end
+ subgraph IsaacROS["Isaac ROS (Vision Stack)"]
+        SLAM["vslam_node"]
+        NvBlox["nvblox_node"]
+  end
+
+ subgraph MCU["MCU (Pico W / ESP32S3-Pico)"]
+        direction TB
+        Core0["Core0: Motion, MAVLink, Motors"]
+        Core1["Core1: Sonar, Cliff"]
+  end
+
+    hardware_launch -- Starts --> hw_mcu_node
+    hardware_launch -- Starts --> hmi_node
+    gazebo_launch -- Starts --> sim_mcu
+    
+    SLAM --> Navigation
+    Navigation --Twist--> hw_mcu_node
+    hw_mcu_node -- [motor cmds]--> MCU
+    hmi_node -- Commands --> Navigation
+    MCU --[sensor data]--> hw_mcu_node
+    RSP -- TF Tree --> SLAM
+    RSP -- TF Tree --> Navigation
 ```
 
-# Node + Topic Graph
+# Node + Topic Graph (Partial)
+Refer to code for full details.
 
-```mermaid
-graph LR
-    classDef topic fill:#f5f5f5,stroke:#808080,stroke-width:1px,color:#000,font-size:11px;
-
-    Foxglove[foxglove_bridge]
-    HMI[hmi_node]
-    robot_motion_node[robot_motion_node]
-    MCUNode[hw_mcu_node]
-    MCU_UART[USB-UART]
-
-    topic_cmd_vel_manual(["/cmd_vel/manual::geometry_msgs/Twist"])
-    topic_stop_button(["/stop_button::std_msgs/Bool"])
-    topic_auto_mode(["/auto_mode_button::std_msgs/Bool"])
-    topic_button_states(["/hmi/button_states::robot_msgs/ButtonStates"])
-    topic_cmd_wrench(["/cmd_wrench::geometry_msgs/Wrench"])
-    topic_imu(["/mcu/imu::sensor_msgs/Imu"])
-    topic_range_front(["/mcu/range/front::sensor_msgs/Range"])
-    topic_range_rear(["/mcu/range/rear::sensor_msgs/Range"])
-    topic_cliff_front(["/mcu/cliff/front::sensor_msgs/Range"])
-    topic_cliff_rear(["/mcu/cliff/rear::sensor_msgs/Range"])
-    topic_esc(["/esc_telemetry::std_msgs/Float32MultiArray"])
-    topic_odom(["/odom::nav_msgs/Odometry"])
-
-    Foxglove --> topic_cmd_vel_manual
-    topic_cmd_vel_manual --> HMI
-    Foxglove --> topic_stop_button
-    topic_stop_button --> HMI
-    Foxglove --> topic_auto_mode
-    topic_auto_mode --> HMI
-    HMI --> topic_button_states
-    topic_button_states --> robot_motion_node
-    robot_motion_node --> topic_cmd_wrench
-    topic_cmd_wrench --> MCUNode
-
-    MCUNode -- SET_ACTUATOR_CONTROL_TARGET (mavlink) --> MCU_UART
-    MCU_UART -- HIGHRES_IMU (mavlink) --> MCUNode
-    MCU_UART -- DISTANCE_SENSOR (mavlink) --> MCUNode
-    MCU_UART -- ESC_TELEMETRY_1_TO_4 (mavlink) --> MCUNode
-
-    MCUNode --> topic_imu
-    topic_imu --> robot_motion_node
-    MCUNode --> topic_range_front
-    topic_range_front --> robot_motion_node
-    MCUNode --> topic_range_rear
-    topic_range_rear --> robot_motion_node
-    MCUNode --> topic_cliff_front
-    topic_cliff_front --> robot_motion_node
-    MCUNode --> topic_cliff_rear
-    topic_cliff_rear --> robot_motion_node
-    MCUNode --> topic_esc
-    topic_esc --> robot_motion_node
-
-    robot_motion_node --> topic_odom
-    topic_odom --> Foxglove
-
-    class topic_cmd_vel_manual,topic_stop_button,topic_auto_mode,topic_button_states,topic_cmd_wrench topic;
-    class topic_imu,topic_range_front,topic_range_rear,topic_cliff_front,topic_cliff_rear,topic_esc,topic_odom topic;
-```
+# Navigation Flow
+Refer to code for full details.

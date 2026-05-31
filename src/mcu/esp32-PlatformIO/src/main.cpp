@@ -300,6 +300,15 @@ void loop() {
   writeJetsonSerial();
   processJetsonCommandStream();
   const uint32_t now = millis();
+
+  // Rate limiting for the rest of the control loop (Sensors, Motors, Telemetry)
+  if (now - lastLoopStart < kLoopPeriodMs) {
+    // Yield to other RTOS tasks briefly
+    delay(1);
+    return;
+  }
+  lastLoopStart = now;
+
   // Read IMU and cliffsensor
   sensors_event_t accel = {}, gyro = {}, temp = {};
   float currentRawGyroZ = 0.0f;
@@ -341,7 +350,6 @@ void loop() {
   // mcuSensors.speedFL = 3;
   // mcuSensors.speedRL = 4;
   
-
   mcuSensors.sonarFrontcm = sonarDistanceFrontcm; // maintain distance in cm because mavlink DISTANCE_SENSOR uses uint16 for distance
   mcuSensors.sonarFquality = 100U; //sonar library doesn't provide quality metric, intend to make one later based on readings consistency
   mcuSensors.sonarRearcm = sonarDistanceRearcm; // maintain distance in cm because mavlink DISTANCE_SENSOR uses uint16 for distance
@@ -379,36 +387,26 @@ void loop() {
   // Feed watchdog
   // watchdog_update();
 
-  const uint32_t loopNow = millis();
-  
-  // Rate limiting for the rest of the control loop (Sensors, Motors, Telemetry)
-  if (loopNow - lastLoopStart < kLoopPeriodMs) {
-    // Yield to other RTOS tasks briefly
-    delay(1);
-    return;
-  }
-  lastLoopStart = loopNow;
-
   // // Poll sonar (rear then front with crosstalk delay)
   /*constrain(x,a,b) is interesting in that you can pass float, which could be a function pointer. 
   And this will cause completely incorrect results. This can't be caught by the compiler.
   Hence docs say never pass a function. Store the value returned by a function and pass to constrain(). 
   This is where functions need strong typing to avoid incorrect uses. 
   Other standard arduino functions like fabsf will have the same issue */
-  if (loopNow - lastSonarRearPoll >= kSonarPollIntervalMs) {
+  if (now - lastSonarRearPoll >= kSonarPollIntervalMs) {
     delay(min_sonar_delayMs);
     int16_t rear = sonarR.ping_cm(); //cm  
     sonarDistanceRearcm = constrain( rear, kMinSonarRangecm, kMaxSonarRangecm ); //cm
-    lastSonarRearPoll = loopNow;
+    lastSonarRearPoll = now;
   }
 
-  if (loopNow - lastSonarFrontPoll >= kSonarPollIntervalMs) {
+  if (now - lastSonarFrontPoll >= kSonarPollIntervalMs) {
     delay(min_sonar_delayMs);
     int16_t front = sonarF.ping_cm(); //cm
     if (front > 0 && front < kMaxSonarRangecm) {
       sonarDistanceFrontcm = front;
     }
-    lastSonarFrontPoll = loopNow;
+    lastSonarFrontPoll = now;
   }
 
   
