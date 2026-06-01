@@ -99,6 +99,8 @@ private:
     geometry_msgs::msg::Twist last_manual_twist_, last_auto_twist_;
     rclcpp::Time last_manual_received_time_ = this->now(), last_auto_received_time_ = this->now();
     double last_front_range_ = 4.0 , last_rear_range_ = 4.0;
+    double safety_frt_rr_range_ = 0.3;
+    double safety_cliff_range_ = 0.2;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
@@ -193,14 +195,14 @@ private:
             }
         }
 
-        // Safety override: if obstacle is closer than 10cm (0.1m) in front, prevent forward motion
-        if (linear_x > 0.0 && last_front_range_ <= 0.1) {
+        // Safety override: if obstacle is closer than 30cm (0.3m) in front, prevent forward motion
+        if (linear_x > 0.0 && last_front_range_ <= safety_frt_rr_range_ ) {
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-                "Forward obstacle detected (Range: %.2fm <= 0.1m). Blocking forward motion.", last_front_range_);
+                "Forward obstacle detected (Range: %.2fm <= safety distance %.2fm). Blocking forward motion.", last_front_range_, safety_frt_rr_range_);
             linear_x = 0.0;
-        } else if (linear_x < 0 && last_rear_range_ <= 0.1) {
+        } else if (linear_x < 0 && last_rear_range_ <= safety_frt_rr_range_ ) {
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-                "Rear obstacle detected (Range: %.2fm <= 0.1m). Blocking backward motion.", last_rear_range_);
+                "Rear obstacle detected (Range: %.2fm <= safety distance %.2fm). Blocking backward motion.", last_rear_range_, safety_frt_rr_range_);
             linear_x = 0.0;
         }
 
