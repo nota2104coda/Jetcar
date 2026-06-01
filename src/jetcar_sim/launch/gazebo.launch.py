@@ -62,7 +62,9 @@ def generate_launch_description():
             # '/model/jetcar/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/model/jetcar/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/model/jetcar/sensor/camera_infra1/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-            '/model/jetcar/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
+            '/model/jetcar/sensor/camera_infra2/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/model/jetcar/sensor/front_sonar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/model/jetcar/sensor/rear_sonar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'
         ],
         remappings=[
             ('/model/jetcar/sensor/ld06_lidar/scan', '/scan'),
@@ -72,7 +74,9 @@ def generate_launch_description():
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/color/camera_info'),
             ('/model/jetcar/sensor/camera/camera_info', '/camera/camera/depth/camera_info'),
             ('/model/jetcar/sensor/camera_infra1/camera_info', '/camera/camera/infra1/camera_info'),
-            ('/model/jetcar/sensor/camera_infra2/camera_info', '/camera/camera/infra2/camera_info')
+            ('/model/jetcar/sensor/camera_infra2/camera_info', '/camera/camera/infra2/camera_info'),
+            ('/model/jetcar/sensor/front_sonar/scan', '/gz/range/front_scan'),
+            ('/model/jetcar/sensor/rear_sonar/scan', '/gz/range/rear_scan')
         ],
         parameters=[{'use_sim_time': True}],
         output='screen'
@@ -134,7 +138,7 @@ def generate_launch_description():
         robot_state_publisher,
         spawn_entity,
         bridge,
-        # camera_bridge,
+        camera_bridge,
         sim_mcu_node,
         spawn_controllers
     ])
