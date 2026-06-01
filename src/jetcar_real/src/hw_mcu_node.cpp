@@ -109,11 +109,13 @@ private:
     std::string serial_port_;
     int serial_baud_rate_;
     double control_period_;
+    double manual_scale_ , auto_scale_ ;
     double poll_period_, wheel_radius_, gear_ratio_;
     std::string odom_frame_id_, base_frame_id_, imu_frame_id_;
     std::string command_topic_manual_, command_topic_nav_;
     int target_system_, target_component_, source_system_, source_component_;
-    double manual_linear_max_, manual_yaw_rate_max_, manual_scale_, auto_scale_;
+    double manual_linear_max_, manual_yaw_rate_max_ ;
+    
     bool flip_angular_;
     double mps_per_rpm_;
     bool stop_button_state_ = true, auto_mode_button_state_ = true;
@@ -122,10 +124,10 @@ private:
 
     geometry_msgs::msg::Twist last_manual_twist_, last_auto_twist_;
     rclcpp::Time last_manual_received_time_ = this->now(), last_auto_received_time_ = this->now();
+    double last_front_range_ = 4.0 , last_rear_range_ = 4.0;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
-    
     rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr range_front_pub_ , range_rear_pub_ , cliff_front_pub_ , cliff_rear_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr esc_pub_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual_ , cmd_vel_sub_nav_ ;
@@ -228,6 +230,18 @@ private:
                 angular_z = last_manual_twist_.angular.z * manual_scale_;
             }
         }
+
+        // Safety override: if obstacle is closer than 10cm (0.1m) in front, prevent forward motion
+        if (linear_x > 0.0 && last_front_range_ <= 0.1) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                "Forward obstacle detected (Range: %.2fm <= 0.1m). Blocking forward motion.", last_front_range_);
+            linear_x = 0.0;
+        } else if (linear_x < 0 && last_rear_range_ <= 0.1) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                "Rear obstacle detected (Range: %.2fm <= 0.1m). Blocking backward motion.", last_rear_range_);
+            linear_x = 0.0;
+        }
+        
         send_mavlink_command(linear_x, angular_z);
     }
 

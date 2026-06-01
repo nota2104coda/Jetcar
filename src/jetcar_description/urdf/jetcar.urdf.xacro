@@ -134,7 +134,7 @@
       </plugin>
     </gazebo>
 
-<!--     <gazebo reference="camera_binoc">
+    <gazebo reference="camera_binoc">
       <sensor name="camera" type="rgbd">
         <gz_frame_id>camera_binoc</gz_frame_id>
         <topic>/model/jetcar/sensor/camera</topic>
@@ -142,14 +142,14 @@
         <update_rate>15</update_rate>
         <camera>
           <horizontal_fov>1.204</horizontal_fov>
-          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <image><width>424</width><height>240</height><format>R8G8B8</format></image>
           <clip><near>0.1</near><far>10.0</far></clip>
         </camera>
       </sensor>
-    </gazebo> -->
+    </gazebo>
 
     <!-- Left IR (Infra1) -->
-<!--     <gazebo reference="camera_infra1_frame">
+    <gazebo reference="camera_infra1_frame">
       <sensor name="camera_infra1" type="camera">
         <gz_frame_id>camera_infra1_frame</gz_frame_id>
         <topic>/model/jetcar/sensor/camera_infra1</topic>
@@ -161,10 +161,10 @@
           <clip><near>0.1</near><far>10.0</far></clip>
         </camera>
       </sensor>
-    </gazebo> -->
+    </gazebo>
 
     <!-- Right IR (Infra2) -->
-<!--     <gazebo reference="camera_infra2_frame">
+    <gazebo reference="camera_infra2_frame">
       <sensor name="camera_infra2" type="camera">
         <gz_frame_id>camera_infra2_frame</gz_frame_id>
         <topic>/model/jetcar/sensor/camera_infra2</topic>
@@ -176,7 +176,7 @@
           <clip><near>0.1</near><far>10.0</far></clip>
         </camera>
       </sensor>
-    </gazebo> -->
+    </gazebo>
 
     <gazebo reference="ld06_lidar">
       <sensor name="ld06_lidar" type="gpu_lidar">
@@ -197,6 +197,53 @@
         <topic>/model/jetcar/sensor/imu_sensor/imu</topic>
         <always_on>true</always_on>
         <update_rate>50</update_rate>
+      </sensor>
+    </gazebo>
+
+    <!-- Sonars. 0.15rad is 8.5 degrees of range. samples = 5 implies the beams used to sample distance across field of view.  -->
+    <gazebo reference="front_sonar">
+      <sensor name="front_sonar" type="gpu_lidar">
+        <gz_frame_id>front_sonar</gz_frame_id>
+        <topic>/model/jetcar/sensor/front_sonar/scan</topic>
+        <always_on>true</always_on>
+        <update_rate>5</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>5</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.15</min_angle>
+              <max_angle>0.15</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.02</min>
+            <max>4.0</max>
+          </range>
+        </lidar>
+      </sensor>
+    </gazebo>
+
+    <gazebo reference="rear_sonar">
+      <sensor name="rear_sonar" type="gpu_lidar">
+        <gz_frame_id>rear_sonar</gz_frame_id>
+        <topic>/model/jetcar/sensor/rear_sonar/scan</topic>
+        <always_on>true</always_on>
+        <update_rate>5</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>5</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.15</min_angle>
+              <max_angle>0.15</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.02</min>
+            <max>4.0</max>
+          </range>
+        </lidar>
       </sensor>
     </gazebo>
 

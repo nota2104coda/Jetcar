@@ -10,6 +10,7 @@ when the user asks to navigate to the red football, it scans the room by spinnin
 
 ## What Works 
 5-Mar-2026: Teleoperation using Foxglove GUI works. Gathering VSLAM data using ISAAC ROS and 2D lidar data using LD06 library works. 
+31-May-2026: Teleop using foxglove works in both sim mode as well as real_robot mode. nav2 navigation also causes displacement, just not in the expected trajectory. Also video feed is disabled in sim mode currently. CPU util for jetson is now down to 65% in both sim and real robot case. GPU still zero., and this is to be fixed in forthcoming changes.network traffic is high at 100+ MB/s due to video feed. Can only be managed via ethernet. /camera topic rate is measly at 6.5fps in sim mode, with massive variation of 0.03sec to 1.34 sec per frame.
 ## and what's next
 
 ## Learning Objectives
