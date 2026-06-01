@@ -98,7 +98,7 @@ private:
     
     geometry_msgs::msg::Twist last_manual_twist_, last_auto_twist_;
     rclcpp::Time last_manual_received_time_ = this->now(), last_auto_received_time_ = this->now();
-    // double last_front_range_ = 4.0 , last_rear_range_ = 4.0;
+    double last_front_range_ = 4.0 , last_rear_range_ = 4.0;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
