@@ -21,6 +21,24 @@ echo "--- 7. Setting up Python Virtual Environment and installing requirements -
 python3 -m venv $REPO_DIR/.venv
 source $REPO_DIR/.venv/bin/activate
 
+# Jetson-specific optimizations for aarch64 (JetPack 7.2 / CUDA 13.2)
+if [ "$(uname -m)" = "aarch64" ]; then
+    echo "--- Detected Jetson (aarch64). Applying optimizations for JetPack 7.2... ---"
+    sudo apt update
+    sudo apt install libopencv-dev python3-opencv -y
+    
+    # Set custom repository index for optimized wheels
+    export PIP_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.io/jp7/cu132
+    echo "export PIP_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.io/jp7/cu132" >> $REPO_DIR/.venv/bin/activate
+    
+    # Add Tegra libraries to path
+    echo 'export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra:$LD_LIBRARY_PATH"' >> $REPO_DIR/.venv/bin/activate
+    export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra:$LD_LIBRARY_PATH"
+    
+    # Install optimized OpenCV
+    pip install opencv-python-headless
+fi
+
 pip install -r $REPO_DIR/jetcar-requirements.txt
 
 # Add ROS 2 setup to venv activation (assuming core ROS 2 is installed elsewhere)

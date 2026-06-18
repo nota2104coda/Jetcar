@@ -5,7 +5,10 @@
 USERNAME="xyz" # CHANGE THIS to your computer's username
 EMAIL="xyz@gmail.com" # CHANGE THIS
 GIT_USER="xyz" # CHANGE THIS
-ROS2_DISTRO="humble" # Assuming you're on a 22.04 base. If 24.04, change to "jazzy"
+ROS2_DISTRO="jazzy" # Assuming you're on a 22.04 base. If 24.04, change to "jazzy"
+export ARCH=$(uname -m)
+echo $ARCH
+
 
 # --- 1. System Update and Dependencies ---
 echo "--- 1. Updating System and Installing Core Dependencies ---"
@@ -62,10 +65,10 @@ sleep 120
 ssh -T git@github.com
 
 # --- 6. ROS 2 Humble Installation Procedure ---
-echo "--- 6. Setting up ROS 2 Humble Repository and Installing Packages ---"
+echo "--- 6. Setting up ROS 2 Humble/Jazzy Repository and Installing Packages ---"
 
 # --- 1. ROS 2 Humble Installation Procedure (Lighter Version) ---
-echo "--- 1. Setting up ROS 2 Humble Repository and Installing ros-base ---"
+echo "--- 1. Setting up ROS 2 Humble/Jazzy Repository and Installing ros-base ---"
 
 # Set Locale (Critical for ROS 2)
 sudo apt install locales -y
@@ -88,7 +91,7 @@ sudo apt update
 sudo apt install ros-$ROS2_DISTRO-ros-base -y
 
 #install rosbridge_server to cnnect foxglove visualisation
-sudo apt install ros-$ROS2_DISTRO-foxglove-bridge
+sudo apt install ros-$ROS2_DISTRO-foxglove-bridge -y
 
 
 # Install development tools (colcon, etc.)
@@ -105,6 +108,7 @@ sudo apt install -y \
    ros-$ROS2_DISTRO-image-transport \
    ros-$ROS2_DISTRO-image-transport-plugins \
    ros-$ROS2_DISTRO-compressed-image-transport \
+   ros-$ROS2_DISTRO-tf2-tools \
    ros-$ROS2_DISTRO-nav2-bringup \
    ros-$ROS2_DISTRO-nav2-controller \
    ros-$ROS2_DISTRO-nav2-planner \
@@ -119,18 +123,23 @@ sudo apt install -y \
    ros-$ROS2_DISTRO-realsense2-description \
    ros-$ROS2_DISTRO-realsense2-camera-msgs \
    ros-$ROS2_DISTRO-topic-tools \
-   libzenohc \
    ros-$ROS2_DISTRO-rmw-zenoh-cpp 
    
 
 if [ "$ARCH" = "x86_64" ]; then
     echo "--- Installing PC/Simulation Packages (x86_64) ---"
-    sudo apt install -y \
-       ros-$ROS2_DISTRO-gazebo-ros2-control \
-       ros-$ROS2_DISTRO-ros-gz \
-       ros-$ROS2_DISTRO-ros-gz-sim \
-       ros-$ROS2_DISTRO-ros-gz-sim-sensors \
-       ros-$ROS2_DISTRO-ros-gz-sim-plugins
+    if [ "$ROS2_DISTRO" = "jazzy" ]; then
+        sudo apt install -y \
+           ros-$ROS2_DISTRO-gz-ros2-control \
+           ros-$ROS2_DISTRO-ros-gz
+    else
+        sudo apt install -y \
+           ros-$ROS2_DISTRO-gazebo-ros2-control \
+           ros-$ROS2_DISTRO-ros-gz \
+           ros-$ROS2_DISTRO-ros-gz-sim \
+           ros-$ROS2_DISTRO-ros-gz-sim-sensors \
+           ros-$ROS2_DISTRO-ros-gz-sim-plugins
+    fi
 elif [ "$ARCH" = "aarch64" ]; then
     echo "--- Installing Jetson/Robot Packages (aarch64) ---"
     sudo apt install -y \
@@ -142,8 +151,45 @@ elif [ "$ARCH" = "aarch64" ]; then
     # Verify Isaac ROS package installation paths
     ros2 pkg prefix isaac_ros_nvblox && ros2 pkg prefix isaac_ros_visual_slam
 fi
-# Automatically source ROS 2 upon every new terminal login
-echo "source /opt/ros/$ROS2_DISTRO/setup.bash" >> ~/.bashrc
+
+# --- 8. Environment Configuration (.bashrc) ---
+echo "--- 8. Configuring .bashrc and User Environment ---"
+
+BASHRC="$HOME/.bashrc"
+
+if ! grep -q "# Jetcar Environment Configuration" "$BASHRC"; then
+cat << EOF >> "$BASHRC"
+
+# Jetcar Environment Configuration
+source /opt/ros/$ROS2_DISTRO/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+# Jetcar Workspace Aliases
+alias sdev='source install/setup.bash && echo "sourced install/setup.bash" '
+
+jl() {
+   if [ -z "\$1" ]; then
+       echo "Usage: jl <launch_file>"
+       return 1
+   elif [ ! -f "~/Jetcar/src/jetcar_bringup/launch/\$1" ]; then
+	echo "Warning: '\$1' not found in jetcar_bringup/launch/"
+	echo "Running anyway in case it's a system file..."
+	ros2 launch jetcar_bringup "\$@"
+   else
+        ros2 launch jetcar_bringup "\$@"
+   fi
+}
+
+alias rlgaz='ros2 launch jetcar_sim gazebo.launch.py'
+
+cb() {
+   colcon build --symlink-install "\$@"
+}
+
+alias sros='source /opt/ros/$ROS2_DISTRO/setup.bash'
+EOF
+    echo "Shortcuts and ROS configuration added to ~/.bashrc"
+fi
 
 #To run Gemini or Copilot CLI
 #---8. Install copilot CLI and gemini CLI
@@ -171,20 +217,6 @@ npm install -g @google/gemini-cli
 sudo apt update
 #for adding this user in the docker root users group. Once added, your user (and thus # yourPython script running as that user) can execute docker run commands without needing # sudo.
 sudo usermod -aG docker $USERNAME
-
-# 2. Install the full JetPack SDK component list
-sudo apt install nvidia-jetpack
-
-sudo apt install libopencv-dev python3-opencv -y
-#Then, in the venv you use, run this in terminal.
-# Set the custom repository index for JetPack 6.2 (CUDA 12.6)
-export PIP_INDEX_URL=https://pypi.jetson-ai-lab.io/jp6/cu126 
-
-# Install the optimized wheels via pip
-pip install opencv-python-headless
-
-Also add the lines to .venv/bin/activate at the end 
-export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu/tegra:$LD_LIBRARY_PATH"
 
 #For docker...tbc
 
