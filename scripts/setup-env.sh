@@ -162,7 +162,7 @@ cat << EOF >> "$BASHRC"
 
 # Jetcar Environment Configuration
 source /opt/ros/$ROS2_DISTRO/setup.bash
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
 # Jetcar Workspace Aliases
 alias sdev='source install/setup.bash && echo "sourced install/setup.bash" '
