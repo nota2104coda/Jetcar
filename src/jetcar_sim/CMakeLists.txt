@@ -15,7 +15,7 @@ ament_target_dependencies(sim_mcu_node rclcpp std_msgs geometry_msgs nav_msgs se
 
 install(TARGETS sim_mcu_node DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch config worlds urdf
+install(DIRECTORY launch config worlds
   DESTINATION share/${PROJECT_NAME})
 
 ament_package()
