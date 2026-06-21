@@ -24,14 +24,44 @@ sudo systemctl enable ssh
 sudo systemctl start ssh
 sudo ufw allow ssh
 sudo ufw enable
-sudo ufw allow 4000/tcp # Allow NoMachine port
 
-# --- 3. Remote Desktop (XFCE4 & NoMachine) Setup ---
-# 3.1 Download and install NoMachine for ARM64 (for RPi5)
-cd /tmp
-wget https://www.nomachine.com/free/arm/v8/deb -O nomachine_arm64.deb
-sudo dpkg -i nomachine_arm64.deb
-rm nomachine_arm64.deb
+#To enable remote desktop
+if [ "$ARCH" = "aarch64" ]; then
+    echo "--- Setting up headless RDP for Jetson ARM64 ---"
+    
+    # 1. Ensure dependencies are present
+    sudo apt update && sudo apt install winpr-utils -y
+
+    # 2. Create the System Certificate Directory first if not present
+    TARGET_DIR="/var/lib/gnome-remote-desktop/.local/share/gnome-remote-desktop"
+    if [ ! -d "$TARGET_DIR" ]; then
+        sudo mkdir -p "$TARGET_DIR"
+    fi
+
+    # 3. Generate FreeRDP native certificates directly as the system user
+    # This prevents permission mismatch errors down the pipeline
+    sudo -u gnome-remote-desktop winpr-makecert -silent -rdp -path "$TARGET_DIR" tls
+
+    # 4. Enforce strict system ownership permissions 
+    sudo chown -R gnome-remote-desktop:gnome-remote-desktop /var/lib/gnome-remote-desktop/
+
+    # 5. Bind the native keys to the system RDP profile
+    sudo grdctl --system rdp set-tls-key "$TARGET_DIR/tls.key"
+    sudo grdctl --system rdp set-tls-cert "$TARGET_DIR/tls.crt"
+
+    # 6. Configure credentials and display options system-wide
+    sudo grdctl --system rdp set-credentials "jeevan" "your secure password"
+    sudo grdctl --system rdp disable-view-only
+
+    # 7. Enable the backend service wrapper
+    sudo grdctl --system rdp enable
+
+    # 8. Restart display management layers to apply new configurations
+    sudo systemctl restart gnome-remote-desktop.service
+    sudo systemctl restart gdm3
+    
+    echo "--- Headless RDP Configuration Complete. Run 'sudo grdctl --system status' to verify. ---"
+fi
 
 # --- 4. Git and SSH Key Generation ---
 echo "--- 4. Setting up Git and generating SSH Key ---"
@@ -151,6 +181,9 @@ elif [ "$ARCH" = "aarch64" ]; then
     # Verify Isaac ROS package installation paths
     ros2 pkg prefix isaac_ros_nvblox && ros2 pkg prefix isaac_ros_visual_slam
 fi
+# Add user to dialout group for serial/Lidar access
+echo "--- Adding user to dialout group ---"
+sudo usermod -aG dialout $USER
 
 # --- 8. Environment Configuration (.bashrc) ---
 echo "--- 8. Configuring .bashrc and User Environment ---"
@@ -183,7 +216,7 @@ jl() {
 alias rlgaz='ros2 launch jetcar_sim gazebo.launch.py'
 
 cb() {
-   colcon build --symlink-install "\$@"
+   colcon build --symlink-install "\$@" --cmake-args -DCMAKE_CXX_FLAGS="-include pthread.h"
 }
 
 alias sros='source /opt/ros/$ROS2_DISTRO/setup.bash'
@@ -206,17 +239,33 @@ npm install -g @github/copilot
 #On first run, it’ll ask to trust the folder, and then you can use /login to authenticate. 
 copilot 
 
-#for gemini cli
-npm install -g @google/gemini-cli
+#for antigravity cli
+curl -fsSL https://raw.githubusercontent.com/antigravity-ai/install/main/install.sh | bash
 
-#To run, at prompt
-#>gemini
+# --- 9. Zenoh Router Systemd Service Setup ---
+echo "--- 9. Setting up Zenoh Router Systemd User Service ---"
+mkdir -p "$HOME/.config/systemd/user"
 
-#for JETSON ONLY: Install JetPack SDK and OpenCV
-# 1. Update your package lists to ensure the Jetpack repositories are current
-sudo apt update
-#for adding this user in the docker root users group. Once added, your user (and thus # yourPython script running as that user) can execute docker run commands without needing # sudo.
-sudo usermod -aG docker $USERNAME
+cat << EOF > "$HOME/.config/systemd/user/zenoh-router.service"
+[Unit]
+Description=Zenoh Router for ROS 2 (rmw_zenoh_cpp)
+After=network.target
 
-#For docker...tbc
+[Service]
+ExecStart=/bin/bash -c "source /home/jeevan/Jetcar/.venv/bin/activate && ros2 run rmw_zenoh_cpp rmw_zenohd"
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+
+# to setup zenoh on the Jetson
+systemctl --user daemon-reload
+systemctl --user enable --now zenoh-router.service
+echo "Zenoh router service enabled and started."
+
+# To run, at prompt
+# agy
+
 
