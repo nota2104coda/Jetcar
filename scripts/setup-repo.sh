@@ -5,7 +5,7 @@
 USERNAME="xyz" # CHANGE THIS to your computer's username
 EMAIL="xyz@gmail.com" # CHANGE THIS
 GIT_USER="xyz" # CHANGE THIS
-ROS2_DISTRO="humble" # Assuming you're on a 22.04 base. If 24.04, change to "jazzy"
+ROS2_DISTRO="jazzy" # Assuming you're on a 22.04 base. If 24.04, change to "jazzy"
 REPO_URL="git@github.com:nota2104coda/Jetcar.git"
 REPO_DIR="/home/$USERNAME/Jetcar"
 if [ ! -d "$REPO_DIR" ]; then
@@ -56,8 +56,10 @@ if ! grep -q "alias sdev=" "$BASHRC"; then
 cat << 'EOF' >> "$BASHRC"
 
 # --- Jetcar Workspace Shortcuts ---
-# 1. Shortcut to source the workspace (sdev)
+# 1. Shortcut to source the workspace and ros2 environment 
+alias vv='source .venv/bin/activate' # activate virtual environment 
 alias sdev='source ~/Jetcar/install/setup.bash && echo "sourced install/setup.bash" '
+alias sros='source /opt/ros/jazzy/setup.bash'
 
 # 2. Shortcut to launch from jetcar_bringup (jl)
 # Usage: jl gazebo.launch.py
@@ -79,7 +81,7 @@ jl() {
 cb() {
    curr_dir=$(pwd)
    cd $HOME/Jetcar
-   if colcon build --symlink-install "$@"; then
+   if colcon build --symlink-install "\$@" --cmake-args -DCMAKE_CXX_FLAGS="-include pthread.h"; then
 	  source install/setup.bash
         echo "Build success and sourced"
    else
@@ -90,8 +92,6 @@ cb() {
 
 }
 
-# 4. Shortcut to source the system ROS 2 environment
-alias sros='source /opt/ros/humble/setup.bash'
 EOF
     echo "Shortcuts added to ~/.bashrc"
 else
