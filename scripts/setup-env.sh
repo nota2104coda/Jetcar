@@ -2,13 +2,23 @@
 # setup ROS2 environment, NoMachine, and other developer necessities.
 
 # --- Configuration Variables ---
-USERNAME="xyz" # CHANGE THIS to your computer's username
+USERNAME=$(whoami) # CHANGE THIS to your computer's username if needed
 EMAIL="xyz@gmail.com" # CHANGE THIS
 GIT_USER="xyz" # CHANGE THIS
-ROS2_DISTRO="jazzy" # Assuming you're on a 22.04 base. If 24.04, change to "jazzy"
+RDP_PASSWORD="secure_password" # CHANGE THIS for headless remote desktop password
+UBUNTU_VER=$(lsb_release -rs)
+if [ "$UBUNTU_VER" = "22.04" ]; then
+    ROS2_DISTRO="humble"
+elif [ "$UBUNTU_VER" = "24.04" ]; then
+    ROS2_DISTRO="jazzy"
+else
+    echo "Ubuntu version not supported, exiting..."
+    exit 1
+fi
 export ARCH=$(uname -m)
-echo $ARCH
-
+echo "computer architecture detected: $ARCH"
+echo "Ubuntu version detected: $(lsb_release -rs)"
+echo "ROS2 distribution selected: $ROS2_DISTRO"
 
 # --- 1. System Update and Dependencies ---
 echo "--- 1. Updating System and Installing Core Dependencies ---"
@@ -23,7 +33,7 @@ sudo apt install openssh-server -y
 sudo systemctl enable ssh
 sudo systemctl start ssh
 sudo ufw allow ssh
-sudo ufw enable
+sudo ufw --force enable
 
 #To enable remote desktop
 if [ "$ARCH" = "aarch64" ]; then
@@ -50,7 +60,7 @@ if [ "$ARCH" = "aarch64" ]; then
     sudo grdctl --system rdp set-tls-cert "$TARGET_DIR/tls.crt"
 
     # 6. Configure credentials and display options system-wide
-    sudo grdctl --system rdp set-credentials "jeevan" "your secure password"
+    sudo grdctl --system rdp set-credentials $USERNAME "$RDP_PASSWORD"
     sudo grdctl --system rdp disable-view-only
 
     # 7. Enable the backend service wrapper
@@ -94,10 +104,7 @@ sleep 120
 
 ssh -T git@github.com
 
-# --- 6. ROS 2 Humble Installation Procedure ---
-echo "--- 6. Setting up ROS 2 Humble/Jazzy Repository and Installing Packages ---"
-
-# --- 1. ROS 2 Humble Installation Procedure (Lighter Version) ---
+# --- 1. ROS 2 Installation Procedure ---
 echo "--- 1. Setting up ROS 2 Humble/Jazzy Repository and Installing ros-base ---"
 
 # Set Locale (Critical for ROS 2)
@@ -123,13 +130,8 @@ sudo apt install ros-$ROS2_DISTRO-ros-base -y
 #install rosbridge_server to cnnect foxglove visualisation
 sudo apt install ros-$ROS2_DISTRO-foxglove-bridge -y
 
-
 # Install development tools (colcon, etc.)
 sudo apt install python3-colcon-common-extensions ros-dev-tools -y
-# Install slam_toolbox for mapping and localization
-sudo apt install ros-$ROS2_DISTRO-slam-toolbox -y
-ARCH=$(uname -m)
-
 
 echo "--- Installing Common ROS 2 Packages ---"
 sudo apt install -y \
@@ -181,6 +183,7 @@ elif [ "$ARCH" = "aarch64" ]; then
     # Verify Isaac ROS package installation paths
     ros2 pkg prefix isaac_ros_nvblox && ros2 pkg prefix isaac_ros_visual_slam
 fi
+
 # Add user to dialout group for serial/Lidar access
 echo "--- Adding user to dialout group ---"
 sudo usermod -aG dialout $USER
@@ -194,41 +197,70 @@ if ! grep -q "# Jetcar Environment Configuration" "$BASHRC"; then
 cat << EOF >> "$BASHRC"
 
 # Jetcar Environment Configuration
-source /opt/ros/$ROS2_DISTRO/setup.bash
-export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+# some more of my aliases
+# 1. Shortcut to source the workspace (sdev)
+REPO_DIR="\$HOME/Jetcar"
+ROS2_DISTRO="$ROS2_DISTRO" # Assuming you're on a 22.04 base. If 24.04, change to "jazzy"
 
-# Jetcar Workspace Aliases
-alias sdev='source install/setup.bash && echo "sourced install/setup.bash" '
+alias vv='source $REPO_DIR/.venv/bin/activate' # activate virtual environment 
+alias sdev='source ~/Jetcar/install/setup.bash && echo "sourced install/setup.bash" '
+alias sros='source /opt/ros/$ROS2_DISTRO/setup.bash'
+alias rlgaz='ros2 launch jetcar_sim gazebo.launch.py'
 
+# 2. Shortcut to launch from jetcar_bringup (jl)
+# Usage: jl gazebo.launch.py
 jl() {
    if [ -z "\$1" ]; then
-       echo "Usage: jl <launch_file>"
-       return 1
+     echo "Usage: jl <launch_file>"
+     return 1
    elif [ ! -f "~/Jetcar/src/jetcar_bringup/launch/\$1" ]; then
-	echo "Warning: '\$1' not found in jetcar_bringup/launch/"
-	echo "Running anyway in case it's a system file..."
-	ros2 launch jetcar_bringup "\$@"
+     echo "Warning: '\$1' not found in jetcar_bringup/launch/"
+     echo "Running anyway in case it's a system file..."
+     ros2 launch jetcar_bringup "\$@"
    else
-        ros2 launch jetcar_bringup "\$@"
+     ros2 launch jetcar_bringup "\$@"
    fi
 }
 
-alias rlgaz='ros2 launch jetcar_sim gazebo.launch.py'
+# 3. Recommended: Shortcut to build the workspace
+#alias cb='colcon build --symlink-install'
 
 cb() {
-   colcon build --symlink-install "\$@" --cmake-args -DCMAKE_CXX_FLAGS="-include pthread.h"
+   curr_dir=$(pwd)
+   cd $HOME/Jetcar
+   if colcon build --symlink-install "\$@" --cmake-args -DCMAKE_CXX_FLAGS="-include pthread.h"; then
+     source install/setup.bash
+     echo "Build success and sourced"
+   else
+     echo "Build failed"
+   fi
+   # go back to previous dir
+   cd "$curr_dir"
 }
 
-alias sros='source /opt/ros/$ROS2_DISTRO/setup.bash'
+#start or ensure zenoh via systemd
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+if ! systemctl --user is-active --quiet zenoh-router.service; then
+    echo "Zenoh router service is not running. Starting it via systemd..."
+    systemctl --user start zenoh-router.service
+fi
+
+source /opt/ros/$ROS2_DISTRO/setup.bash
+
 EOF
     echo "Shortcuts and ROS configuration added to ~/.bashrc"
+else
+    echo "Shortcuts already exist in ~/.bashrc"
 fi
 
 #To run Gemini or Copilot CLI
 #---8. Install copilot CLI and gemini CLI
 sudo apt install curl
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-source ~/.bashrc
+# Load nvm directly for this script execution
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
 nvm install 22
 nvm use 22
 
@@ -252,7 +284,7 @@ Description=Zenoh Router for ROS 2 (rmw_zenoh_cpp)
 After=network.target
 
 [Service]
-ExecStart=/bin/bash -c "source /home/jeevan/Jetcar/.venv/bin/activate && ros2 run rmw_zenoh_cpp rmw_zenohd"
+ExecStart=/bin/bash -c "source $HOME/Jetcar/.venv/bin/activate && ros2 run rmw_zenoh_cpp rmw_zenohd"
 Restart=always
 RestartSec=3
 
@@ -262,8 +294,8 @@ EOF
 
 # to setup zenoh on the Jetson
 systemctl --user daemon-reload
-systemctl --user enable --now zenoh-router.service
-echo "Zenoh router service enabled and started."
+systemctl --user enable zenoh-router.service
+echo "Zenoh router service configured and enabled to start on system boot/user login."
 
 # To run, at prompt
 # agy
