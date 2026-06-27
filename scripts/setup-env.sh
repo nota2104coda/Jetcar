@@ -16,6 +16,7 @@ else
     exit 1
 fi
 export ARCH=$(uname -m)
+JETSON_IP="192.168.50.177" # CHANGE THIS to your Jetson's IP address on the network
 echo "computer architecture detected: $ARCH"
 echo "Ubuntu version detected: $(lsb_release -rs)"
 echo "ROS2 distribution selected: $ROS2_DISTRO"
@@ -278,23 +279,42 @@ curl -fsSL https://raw.githubusercontent.com/antigravity-ai/install/main/install
 echo "--- 9. Setting up Zenoh Router Systemd User Service ---"
 mkdir -p "$HOME/.config/systemd/user"
 
-cat << EOF > "$HOME/.config/systemd/user/zenoh-router.service"
+if [ "$ARCH" = "aarch64" ]; then
+    # Jetson acts as the listener/host router, no need to connect to another router
+    cat << EOF > "$HOME/.config/systemd/user/zenoh-router.service"
 [Unit]
 Description=Zenoh Router for ROS 2 (rmw_zenoh_cpp)
 After=network.target
 
 [Service]
-ExecStart=/bin/bash -c "source $HOME/Jetcar/.venv/bin/activate && ros2 run rmw_zenoh_cpp rmw_zenohd"
+ExecStart=/bin/bash -c "source /home/jeevan/Jetcar/.venv/bin/activate && ros2 run rmw_zenoh_cpp rmw_zenohd"
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=default.target
 EOF
+else
+    # PC acts as the client router and connects directly to the Jetson router
+    cat << EOF > "$HOME/.config/systemd/user/zenoh-router.service"
+[Unit]
+Description=Zenoh Router for ROS 2 (rmw_zenoh_cpp)
+After=network.target
 
-# to setup zenoh on the Jetson
+[Service]
+ExecStart=/bin/bash -c "source \$HOME/Jetcar/.venv/bin/activate && ros2 run rmw_zenoh_cpp rmw_zenohd"
+
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+fi
+
+# reload and enable the service
 systemctl --user daemon-reload
-systemctl --user enable zenoh-router.service
+systemctl --user enable --now zenoh-router.service
 echo "Zenoh router service configured and enabled to start on system boot/user login."
 
 # To run, at prompt
