@@ -87,9 +87,9 @@ public:
         cliff_front_pub_ = this->create_publisher<sensor_msgs::msg::Range>("/mcu/cliff/front", 10);
         cliff_rear_pub_ = this->create_publisher<sensor_msgs::msg::Range>("/mcu/cliff/rear", 10);
 
-        cmd_vel_sub_manual_ = this->create_subscription<geometry_msgs::msg::Twist>(
+        cmd_vel_manual_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
             command_topic_manual_, 10, std::bind(&McuNode::manual_twist_callback, this, std::placeholders::_1));
-        cmd_vel_sub_nav_ = this->create_subscription<geometry_msgs::msg::Twist>(
+        cmd_vel_nav_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
             command_topic_nav_, 10, std::bind(&McuNode::auto_twist_callback, this, std::placeholders::_1));
         stop_button_sub_ = this->create_subscription<std_msgs::msg::Bool>(
             "/stop_button", 10, std::bind(&McuNode::stop_button_callback, this, std::placeholders::_1));
@@ -132,7 +132,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Range>::SharedPtr range_front_pub_ , range_rear_pub_ , cliff_front_pub_ , cliff_rear_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr esc_pub_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual_ , cmd_vel_sub_nav_ ;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_manual_sub_ , cmd_vel_nav_sub_ ;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_button_sub_ , auto_mode_sub_ ;
     rclcpp::TimerBase::SharedPtr poll_timer_, control_timer_;
 
@@ -225,13 +225,13 @@ private:
         //set timeout to 1.0sec, same in sim_mcu_node and hw_mcu_node
         if (!stop_button_state_) {
             if (auto_mode_button_state_ && (this->now() - last_auto_received_time_).seconds() < 1.0) {
-                linear_x = last_auto_twist_.linear.x * auto_scale_; 
+                linear_x = last_auto_twist_.linear.x * auto_scale_;
                 angular_z = last_auto_twist_.angular.z * auto_scale_;
-            } else if ((this->now() - last_manual_received_time_).seconds() < 1.0) {
-                linear_x = last_manual_twist_.linear.x * manual_scale_; 
+            } else if (!auto_mode_button_state_ && (this->now() - last_manual_received_time_).seconds() < 1.0) {
+                linear_x = last_manual_twist_.linear.x * manual_scale_;
                 angular_z = last_manual_twist_.angular.z * manual_scale_;
             }
-        }
+        }   
 
         // Safety override: if obstacle is closer than 30cm (0.3m) in front, prevent forward motion
         if (linear_x > 0.0 && last_front_range_ <= safety_frt_rr_range_ ) {

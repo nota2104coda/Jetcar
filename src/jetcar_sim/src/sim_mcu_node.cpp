@@ -75,9 +75,9 @@ public:
             });
 
         // 3. Command Subscribers (Standard)
-        cmd_vel_sub_manual_ = this->create_subscription<geometry_msgs::msg::Twist>(
+        cmd_vel_manual_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
             command_topic_manual_, 10, std::bind(&McuNode::manual_twist_callback, this, std::placeholders::_1));
-        cmd_vel_sub_nav_ = this->create_subscription<geometry_msgs::msg::Twist>(
+        cmd_vel_nav_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
             command_topic_nav_, 10, std::bind(&McuNode::auto_twist_callback, this, std::placeholders::_1));
         stop_button_sub_ = this->create_subscription<std_msgs::msg::Bool>(
             "/stop_button", 10, std::bind(&McuNode::stop_button_callback, this, std::placeholders::_1));
@@ -111,7 +111,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr gz_imu_sub_;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr gz_range_front_sub_;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr gz_range_rear_sub_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_manual_ , cmd_vel_sub_nav_ ;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_manual_sub_ , cmd_vel_nav_sub_ ;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_button_sub_ , auto_mode_sub_ ;
 
     rclcpp::TimerBase::SharedPtr control_timer_;
@@ -189,11 +189,12 @@ private:
             if (auto_mode_button_state_ && (this->now() - last_auto_received_time_).seconds() < 1.0) {
                 linear_x = last_auto_twist_.linear.x * auto_scale_;
                 angular_z = last_auto_twist_.angular.z * auto_scale_;
-            } else if ((this->now() - last_manual_received_time_).seconds() < 1.0) {
+            } else if (!auto_mode_button_state_ && (this->now() - last_manual_received_time_).seconds() < 1.0) {
                 linear_x = last_manual_twist_.linear.x * manual_scale_;
                 angular_z = last_manual_twist_.angular.z * manual_scale_;
             }
         }
+    
 
         // Safety override: if obstacle is closer than 30cm (0.3m) in front, prevent forward motion
         if (linear_x > 0.0 && last_front_range_ <= safety_frt_rr_range_ ) {
