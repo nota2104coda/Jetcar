@@ -239,6 +239,24 @@ cb() {
    cd "$curr_dir"
 }
 
+alias killros='
+  echo "Stopping all ROS 2 nodes...";
+  # 1. Send SIGINT (Ctrl+C) to all ROS/Gazebo processes first so they close cleanly
+  pkill -INT -f "ros2 launch";
+  pkill -INT -f "_node";
+  pkill -INT -f "gzserver";
+  
+  # 2. Wait 3 seconds for them to release ports and hardware
+  sleep 3;
+  
+  # 3. Force-kill any stubborn remaining processes
+  pkill -9 -f "ros2 launch";
+  pkill -9 -f "_node";
+  pkill -9 -f "gzserver";
+  pkill -9 -f "gzclient";
+  echo "All ROS 2 and Gazebo processes terminated."
+'
+
 #start or ensure zenoh via systemd
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 if ! systemctl --user is-active --quiet zenoh-router.service; then
@@ -302,7 +320,9 @@ Description=Zenoh Router for ROS 2 (rmw_zenoh_cpp)
 After=network.target
 
 [Service]
-ExecStart=/bin/bash -c "source \$HOME/Jetcar/.venv/bin/activate && ros2 run rmw_zenoh_cpp rmw_zenohd"
+ExecStart=/bin/bash -c "source \$HOME/Jetcar/.venv/bin/activate && \
+                        export ZENOH_CONFIG_OVERRIDE='connect/endpoints=[\"tcp/${JETSON_IP}:7447\"]' && \
+                        ros2 run rmw_zenoh_cpp rmw_zenohd"
 
 Restart=always
 RestartSec=3
