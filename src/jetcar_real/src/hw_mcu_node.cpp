@@ -100,6 +100,10 @@ public:
 
         poll_timer_ = this->create_wall_timer(std::chrono::duration<double>(poll_period_), std::bind(&McuNode::poll_mcu, this));
         control_timer_ = this->create_wall_timer(std::chrono::duration<double>(control_period_), std::bind(&McuNode::control_loop, this));
+
+        // Initialize times to 0 (matching node clock type) to avoid negative duration bugs on startup
+        last_manual_received_time_ = rclcpp::Time(0LL, this->get_clock()->get_clock_type());
+        last_auto_received_time_ = rclcpp::Time(0LL, this->get_clock()->get_clock_type());
     }
 
     ~McuNode() { close_serial(); }
@@ -123,7 +127,7 @@ private:
     rclcpp::Time last_time_ = this->now();
 
     geometry_msgs::msg::Twist last_manual_twist_, last_auto_twist_;
-    rclcpp::Time last_manual_received_time_ = this->now(), last_auto_received_time_ = this->now();
+    rclcpp::Time last_manual_received_time_, last_auto_received_time_;
     double last_front_range_ = 4.0 , last_rear_range_ = 4.0;
     double safety_frt_rr_range_ = 0.3;
     double safety_cliff_range_ = 0.2;
@@ -208,6 +212,7 @@ private:
     }
     void stop_button_callback(const std_msgs::msg::Bool::SharedPtr msg) {
         stop_button_state_ = msg->data;
+        this->set_parameter(rclcpp::Parameter("stop_button_state", stop_button_state_));
         if (stop_button_state_) {
             last_manual_twist_ = geometry_msgs::msg::Twist();
             last_auto_twist_ = geometry_msgs::msg::Twist();
@@ -215,6 +220,7 @@ private:
     }
     void auto_mode_callback(const std_msgs::msg::Bool::SharedPtr msg) {
         auto_mode_button_state_ = msg->data;
+        this->set_parameter(rclcpp::Parameter("auto_mode_button_state", auto_mode_button_state_));
         if (!auto_mode_button_state_) {
             last_auto_twist_ = geometry_msgs::msg::Twist();
         }
@@ -224,10 +230,16 @@ private:
         double linear_x = 0.0, angular_z = 0.0;
         //set timeout to 1.0sec, same in sim_mcu_node and hw_mcu_node
         if (!stop_button_state_) {
-            if (auto_mode_button_state_ && (this->now() - last_auto_received_time_).seconds() < 1.0) {
+            if (auto_mode_button_state_ && 
+                last_auto_received_time_.nanoseconds() > 0 && 
+                (this->now() - last_auto_received_time_).seconds() < 0.2) 
+            {
                 linear_x = last_auto_twist_.linear.x * auto_scale_;
                 angular_z = last_auto_twist_.angular.z * auto_scale_;
-            } else if (!auto_mode_button_state_ && (this->now() - last_manual_received_time_).seconds() < 1.0) {
+            } else if (!auto_mode_button_state_ && 
+                       last_manual_received_time_.nanoseconds() > 0 && 
+                       (this->now() - last_manual_received_time_).seconds() < 0.25) 
+            {
                 linear_x = last_manual_twist_.linear.x * manual_scale_;
                 angular_z = last_manual_twist_.angular.z * manual_scale_;
             }
