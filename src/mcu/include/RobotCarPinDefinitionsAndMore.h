@@ -97,8 +97,8 @@
   #if defined(CAR_HAS_FRT_RR_SONAR)
     #define PIN_TRIG_SONAR_FRONT 7   // PIN31
     #define PIN_ECHO_SONAR_FRONT 8   // PIN32
-    #define PIN_TRIG_SONAR_REAR 36    // PIN11
-    #define PIN_ECHO_SONAR_REAR 35    // PIN10
+    #define PIN_TRIG_SONAR_REAR 36    // PIN15
+    #define PIN_ECHO_SONAR_REAR 35    // PIN14
   #endif
 
   #if defined(CAR_HAS_FRONT_RR_CLIFF_SENSOR)
@@ -191,6 +191,40 @@
 //     1,GP0,43,UART0 TX
 // 2,GP1,44,UART0 RX
 	#endif
+#elif defined(ROOMBA_MCU_ESP32S3_40PIN)
+// ---------------------------------------------------------------------------
+// Example pin plan for ROOMBA ESP32-S3-Pico based builds
+// ---------------------------------------------------------------------------
+  #define PIN_TRIG_SONAR_REAR 36    // PIN15
+  #define PIN_ECHO_SONAR_REAR 35    // PIN14
+
+  #define PIN_REAR_CLIFF 16         // PIN7
+
+  #if defined(CAR_HAS_SPI_DISPLAY)
+    #define ESP32_SPI_MOSI 35
+    #define ESP32_SPI_MISO 36
+    #define ESP32_SPI_SCK 37
+    #define ESP32_SPI_CS0 38
+    #define MOSI ESP32_SPI_MOSI
+    #define MISO ESP32_SPI_MISO
+    #define SCK  ESP32_SPI_SCK
+    #define CS0  ESP32_SPI_CS0
+  #endif
+
+  #define MCU_I2C0_SDA 4  //PIN26
+  #define MCU_I2C0_SCL 5  //PIN27
+  
+  #define MCU_JETSON_UART1_RX 14 //PIN5 to JETSON USB
+  #define MCU_JETSON_UART1_TX 13 //PIN4
+
+  #if defined(CAR_HAS_LD2450RADAR)
+    #define MCU_LD2450RADAR_UART0_RX 11 //PIN1
+    #define MCU_LD2450RADAR_UART0_TX 12 //PIN2
+  #endif
+
+  #if defined(CAR_HAS_LD06_LIDAR)
+    #define JETSON_LD06_UART0_RX 10 //JETSPIN10
+  #endif
 #endif
 #ifndef ROBOTCAR_PLATFORM_CONSTANTS_DEFINED
   #define ROBOTCAR_PLATFORM_CONSTANTS_DEFINED
