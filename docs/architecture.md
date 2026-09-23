@@ -134,3 +134,73 @@ Refer to code for full details.
 
 # Navigation Flow
 Refer to code for full details.
+
+# Roomba circuit
+```mermaid
+---
+config:
+  layout: dagre
+---
+graph LR
+    subgraph Power_Source ["Roomba Internal Chassis"]
+        BATT[Roomba Battery<br/>14.4V Nominal]
+    end
+
+    subgraph Protection_Stage ["Master Control & Protection"]
+        SW_MAIN[Main Power Switch<br/>SPST 15A Rated]
+        FUSE_MAIN[Main In-Line Fuse<br/>10A Blade Fuse]
+    end
+
+    subgraph Stage1_Regulator ["Primary 12V Power Bus"]
+        REG_72W[72W Voltage Converter<br/>14.4V to 12V @ 6A]
+        FUSE_JETSON[Sub-Fuse 6A]
+        JETSON[Jetson Orin Nano<br/>12V Barrel Jack / Header]
+    end
+
+    subgraph Stage2_Regulator ["5V Power Bus"]
+        FUSE_5V[Sub-Fuse 3A]
+        REG_5V[Low-Voltage Converter<br/>12V to 5V Step-Down]
+        RAIL_5V[5V Breadboard Rail]
+        PICO_5V[ESP32-S3-Pico<br/>VBUS / 5V Pin]
+    end
+
+    subgraph Stage3_Regulator ["3.3V Power Bus"]
+        PICO_3V3[ESP32-S3-Pico<br/>Internal 3.3V LDO Out]
+        RAIL_3V3[3.3V Breadboard Rail]
+    end
+
+    subgraph Ground_Network ["Common Ground Bus"]
+        GND[0V Common Ground Bar]
+    end
+
+    %% Positive Power Path
+    BATT -->|14.4V Pos| SW_MAIN
+    SW_MAIN --> FUSE_MAIN
+    FUSE_MAIN -->|14.4V Unregulated| REG_72W
+    
+    REG_72W -->|12V Output Rail| FUSE_JETSON
+    REG_72W -->|12V Output Rail| FUSE_5V
+    
+    FUSE_JETSON -->|12V Regulated| JETSON
+    FUSE_5V -->|12V Input| REG_5V
+    
+    REG_5V -->|5V Output Rail| RAIL_5V
+    REG_5V -->|5V Output Rail| PICO_5V
+    
+    PICO_5V --> PICO_3V3
+    PICO_3V3 -->|3.3V Output Rail| RAIL_3V3
+
+    %% Ground Connections
+    BATT --- GND
+    REG_72W --- GND
+    JETSON --- GND
+    REG_5V --- GND
+    RAIL_5V --- GND
+    PICO_5V --- GND
+    RAIL_3V3 --- GND
+
+    style Protection_Stage fill:#ffe6e6,stroke:#cc0000,stroke-width:1px
+    style Stage1_Regulator fill:#e1f5fe,stroke:#0288d1,stroke-width:1px
+    style Stage2_Regulator fill:#e8f5e9,stroke:#388e3c,stroke-width:1px
+    style Stage3_Regulator fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+```    
