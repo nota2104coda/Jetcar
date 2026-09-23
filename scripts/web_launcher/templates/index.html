@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jetcar Launch Control</title>
+    <!-- Outfit Font for premium feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0e17;
+            --card-bg: rgba(20, 26, 40, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-blue: #0072ff;
+            --accent-green: #00f2fe;
+            --accent-red: #ff3366;
+            --text-main: #f5f6f9;
+            --text-muted: #8b9bb4;
+            --shadow-glow: rgba(0, 242, 254, 0.2);
+            --shadow-glow-red: rgba(255, 51, 102, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(0, 114, 253, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(0, 242, 254, 0.15) 0px, transparent 50%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            padding: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 30%, var(--text-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+            box-shadow: 0 0 8px var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        /* Status states */
+        .status-badge.active {
+            border-color: rgba(0, 242, 254, 0.3);
+            color: #00f2fe;
+            background: rgba(0, 242, 254, 0.05);
+        }
+        .status-badge.active .status-indicator {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 12px var(--accent-green);
+            animation: pulse-green 2s infinite;
+        }
+
+        .status-badge.inactive {
+            border-color: rgba(255, 51, 102, 0.3);
+            color: var(--accent-red);
+            background: rgba(255, 51, 102, 0.05);
+        }
+        .status-badge.inactive .status-indicator {
+            background-color: var(--accent-red);
+            box-shadow: 0 0 12px var(--accent-red);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .btn {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 1.2rem 2rem;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .btn:hover::after {
+            opacity: 1;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-green) 100%);
+            box-shadow: 0 4px 15px rgba(0, 114, 253, 0.3);
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--shadow-glow);
+        }
+
+        .btn-start:active {
+            transform: translateY(1px);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ff0844 0%, var(--accent-red) 100%);
+            box-shadow: 0 4px 15px rgba(255, 8, 68, 0.3);
+        }
+
+        .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--shadow-glow-red);
+        }
+
+        .btn-stop:active {
+            transform: translateY(1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .log-section {
+            border-top: 1px solid var(--border-color);
+            padding-top: 2rem;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .log-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .btn-refresh {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-refresh:hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-main);
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .log-console {
+            background: rgba(5, 8, 15, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.2rem;
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #d1d5db;
+            white-space: pre-wrap;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        .log-console::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-console::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .log-console::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .log-console::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes pulse-green {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.5);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(0, 242, 254, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 242, 254, 0);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            .card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <header>
+                <h1>Jetcar System Controller</h1>
+                <div id="statusBadge" class="status-badge">
+                    <span class="status-indicator"></span>
+                    <span id="statusText">Checking Status...</span>
+                </div>
+            </header>
+
+            <div class="controls">
+                <button id="btnStart" class="btn btn-start" onclick="startRobot()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Start Robot
+                </button>
+                <button id="btnStop" class="btn btn-stop" onclick="stopRobot()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>
+                    Stop Robot
+                </button>
+            </div>
+
+            <div class="log-section">
+                <div class="log-header">
+                    <span class="log-title">Live Diagnostics</span>
+                    <button class="btn-refresh" onclick="fetchLogs()">Refresh Logs</button>
+                </div>
+                <div id="logConsole" class="log-console">Initializing log stream...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const logConsole = document.getElementById('logConsole');
+
+        // Periodically poll status and logs
+        function updateUI() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    statusText.textContent = data.status.toUpperCase();
+                    statusBadge.className = 'status-badge'; // reset
+                    
+                    if (data.running) {
+                        statusBadge.classList.add('active');
+                        btnStart.disabled = true;
+                        btnStop.disabled = false;
+                    } else {
+                        statusBadge.classList.add('inactive');
+                        btnStart.disabled = false;
+                        btnStop.disabled = true;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching status:', err);
+                    statusText.textContent = 'ERROR';
+                    statusBadge.className = 'status-badge inactive';
+                });
+        }
+
+        function fetchLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    logConsole.textContent = data.logs || "No logs available.";
+                    // Auto-scroll to bottom of console
+                    logConsole.scrollTop = logConsole.scrollHeight;
+                })
+                .catch(err => {
+                    logConsole.textContent = "Error fetching logs: " + err;
+                });
+        }
+
+        function startRobot() {
+            btnStart.disabled = true;
+            statusText.textContent = 'STARTING...';
+            fetch('/api/start', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    console.log(data.message);
+                    setTimeout(() => {
+                        updateUI();
+                        fetchLogs();
+                    }, 1000);
+                })
+                .catch(err => {
+                    alert('Failed to start: ' + err);
+                    updateUI();
+                });
+        }
+
+        function stopRobot() {
+            btnStop.disabled = true;
+            statusText.textContent = 'STOPPING...';
+            fetch('/api/stop', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    console.log(data.message);
+                    setTimeout(() => {
+                        updateUI();
+                        fetchLogs();
+                    }, 1000);
+                })
+                .catch(err => {
+                    alert('Failed to stop: ' + err);
+                    updateUI();
+                });
+        }
+
+        // Initial fetch
+        updateUI();
+        fetchLogs();
+
+        // Set intervals
+        setInterval(updateUI, 2000);
+        setInterval(fetchLogs, 5000);
+    </script>
+</body>
+</html>
